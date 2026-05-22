@@ -313,7 +313,7 @@ function Screensaver({onTap,wx,loc,customPhotos}){
 }
 
 // ═════════════════ SETTINGS ═════════════════════════════════════════
-function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,photos,setPhotos}){
+function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,photos,setPhotos,onClearEvents,onClearLists,onClearMeals}){
   const t=useT(),s=useS(),fileRef=useRef(null);
   const handleFiles=e=>{Array.from(e.target.files||[]).forEach(file=>{if(!file.type.startsWith("image/"))return;const reader=new FileReader();reader.onload=ev=>{setPhotos(prev=>[...prev,ev.target.result]);};reader.readAsDataURL(file);});};
   const clearAll=()=>{if(confirm("Clear ALL Homelight data?")){Object.keys(localStorage).filter(k=>k.startsWith("hl4_")).forEach(k=>localStorage.removeItem(k));window.location.reload();}};
@@ -333,7 +333,13 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,photos,setPhotos}){
     </div>}
     <div style={s.crd}><div style={{fontSize:11,fontWeight:700,color:t.text,marginBottom:8}}>📱 Install as App (PWA)</div><div style={{fontSize:11,color:t.sub,lineHeight:1.6}}>Chrome → ⋮ → "Add to Home Screen" → launches fullscreen!</div></div>
     <div style={s.crd}><div style={{fontSize:11,fontWeight:700,color:t.text,marginBottom:8}}>🖥️ Wall-Mount Setup</div><div style={{fontSize:11,color:t.sub,lineHeight:1.6}}>Use <b>Fully Kiosk Browser</b> (free) on Android for kiosk mode with wake/sleep scheduling.</div></div>
-    <button onClick={clearAll} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"none",background:t.dangerDim,color:t.danger,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FF,marginTop:8}}>Reset All Data</button>
+    <label style={{...s.lbl,marginTop:8}}>Clear Data</label>
+    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+      <button onClick={onClearEvents} style={{flex:1,padding:"9px 0",borderRadius:8,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF}}>Clear Events</button>
+      <button onClick={onClearLists} style={{flex:1,padding:"9px 0",borderRadius:8,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF}}>Clear Lists</button>
+      <button onClick={onClearMeals} style={{flex:1,padding:"9px 0",borderRadius:8,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF}}>Clear Meals</button>
+    </div>
+    <button onClick={clearAll} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"none",background:t.dangerDim,color:t.danger,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FF,marginTop:4}}>Reset Everything</button>
   </div>;
 }
 
@@ -341,10 +347,10 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,photos,setPhotos}){
 function Homelight(){
   const[theme,setTheme]=useP("theme","dark");const t=THEMES[theme]||THEMES.dark;
   const[view,setView]=useP("view","month"),[sel,setSel]=useState(new Date());
-  const[events,setEvents]=useP("events",makeSamples);
-  const[todos,setTodos]=useP("todos",[{id:"t1",text:"Pick up dry cleaning",done:false},{id:"t2",text:"Submit expense report",done:false},{id:"t3",text:"Buy birthday card for Mom",done:false},{id:"t4",text:"Schedule oil change",done:true},{id:"t5",text:"Refill prescriptions",done:false}]);
-  const[grocery,setGrocery]=useP("grocery",[{id:"g1",text:"Salmon fillets",done:false},{id:"g2",text:"Avocados (3)",done:false},{id:"g3",text:"Greek yogurt",done:true},{id:"g4",text:"Spinach",done:false},{id:"g5",text:"Chicken breast",done:false},{id:"g6",text:"Eggs",done:true}]);
-  const[meals,setMeals]=useP("meals",{0:{breakfast:"Eggs Benedict",lunch:"BLT",dinner:"Roast Chicken"},1:{breakfast:"Overnight Oats",lunch:"Turkey Wrap",dinner:"Grilled Salmon"},2:{breakfast:"Smoothie Bowl",lunch:"Chicken Salad",dinner:"Pasta"},3:{breakfast:"Avocado Toast",lunch:"Soup",dinner:"Stir Fry"},4:{breakfast:"Pancakes",lunch:"Burrito Bowl",dinner:"Tacos"},5:{breakfast:"Yogurt Parfait",lunch:"Poke Bowl",dinner:"Pizza Night"},6:{breakfast:"French Toast",lunch:"Leftovers",dinner:"Burgers"}});
+  const[events,setEvents]=useP("events",[]);
+  const[todos,setTodos]=useP("todos",[]);
+  const[grocery,setGrocery]=useP("grocery",[]);
+  const[meals,setMeals]=useP("meals",{});
   const[loc,setLoc]=useP("loc",null),[wx,setWx]=useState(null);
   const[modal,setModal]=useState(null),[showSS,setShowSS]=useState(false);
   const[sideTab,setSideTab]=useState("tasks"),[panel,setPanel]=useState("main");
@@ -392,7 +398,7 @@ function Homelight(){
         </div>
         <div style={{width:320,borderLeft:`1px solid ${t.bdr}`,background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0}}>
           {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
-          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} photos={photos} setPhotos={setPhotos}/>
+          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} photos={photos} setPhotos={setPhotos} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}}/>
           :<>
             <div style={{padding:16,borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc}/></div>
             <div style={{padding:16,borderBottom:`1px solid ${t.bdr}`}}>
