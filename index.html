@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#06080D">
+<title>Homelight — Personal Calendar</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☀</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body,#root{height:100%;width:100%;overflow:hidden;}
+  body{font-family:'Outfit',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+  ::-webkit-scrollbar{width:6px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px;}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.2);}
+  input,select,button{font-family:inherit;}
+  input:focus,select:focus{border-color:rgba(56,189,248,0.4)!important;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel" data-type="module">
+const {useState,useEffect,useCallback,useRef,useMemo,createContext,useContext}=React;
+
+/* ═══════════════════════════════════════════════════════════════════
+ *  HOMELIGHT v4 — Complete Skylight Calendar Replacement
+ *  Multi-Calendar Sync · Dark/Light Theme · Photo Upload
+ *  Live Weather · Full CRUD · PWA-Ready
+ * ═══════════════════════════════════════════════════════════════════ */
+
+const FF="'Outfit',system-ui,sans-serif";
+const FM="'JetBrains Mono',monospace";
+
+// ─── Theme System ────────────────────────────────────────────────────
+const THEMES={
+  dark:{bg:"#06080D",bg2:"#0C1018",card:"rgba(255,255,255,0.028)",cardH:"rgba(255,255,255,0.055)",bdr:"rgba(255,255,255,0.065)",text:"#E8EDF5",sub:"#8B99AE",dim:"#4A5568",accent:"#38BDF8",acDim:"rgba(56,189,248,0.1)",acGlow:"rgba(56,189,248,0.22)",acText:"#020617",danger:"#F43F5E",dangerDim:"rgba(244,63,94,0.12)",success:"#34D399",headerBg:"rgba(0,0,0,0.35)",sidebarBg:"rgba(0,0,0,0.22)",inputBg:"rgba(0,0,0,0.35)",modalBg:"#111827",grad:"linear-gradient(155deg,#06080D 0%,#0C1018 40%,#0F172A 100%)"},
+  light:{bg:"#F8FAFC",bg2:"#F1F5F9",card:"rgba(0,0,0,0.03)",cardH:"rgba(0,0,0,0.06)",bdr:"rgba(0,0,0,0.08)",text:"#1E293B",sub:"#64748B",dim:"#94A3B8",accent:"#0284C7",acDim:"rgba(2,132,199,0.08)",acGlow:"rgba(2,132,199,0.18)",acText:"#FFFFFF",danger:"#E11D48",dangerDim:"rgba(225,29,72,0.08)",success:"#059669",headerBg:"rgba(255,255,255,0.85)",sidebarBg:"rgba(255,255,255,0.6)",inputBg:"rgba(0,0,0,0.04)",modalBg:"#FFFFFF",grad:"linear-gradient(155deg,#F8FAFC 0%,#F1F5F9 40%,#E2E8F0 100%)"},
+};
+
+const CATS={
+  personal:{bg:"#3B82F6",lt:a=>`rgba(59,130,246,${a})`,tx:"#93C5FD"},
+  work:{bg:"#F59E0B",lt:a=>`rgba(245,158,11,${a})`,tx:"#FCD34D"},
+  health:{bg:"#10B981",lt:a=>`rgba(16,185,129,${a})`,tx:"#6EE7B7"},
+  social:{bg:"#8B5CF6",lt:a=>`rgba(139,92,246,${a})`,tx:"#C4B5FD"},
+  errand:{bg:"#EF4444",lt:a=>`rgba(239,68,68,${a})`,tx:"#FCA5A5"},
+  family:{bg:"#EC4899",lt:a=>`rgba(236,72,153,${a})`,tx:"#F9A8D4"},
+};
+const FEED_COLORS=["#06B6D4","#8B5CF6","#F43F5E","#F59E0B","#10B981","#EC4899","#6366F1","#14B8A6"];
+const ThemeCtx=createContext(THEMES.dark);
+const useT=()=>useContext(ThemeCtx);
+
+const DAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const DAYS_F=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const MO=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const WMO={0:{l:"Clear",i:"☀️"},1:{l:"Mostly Clear",i:"🌤️"},2:{l:"Partly Cloudy",i:"⛅"},3:{l:"Overcast",i:"☁️"},45:{l:"Fog",i:"🌫️"},48:{l:"Rime Fog",i:"🌫️"},51:{l:"Light Drizzle",i:"🌦️"},53:{l:"Drizzle",i:"🌦️"},55:{l:"Dense Drizzle",i:"🌦️"},61:{l:"Light Rain",i:"🌧️"},63:{l:"Rain",i:"🌧️"},65:{l:"Heavy Rain",i:"🌧️"},71:{l:"Light Snow",i:"🌨️"},73:{l:"Snow",i:"🌨️"},75:{l:"Heavy Snow",i:"❄️"},80:{l:"Showers",i:"🌧️"},81:{l:"Mod Showers",i:"🌧️"},82:{l:"Heavy Showers",i:"⛈️"},95:{l:"Thunderstorm",i:"⛈️"},96:{l:"T-storm+Hail",i:"⛈️"},99:{l:"Severe Storm",i:"⛈️"}};
+const wmo=c=>WMO[c]||{l:"Unknown",i:"🌡️"};
+
+// ─── Utils ───────────────────────────────────────────────────────────
+const dkey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const sameD=(a,b)=>dkey(a)===dkey(b);
+const addD=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r;};
+const wkSt=d=>{const r=new Date(d);r.setDate(r.getDate()-r.getDay());return r;};
+const dInM=(y,m)=>new Date(y,m+1,0).getDate();
+const fmtT=(h,m)=>`${h%12||12}:${String(m||0).padStart(2,"0")} ${h>=12?"PM":"AM"}`;
+const mkId=()=>`${Date.now()}-${Math.random().toString(36).slice(2,9)}`;
+
+function useP(key,def){
+  const[s,setS]=useState(()=>{try{const v=localStorage.getItem(`hl4_${key}`);return v?JSON.parse(v):(typeof def==="function"?def():def);}catch{return typeof def==="function"?def():def;}});
+  useEffect(()=>{try{localStorage.setItem(`hl4_${key}`,JSON.stringify(s));}catch{}},[key,s]);
+  return[s,setS];
+}
+
+// ─── ICS Parser ──────────────────────────────────────────────────────
+function parseICS(text,feedId,feedColor){
+  const evs=[];const lines=text.replace(/\r\n[ \t]/g,"").replace(/\r/g,"").split("\n");let ev=null;
+  for(const raw of lines){const line=raw.trim();
+    if(line==="BEGIN:VEVENT"){ev={};continue;}
+    if(line==="END:VEVENT"){if(ev)evs.push(ev);ev=null;continue;}
+    if(!ev)continue;const ci=line.indexOf(":");if(ci<0)continue;
+    const kp=line.slice(0,ci),val=line.slice(ci+1),bk=kp.split(";")[0];
+    if(bk==="SUMMARY")ev.summary=val.replace(/\\,/g,",").replace(/\\n/g," ").replace(/\\;/g,";");
+    else if(bk==="DTSTART")ev.dtstart=val;else if(bk==="DTEND")ev.dtend=val;
+    else if(bk==="LOCATION")ev.location=val.replace(/\\,/g,",");else if(bk==="UID")ev.uid=val;
+  }
+  return evs.map(e=>{const st=parseICSDate(e.dtstart),en=e.dtend?parseICSDate(e.dtend):(st?new Date(st.getTime()+3600000):null);
+    if(!st)return null;const dur=en?Math.max(0.25,(en-st)/3600000):1;
+    return{id:`ical-${feedId}-${e.uid||mkId()}`,title:e.summary||"Untitled",date:dkey(st),hour:st.getHours(),minute:st.getMinutes(),duration:Math.min(dur,12),category:"synced",feedId,feedColor,location:e.location||"",synced:true};
+  }).filter(Boolean);
+}
+function parseICSDate(s){if(!s)return null;const c=s.replace(/[^0-9TZ]/g,"");
+  try{if(c.length===8)return new Date(+c.slice(0,4),+c.slice(4,6)-1,+c.slice(6,8));
+    if(c.length>=15){if(c.endsWith("Z"))return new Date(Date.UTC(+c.slice(0,4),+c.slice(4,6)-1,+c.slice(6,8),+c.slice(9,11),+c.slice(11,13)));
+      return new Date(+c.slice(0,4),+c.slice(4,6)-1,+c.slice(6,8),+c.slice(9,11),+c.slice(11,13));}}catch{}return null;
+}
+function eventToICS(ev){const d=ev.date.replace(/-/g,"");const sh=String(ev.hour).padStart(2,"0"),sm=String(ev.minute||0).padStart(2,"0");const eh=String(Math.floor(ev.hour+ev.duration)).padStart(2,"0"),em=String(Math.round(((ev.hour+ev.duration)%1)*60)).padStart(2,"0");
+  return`BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Homelight//EN\r\nBEGIN:VEVENT\r\nDTSTART:${d}T${sh}${sm}00\r\nDTEND:${d}T${eh}${em}00\r\nSUMMARY:${ev.title}\r\n${ev.location?`LOCATION:${ev.location}\r\n`:""}UID:${ev.id}@homelight\r\nEND:VEVENT\r\nEND:VCALENDAR`;
+}
+
+// ─── Sample Data ─────────────────────────────────────────────────────
+function makeSamples(){const evs=[],tpls=[{t:"Morning Run",c:"health",h:6,d:1},{t:"Team Standup",c:"work",h:9,d:.5},{t:"Dentist",c:"health",h:14,d:1},{t:"Grocery Run",c:"errand",h:17,d:1},{t:"Dinner w/ Alex",c:"social",h:19,d:2},{t:"Project Review",c:"work",h:11,d:1.5},{t:"Yoga",c:"health",h:7,d:1},{t:"Call Mom",c:"family",h:20,d:.5},{t:"Lunch Meeting",c:"work",h:12,d:1},{t:"Soccer Practice",c:"family",h:16,d:1.5}];
+  const now=new Date();for(let i=-5;i<=14;i++){const d=addD(now,i),cnt=1+Math.floor(Math.random()*3);[...tpls].sort(()=>Math.random()-.5).slice(0,cnt).forEach(e=>evs.push({id:mkId(),title:e.t,date:dkey(d),hour:e.h,minute:0,duration:e.d,category:e.c,synced:false}));}return evs;}
+
+// ─── Shared Styles ───────────────────────────────────────────────────
+function evColor(ev){return ev.feedColor||CATS[ev.category]?.bg||"#38BDF8";}
+function evLt(ev){return ev.feedColor?ev.feedColor+"18":CATS[ev.category]?.lt?.(0.1)||"rgba(56,189,248,0.1)";}
+
+function useS(){const t=useT();return useMemo(()=>({
+  iconBtn:{background:"none",border:"none",color:t.accent,fontSize:20,cursor:"pointer",padding:"4px 10px",borderRadius:8,fontWeight:300},
+  todayBtn:{padding:"5px 14px",borderRadius:20,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF},
+  overlay:{position:"fixed",inset:0,zIndex:60,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(14px)",display:"flex",alignItems:"center",justifyContent:"center"},
+  modal:{background:t.modalBg,borderRadius:20,padding:28,width:440,maxWidth:"94vw",border:`1px solid ${t.bdr}`,maxHeight:"90vh",overflow:"auto",boxShadow:"0 25px 60px rgba(0,0,0,0.4)"},
+  inp:{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:14,fontFamily:FF,outline:"none",marginBottom:12,boxSizing:"border-box"},
+  sel:{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:13,fontFamily:FF,outline:"none",marginBottom:12,boxSizing:"border-box"},
+  lbl:{display:"block",fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.dim,marginBottom:6},
+  btnP:{flex:1,padding:"11px 0",borderRadius:10,border:"none",background:t.accent,color:t.acText,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FF},
+  btnS:{flex:1,padding:"11px 0",borderRadius:10,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:FF},
+  btnD:{flex:1,padding:"11px 0",borderRadius:10,border:"none",background:t.dangerDim,color:t.danger,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FF},
+  secT:{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:2,color:t.accent,marginBottom:12},
+  crd:{background:t.card,borderRadius:12,padding:14,marginBottom:10,border:`1px solid ${t.bdr}`},
+}),[t]);}
+
+// ═════════════════ WEATHER ════════════════════════════════════════════
+function Weather({loc,setLoc}){
+  const t=useT(),s=useS();
+  const[wx,setWx]=useState(null),[fc,setFc]=useState([]),[ld,setLd]=useState(true),[open,setOpen]=useState(false);
+  const[q,setQ]=useState(""),[res,setRes]=useState([]),[srch,setSrch]=useState(false),[gErr,setGErr]=useState(null);
+  const[useF,setUseF]=useP("unit",true);
+  const fetchWx=useCallback(async(lat,lon)=>{try{setLd(true);const u=useF?"fahrenheit":"celsius";const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=${u}&wind_speed_unit=mph&timezone=auto&forecast_days=7`);const d=await r.json();if(d.current)setWx({temp:Math.round(d.current.temperature_2m),feels:Math.round(d.current.apparent_temperature),hum:d.current.relative_humidity_2m,wind:Math.round(d.current.wind_speed_10m),code:d.current.weather_code});if(d.daily)setFc(d.daily.time.slice(1,6).map((x,i)=>({date:x,hi:Math.round(d.daily.temperature_2m_max[i+1]),lo:Math.round(d.daily.temperature_2m_min[i+1]),code:d.daily.weather_code[i+1],prec:d.daily.precipitation_probability_max[i+1]})));}catch(e){console.error(e);}finally{setLd(false);}
+  },[useF]);
+  const detect=useCallback(()=>{if(!navigator.geolocation){setGErr("Geolocation unavailable");return;}setGErr(null);navigator.geolocation.getCurrentPosition(async p=>{const{latitude:la,longitude:lo}=p.coords;try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${la}&lon=${lo}&format=json&addressdetails=1`);const d=await r.json();const city=d?.address?.city||d?.address?.town||d?.address?.village||d?.address?.county||"My Location";const st=d?.address?.state||"";setLoc({name:`${city}${st?", "+st:""}`,lat:la,lon:lo});}catch{setLoc({name:"My Location",lat:la,lon:lo});}},(e)=>{setGErr("Location denied — use search");},{timeout:10000});},[setLoc]);
+  useEffect(()=>{if(loc?.lat)fetchWx(loc.lat,loc.lon);},[loc,fetchWx]);
+  useEffect(()=>{if(!loc)detect();},[]);
+  const search=async()=>{if(q.length<2)return;setSrch(true);try{const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=en`);const d=await r.json();setRes(d.results||[]);}catch{setRes([]);}finally{setSrch(false);}};
+  const unit=useF?"°F":"°C",info=wx?wmo(wx.code):null;
+  return(<div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={s.secT}>Weather</div><button onClick={()=>setOpen(!open)} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:13,padding:"2px 6px"}}>⚙</button></div>
+    {open&&<div style={{...s.crd,marginBottom:12}}>
+      <div style={{display:"flex",gap:6,marginBottom:8}}><input style={{...s.inp,marginBottom:0,flex:1,fontSize:12,padding:"8px 10px"}} placeholder="Search city..." value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&search()}/><button onClick={search} style={{padding:"8px 14px",borderRadius:10,border:"none",background:t.accent,color:t.acText,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>{srch?"...":"Search"}</button></div>
+      {res.length>0&&<div style={{maxHeight:140,overflow:"auto",marginBottom:8}}>{res.map(r=><div key={r.id} onClick={()=>{setLoc({name:`${r.name}${r.admin1?", "+r.admin1:""}${r.country?" · "+r.country:""}`,lat:r.latitude,lon:r.longitude});setRes([]);setQ("");setOpen(false);}} style={{padding:"7px 10px",borderRadius:8,cursor:"pointer",fontSize:12,color:t.text}} onMouseEnter={e=>e.target.style.background=t.cardH} onMouseLeave={e=>e.target.style.background="transparent"}><b>{r.name}</b><span style={{color:t.sub}}>{r.admin1?`, ${r.admin1}`:""}{r.country?` · ${r.country}`:""}</span></div>)}</div>}
+      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}><button onClick={detect} style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:11,cursor:"pointer"}}>📍 Auto-Detect</button><button onClick={()=>setUseF(!useF)} style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:11,cursor:"pointer"}}>{useF?"Switch °C":"Switch °F"}</button></div>
+      {gErr&&<div style={{fontSize:11,color:t.danger,marginTop:6}}>{gErr}</div>}
+    </div>}
+    {ld?<div style={{textAlign:"center",padding:16,color:t.sub,fontSize:12}}>Loading...</div>
+    :wx&&info?<div>
+      <div style={{display:"flex",alignItems:"center",gap:14}}><span style={{fontSize:42,lineHeight:1}}>{info.i}</span><div><div style={{fontSize:34,fontWeight:200,fontFamily:FM,color:t.text,lineHeight:1}}>{wx.temp}<span style={{fontSize:15,color:t.sub}}>{unit}</span></div><div style={{fontSize:12,color:t.sub,marginTop:2}}>{info.l}</div></div></div>
+      <div style={{display:"flex",gap:14,marginTop:8,fontSize:11,color:t.dim}}><span>Feels {wx.feels}{unit}</span><span>💧{wx.hum}%</span><span>💨{wx.wind}mph</span></div>
+      <div style={{fontSize:11,color:t.dim,marginTop:3}}>{loc?.name}</div>
+      {fc.length>0&&<div style={{display:"flex",gap:3,marginTop:12}}>{fc.map((f,i)=>{const d=new Date(f.date+"T12:00:00");return<div key={i} style={{flex:1,textAlign:"center",padding:"6px 2px",borderRadius:10,background:t.card}}><div style={{fontSize:10,color:t.dim,fontWeight:600}}>{DAYS[d.getDay()]}</div><div style={{fontSize:18,margin:"3px 0",lineHeight:1}}>{wmo(f.code).i}</div><div style={{fontSize:10,color:t.text,fontWeight:600}}>{f.hi}°</div><div style={{fontSize:10,color:t.dim}}>{f.lo}°</div>{f.prec>20&&<div style={{fontSize:9,color:"#60A5FA"}}>💧{f.prec}%</div>}</div>;})}</div>}
+    </div>:<div style={{textAlign:"center",padding:16}}><div style={{color:t.sub,fontSize:13,marginBottom:8}}>No location set</div><button onClick={()=>setOpen(true)} style={{padding:"8px 20px",borderRadius:10,border:"none",background:t.accent,color:t.acText,fontSize:12,fontWeight:600,cursor:"pointer"}}>Set Location</button></div>}
+  </div>);
+}
+
+// ═════════════════ CALENDAR VIEWS ════════════════════════════════════
+function MonthView({sel,setSel,events,setView}){
+  const t=useT(),s=useS();const y=sel.getFullYear(),m=sel.getMonth(),dinm=dInM(y,m),fd=new Date(y,m,1).getDay(),pd=dInM(y,m-1);
+  const cells=[],today=new Date();
+  for(let i=0;i<fd;i++)cells.push({d:new Date(y,m-1,pd-fd+1+i),c:false});
+  for(let i=1;i<=dinm;i++)cells.push({d:new Date(y,m,i),c:true});
+  const rem=7-(cells.length%7);if(rem<7)for(let i=1;i<=rem;i++)cells.push({d:new Date(y,m+1,i),c:false});
+  return<div>
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><button style={s.iconBtn} onClick={()=>setSel(new Date(y,m-1,1))}>‹</button><span style={{fontSize:22,fontWeight:700,fontFamily:FF,letterSpacing:-.5}}>{MO[m]} {y}</span><button style={s.iconBtn} onClick={()=>setSel(new Date(y,m+1,1))}>›</button><div style={{flex:1}}/><button style={s.todayBtn} onClick={()=>setSel(new Date())}>Today</button></div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
+      {DAYS.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:600,color:t.dim,textTransform:"uppercase",letterSpacing:1,padding:"8px 0"}}>{d}</div>)}
+      {cells.map((c,i)=>{const key=dkey(c.d),isT=sameD(c.d,today),evs=events.filter(e=>e.date===key);
+        return<div key={i} onClick={()=>{setSel(c.d);setView("day");}} style={{minHeight:88,padding:6,borderRadius:10,cursor:"pointer",background:isT?t.acDim:c.c?t.card:"rgba(128,128,128,0.05)",border:isT?`1px solid ${t.acGlow}`:"1px solid transparent",transition:"all 0.15s",overflow:"hidden"}} onMouseEnter={e=>{if(!isT)e.currentTarget.style.background=t.cardH;}} onMouseLeave={e=>{if(!isT)e.currentTarget.style.background=c.c?t.card:"rgba(128,128,128,0.05)";}}>
+          <div style={{fontSize:13,fontWeight:isT?800:400,color:isT?t.accent:c.c?t.sub:t.dim,marginBottom:4}}>{c.d.getDate()}</div>
+          {evs.slice(0,3).map(ev=><div key={ev.id} style={{background:evColor(ev),color:"#fff",padding:"1px 6px",borderRadius:4,fontSize:10,fontWeight:500,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div>)}
+          {evs.length>3&&<div style={{fontSize:9,color:t.dim}}>+{evs.length-3}</div>}
+        </div>;})}
+    </div></div>;
+}
+function WeekView({sel,setSel,events,onEv}){
+  const t=useT(),s=useS();const start=wkSt(sel),days=Array.from({length:7},(_,i)=>addD(start,i)),hrs=Array.from({length:15},(_,i)=>i+5),today=new Date();
+  return<div>
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><button style={s.iconBtn} onClick={()=>setSel(addD(sel,-7))}>‹</button><span style={{fontSize:17,fontWeight:600,fontFamily:FF}}>{MO[start.getMonth()]} {start.getDate()} – {MO[addD(start,6).getMonth()]} {addD(start,6).getDate()}, {start.getFullYear()}</span><button style={s.iconBtn} onClick={()=>setSel(addD(sel,7))}>›</button></div>
+    <div style={{overflowX:"auto"}}><div style={{display:"grid",gridTemplateColumns:"56px repeat(7,1fr)",minWidth:700}}>
+      <div/>{days.map((d,i)=><div key={i} style={{textAlign:"center",padding:"8px 0",fontSize:12,fontWeight:sameD(d,today)?700:500,color:sameD(d,today)?t.accent:t.sub,borderBottom:sameD(d,today)?`2px solid ${t.accent}`:`1px solid ${t.bdr}`}}>{DAYS[d.getDay()]} <span style={{fontFamily:FM,fontSize:11}}>{d.getDate()}</span></div>)}
+      {hrs.map(h=><div key={h} style={{display:"contents"}}><div style={{fontSize:10,color:t.dim,textAlign:"right",paddingRight:8,paddingTop:4,fontFamily:FM,borderBottom:`1px solid ${t.bdr}`}}>{fmtT(h)}</div>
+        {days.map((d,di)=>{const key=dkey(d),hEvs=events.filter(e=>e.date===key&&e.hour===h);return<div key={di} style={{borderLeft:`1px solid ${t.bdr}`,borderBottom:`1px solid ${t.bdr}`,minHeight:44,padding:2,background:sameD(d,today)?"rgba(56,189,248,0.02)":"transparent"}}>{hEvs.map(ev=><div key={ev.id} onClick={()=>onEv(ev)} style={{background:evColor(ev),color:"#fff",padding:"2px 6px",borderRadius:5,fontSize:10,fontWeight:500,marginBottom:1,cursor:"pointer",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div>)}</div>;})}</div>)}
+    </div></div></div>;
+}
+function DayView({sel,setSel,events,onEv}){
+  const t=useT(),s=useS();const key=dkey(sel),dayEvs=events.filter(e=>e.date===key),hrs=Array.from({length:18},(_,i)=>i+5),today=new Date();
+  return<div>
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><button style={s.iconBtn} onClick={()=>setSel(addD(sel,-1))}>‹</button><span style={{fontSize:18,fontWeight:600,fontFamily:FF}}>{DAYS_F[sel.getDay()]}, {MO[sel.getMonth()]} {sel.getDate()}, {sel.getFullYear()}</span><button style={s.iconBtn} onClick={()=>setSel(addD(sel,1))}>›</button>{!sameD(sel,today)&&<button style={s.todayBtn} onClick={()=>setSel(new Date())}>Today</button>}</div>
+    <div>{hrs.map(h=>{const hEvs=dayEvs.filter(e=>e.hour===h),isNow=sameD(sel,today)&&today.getHours()===h;
+      return<div key={h} style={{display:"flex",alignItems:"flex-start",minHeight:58,borderBottom:`1px solid ${t.bdr}`,position:"relative",background:isNow?"rgba(56,189,248,0.03)":"transparent"}}>
+        {isNow&&<div style={{position:"absolute",left:60,right:0,top:`${(today.getMinutes()/60)*100}%`,height:2,background:t.accent,zIndex:2,boxShadow:`0 0 8px ${t.acGlow}`}}/>}
+        <div style={{width:60,fontSize:11,color:t.dim,textAlign:"right",paddingRight:12,paddingTop:4,fontFamily:FM,flexShrink:0}}>{fmtT(h)}</div>
+        <div style={{flex:1,padding:"2px 4px"}}>{hEvs.map(ev=><div key={ev.id} onClick={()=>onEv(ev)} style={{background:evLt(ev),borderLeft:`3px solid ${evColor(ev)}`,borderRadius:"0 10px 10px 0",padding:"8px 14px",marginBottom:3,cursor:"pointer"}}>
+          <div style={{fontSize:14,fontWeight:600,color:t.text}}>{ev.title}{ev.synced&&<span style={{marginLeft:6,fontSize:10,color:t.dim,fontStyle:"italic"}}>synced</span>}</div>
+          <div style={{fontSize:11,color:t.sub,marginTop:2}}>{fmtT(ev.hour,ev.minute)} – {fmtT(Math.floor(ev.hour+ev.duration),Math.round(((ev.hour+ev.duration)%1)*60))}{ev.location&&<span style={{marginLeft:6,color:t.dim}}>📍{ev.location}</span>}</div>
+        </div>)}</div></div>;})}</div></div>;
+}
+
+// ═════════════════ EVENT MODAL ═══════════════════════════════════════
+function EventModal({event,sel,onClose,onSave,onDelete}){
+  const t=useT(),s=useS(),isEdit=!!event;
+  const[title,setTitle]=useState(event?.title||""),[hour,setHour]=useState(String(event?.hour||9)),[minute,setMinute]=useState(String(event?.minute||0)),[duration,setDur]=useState(String(event?.duration||1)),[category,setCat]=useState(event?.category||"personal"),[location,setLoc]=useState(event?.location||"");
+  const exportICS=()=>{const ev=event||{id:mkId(),title,date:dkey(sel),hour:parseInt(hour),minute:parseInt(minute),duration:parseFloat(duration),category,location};const blob=new Blob([eventToICS(ev)],{type:"text/calendar"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`${(ev.title||"event").replace(/[^a-z0-9]/gi,"_")}.ics`;a.click();URL.revokeObjectURL(url);};
+  return<div style={s.overlay} onClick={onClose}><div style={s.modal} onClick={e=>e.stopPropagation()}>
+    <div style={{fontSize:20,fontWeight:800,marginBottom:6,color:t.text}}>{isEdit?event.synced?"Event Details":"Edit Event":"New Event"}</div>
+    <div style={{fontSize:12,color:t.sub,marginBottom:20}}>{DAYS_F[sel.getDay()]}, {MO[sel.getMonth()]} {sel.getDate()}</div>
+    {event?.synced?<div>
+      <div style={{fontSize:16,fontWeight:600,color:t.text,marginBottom:8}}>{event.title}</div>
+      <div style={{fontSize:13,color:t.sub,marginBottom:4}}>{fmtT(event.hour,event.minute)} – {fmtT(Math.floor(event.hour+event.duration),0)}</div>
+      {event.location&&<div style={{fontSize:13,color:t.sub,marginBottom:4}}>📍 {event.location}</div>}
+      <div style={{fontSize:11,color:t.dim,marginTop:8,fontStyle:"italic"}}>Synced from external calendar — edit in the source app.</div>
+      <div style={{display:"flex",gap:8,marginTop:16}}><button style={s.btnS} onClick={onClose}>Close</button><button style={s.btnP} onClick={exportICS}>Download .ics</button></div>
+    </div>:<div>
+      <input style={s.inp} placeholder="What's happening?" value={title} onChange={e=>setTitle(e.target.value)} autoFocus/>
+      <input style={s.inp} placeholder="Location (optional)" value={location} onChange={e=>setLoc(e.target.value)}/>
+      <div style={{display:"flex",gap:8,marginBottom:4}}>
+        <div style={{flex:1}}><label style={s.lbl}>Start</label><div style={{display:"flex",gap:4}}><select style={{...s.sel,flex:1}} value={hour} onChange={e=>setHour(e.target.value)}>{Array.from({length:18},(_,i)=>i+5).map(h=><option key={h} value={h}>{fmtT(h)}</option>)}</select><select style={{...s.sel,width:60}} value={minute} onChange={e=>setMinute(e.target.value)}><option value="0">:00</option><option value="15">:15</option><option value="30">:30</option><option value="45">:45</option></select></div></div>
+        <div style={{flex:1}}><label style={s.lbl}>Duration</label><select style={s.sel} value={duration} onChange={e=>setDur(e.target.value)}>{["0.25","0.5","0.75","1","1.5","2","3","4"].map(d=><option key={d} value={d}>{d<1?`${d*60}min`:`${d}h`}</option>)}</select></div>
+      </div>
+      <label style={s.lbl}>Category</label>
+      <div style={{display:"flex",gap:6,marginBottom:20,flexWrap:"wrap"}}>{Object.entries(CATS).map(([cat,col])=><button key={cat} onClick={()=>setCat(cat)} style={{padding:"6px 14px",borderRadius:20,border:category===cat?`2px solid ${col.bg}`:`1px solid ${t.bdr}`,background:category===cat?col.lt(0.15):"transparent",color:category===cat?col.tx:t.sub,fontSize:12,fontWeight:500,cursor:"pointer",textTransform:"capitalize",fontFamily:FF}}>{cat}</button>)}</div>
+      <div style={{display:"flex",gap:8}}>
+        {isEdit&&<button style={s.btnD} onClick={()=>{onDelete(event.id);onClose();}}>Delete</button>}
+        <button style={s.btnS} onClick={onClose}>Cancel</button>
+        <button style={s.btnP} onClick={()=>{if(!title.trim())return;onSave({id:event?.id||mkId(),title:title.trim(),date:dkey(sel),hour:parseInt(hour),minute:parseInt(minute),duration:parseFloat(duration),category,location,synced:false});onClose();}}>
+          {isEdit?"Save":"Add Event"}</button>
+      </div>
+      {isEdit&&<button onClick={exportICS} style={{marginTop:10,background:"none",border:"none",color:t.accent,fontSize:12,cursor:"pointer",padding:0,fontFamily:FF}}>📥 Download .ics (add to phone)</button>}
+    </div>}
+  </div></div>;
+}
+
+// ═════════════════ CHECKLIST / MEALS ═════════════════════════════════
+function Checklist({items,setItems,placeholder,accentColor}){
+  const t=useT();const[val,setVal]=useState("");const col=accentColor||t.accent;const done=items.filter(i=>i.done).length;
+  return<div>
+    {items.length>0&&<div style={{fontSize:10,color:t.dim,marginBottom:8}}>{done}/{items.length} completed</div>}
+    {items.map(it=><div key={it.id} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",cursor:"pointer"}} onClick={()=>setItems(items.map(i=>i.id===it.id?{...i,done:!i.done}:i))}>
+      <div style={{width:18,height:18,borderRadius:5,border:`2px solid ${it.done?col:t.dim}`,background:it.done?col:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,color:"#fff",transition:"all 0.15s"}}>{it.done&&"✓"}</div>
+      <span style={{fontSize:13,color:it.done?t.dim:t.text,textDecoration:it.done?"line-through":"none",flex:1}}>{it.text}</span>
+      <button onClick={e=>{e.stopPropagation();setItems(items.filter(i=>i.id!==it.id));}} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:14,opacity:.4,padding:"0 4px"}}>×</button>
+    </div>)}
+    <div style={{display:"flex",gap:6,marginTop:8}}><input style={{flex:1,padding:"8px 10px",borderRadius:10,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:12,fontFamily:FF,outline:"none"}} placeholder={placeholder} value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&val.trim()){setItems([...items,{id:mkId(),text:val.trim(),done:false}]);setVal("");}}}/></div>
+    {done>0&&<button onClick={()=>setItems(items.filter(i=>!i.done))} style={{marginTop:8,background:"none",border:"none",color:t.dim,fontSize:11,cursor:"pointer",padding:0}}>Clear completed</button>}
+  </div>;
+}
+function Meals({meals,setMeals}){
+  const t=useT(),s=useS();const today=new Date(),[editDay,setEditDay]=useState(null),[editMeal,setEditMeal]=useState({});
+  return<div>
+    {Array.from({length:7},(_,i)=>{const d=addD(wkSt(today),i),dayK=d.getDay(),m=meals[dayK]||{},isT=sameD(d,today);
+      return<div key={i} style={{marginBottom:8,padding:10,borderRadius:10,background:isT?t.acDim:t.card,border:isT?`1px solid ${t.acGlow}`:"none",cursor:"pointer"}} onClick={()=>{setEditDay(dayK);setEditMeal({...m});}}>
+        <div style={{fontSize:10,fontWeight:700,color:isT?t.accent:t.dim,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{DAYS_F[dayK]}{isT?" (today)":""}</div>
+        {["breakfast","lunch","dinner"].map(ml=><div key={ml} style={{display:"flex",gap:6,fontSize:12,marginBottom:1}}><span style={{color:t.dim,width:56,textTransform:"capitalize",flexShrink:0}}>{ml}</span><span style={{color:m[ml]?t.text:t.dim}}>{m[ml]||"—"}</span></div>)}
+      </div>;})}
+    {editDay!==null&&<div style={s.overlay} onClick={()=>setEditDay(null)}><div style={s.modal} onClick={e=>e.stopPropagation()}>
+      <div style={{fontSize:18,fontWeight:700,marginBottom:16,color:t.text}}>Meals — {DAYS_F[editDay]}</div>
+      {["breakfast","lunch","dinner"].map(ml=><div key={ml}><label style={s.lbl}>{ml}</label><input style={s.inp} value={editMeal[ml]||""} onChange={e=>setEditMeal({...editMeal,[ml]:e.target.value})} placeholder={`What's for ${ml}?`}/></div>)}
+      <div style={{display:"flex",gap:8}}><button style={s.btnS} onClick={()=>setEditDay(null)}>Cancel</button><button style={s.btnP} onClick={()=>{setMeals({...meals,[editDay]:editMeal});setEditDay(null);}}>Save</button></div>
+    </div></div>}
+  </div>;
+}
+
+// ═════════════════ CAL SYNC PANEL ════════════════════════════════════
+function CalSyncPanel({feeds,setFeeds,syncAll,syncStatus}){
+  const t=useT(),s=useS();const[name,setName]=useState(""),[url,setUrl]=useState(""),[showAdd,setShowAdd]=useState(false);
+  const addFeed=()=>{if(!url.trim()||!name.trim())return;const color=FEED_COLORS[feeds.length%FEED_COLORS.length];setFeeds([...feeds,{id:mkId(),name:name.trim(),url:url.trim(),color,enabled:true,lastSync:null,count:0}]);setName("");setUrl("");setShowAdd(false);};
+  const removeFeed=id=>setFeeds(feeds.filter(f=>f.id!==id));
+  const toggleFeed=id=>setFeeds(feeds.map(f=>f.id===id?{...f,enabled:!f.enabled}:f));
+  return<div style={{padding:16,overflow:"auto",flex:1}}>
+    <div style={s.secT}>Calendar Feeds</div>
+    <div style={{fontSize:12,color:t.sub,lineHeight:1.6,marginBottom:14}}>Connect calendars from Google, iCloud, Outlook, or any iCal URL. Each person gets their own color.</div>
+    {feeds.map(f=><div key={f.id} style={{...s.crd,display:"flex",alignItems:"center",gap:10}}>
+      <div style={{width:12,height:12,borderRadius:"50%",background:f.color,flexShrink:0,cursor:"pointer",opacity:f.enabled?1:0.3}} onClick={()=>toggleFeed(f.id)}/>
+      <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:f.enabled?t.text:t.dim}}>{f.name}</div><div style={{fontSize:10,color:t.dim,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{f.count} events{f.lastSync?` · synced ${new Date(f.lastSync).toLocaleTimeString()}`:""}</div></div>
+      <button onClick={()=>removeFeed(f.id)} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:16}}>×</button>
+    </div>)}
+    {showAdd?<div style={s.crd}><input style={s.inp} placeholder='Label (e.g. "Sarah - iPhone")' value={name} onChange={e=>setName(e.target.value)}/><input style={s.inp} placeholder="Paste iCal URL here..." value={url} onChange={e=>setUrl(e.target.value)}/><div style={{display:"flex",gap:8}}><button style={s.btnS} onClick={()=>setShowAdd(false)}>Cancel</button><button style={s.btnP} onClick={addFeed}>Add Calendar</button></div></div>
+    :<button onClick={()=>setShowAdd(true)} style={{width:"100%",padding:"10px 0",borderRadius:10,border:`1px dashed ${t.bdr}`,background:"transparent",color:t.accent,fontSize:12,fontWeight:600,cursor:"pointer",marginBottom:12}}>+ Add Calendar Feed</button>}
+    {feeds.length>0&&<button onClick={syncAll} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"none",background:t.accent,color:t.acText,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FF,marginBottom:14}}>{syncStatus==="loading"?"Syncing...":"Sync All Now"}</button>}
+    {syncStatus==="error"&&<div style={{fontSize:12,color:t.danger,marginBottom:10}}>Some feeds failed — check URLs or try a CORS proxy.</div>}
+    <div style={s.crd}><div style={{fontSize:11,fontWeight:700,color:t.text,marginBottom:8}}>📱 Google Calendar</div><div style={{fontSize:11,color:t.sub,lineHeight:1.6}}>Settings ⚙ → Your calendar → "Integrate calendar" → Copy "Secret address in iCal format"</div></div>
+    <div style={s.crd}><div style={{fontSize:11,fontWeight:700,color:t.text,marginBottom:8}}>🍎 iPhone / iCloud</div><div style={{fontSize:11,color:t.sub,lineHeight:1.6}}>Go to <b>icloud.com/calendar</b> → Click 📡 share icon → Enable "Public Calendar" → Copy the URL</div></div>
+    <div style={s.crd}><div style={{fontSize:11,fontWeight:700,color:t.text,marginBottom:8}}>⚠️ CORS Proxy</div><div style={{fontSize:11,color:t.sub,lineHeight:1.6}}>If a feed won't load, prepend: <code style={{fontSize:10,color:t.accent,background:t.acDim,padding:"2px 6px",borderRadius:4}}>https://corsproxy.io/?</code></div></div>
+  </div>;
+}
+
+// ═════════════════ SCREENSAVER ═══════════════════════════════════════
+const DEFAULT_PHOTOS=["https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1501854140801-50d01698950b?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1400&h=900&fit=crop"];
+function Screensaver({onTap,wx,loc,customPhotos}){
+  const photos=customPhotos?.length>0?customPhotos:DEFAULT_PHOTOS;
+  const[idx,setIdx]=useState(0),[time,setTime]=useState(new Date()),[fade,setFade]=useState(true);
+  useEffect(()=>{const t1=setInterval(()=>{setFade(false);setTimeout(()=>{setIdx(i=>(i+1)%photos.length);setFade(true);},700);},10000);const t2=setInterval(()=>setTime(new Date()),1000);return()=>{clearInterval(t1);clearInterval(t2);};},[photos.length]);
+  const info=wx?wmo(wx.code):null;
+  return<div style={{position:"fixed",inset:0,zIndex:100,background:"#000",cursor:"pointer"}} onClick={onTap}>
+    <img src={photos[idx]} alt="" style={{width:"100%",height:"100%",objectFit:"cover",position:"absolute",transition:"opacity 0.7s ease-in-out",opacity:fade?1:0}}/>
+    <div style={{position:"absolute",inset:0,background:"linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.15) 30%, transparent 55%)"}}/>
+    <div style={{position:"absolute",bottom:48,left:48,zIndex:1}}>
+      <div style={{fontSize:80,fontWeight:300,color:"#fff",lineHeight:1,fontFamily:FM,letterSpacing:-3}}>{String(time.getHours()%12||12).padStart(2,"0")}:{String(time.getMinutes()).padStart(2,"0")}<span style={{fontSize:28,fontWeight:400,marginLeft:10,opacity:.5}}>{time.getHours()>=12?"PM":"AM"}</span></div>
+      <div style={{fontSize:22,fontWeight:300,color:"rgba(255,255,255,0.6)",marginTop:8,fontFamily:FF}}>{DAYS_F[time.getDay()]}, {MO[time.getMonth()]} {time.getDate()}</div>
+      {wx&&info&&<div style={{fontSize:16,color:"rgba(255,255,255,0.4)",marginTop:8,fontFamily:FF}}>{info.i} {wx.temp}° · {info.l}{loc?.name?` · ${loc.name}`:""}</div>}
+    </div>
+    <div style={{position:"absolute",bottom:20,right:28,fontSize:11,color:"rgba(255,255,255,0.25)",fontFamily:FF}}>Tap anywhere to return</div>
+  </div>;
+}
+
+// ═════════════════ SETTINGS ═════════════════════════════════════════
+function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,photos,setPhotos}){
+  const t=useT(),s=useS(),fileRef=useRef(null);
+  const handleFiles=e=>{Array.from(e.target.files||[]).forEach(file=>{if(!file.type.startsWith("image/"))return;const reader=new FileReader();reader.onload=ev=>{setPhotos(prev=>[...prev,ev.target.result]);};reader.readAsDataURL(file);});};
+  const clearAll=()=>{if(confirm("Clear ALL Homelight data?")){Object.keys(localStorage).filter(k=>k.startsWith("hl4_")).forEach(k=>localStorage.removeItem(k));window.location.reload();}};
+  return<div style={{padding:16,overflow:"auto",flex:1}}>
+    <div style={s.secT}>Settings</div>
+    <label style={s.lbl}>Theme</label>
+    <div style={{display:"flex",gap:8,marginBottom:16}}>{["dark","light"].map(th=><button key={th} onClick={()=>setTheme(th)} style={{flex:1,padding:"10px 0",borderRadius:10,border:theme===th?`2px solid ${t.accent}`:`1px solid ${t.bdr}`,background:theme===th?t.acDim:"transparent",color:theme===th?t.accent:t.sub,fontSize:13,fontWeight:600,cursor:"pointer",textTransform:"capitalize",fontFamily:FF}}>{th==="dark"?"🌙 Dark":"☀️ Light"}</button>)}</div>
+    <label style={s.lbl}>Auto-Screensaver</label>
+    <select style={s.sel} value={ssDelay} onChange={e=>setSsDelay(parseInt(e.target.value))}><option value={0}>Off</option><option value={2}>2 min</option><option value={5}>5 min</option><option value={10}>10 min</option><option value={15}>15 min</option><option value={30}>30 min</option></select>
+    <label style={s.lbl}>Screensaver Photos</label>
+    <div style={{fontSize:11,color:t.sub,marginBottom:8}}>Upload family photos — they replace the default landscapes and help prevent screen burn-in.</div>
+    <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFiles} style={{display:"none"}}/>
+    <button onClick={()=>fileRef.current?.click()} style={{width:"100%",padding:"10px 0",borderRadius:10,border:`1px dashed ${t.bdr}`,background:"transparent",color:t.accent,fontSize:12,fontWeight:600,cursor:"pointer",marginBottom:10}}>📷 Upload Photos</button>
+    {photos.length>0&&<div><div style={{fontSize:11,color:t.dim,marginBottom:6}}>{photos.length} photo{photos.length>1?"s":""}</div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>{photos.map((p,i)=><div key={i} style={{width:60,height:40,borderRadius:6,overflow:"hidden",position:"relative",border:`1px solid ${t.bdr}`}}><img src={p} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/><button onClick={()=>setPhotos(photos.filter((_,j)=>j!==i))} style={{position:"absolute",top:1,right:1,background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:10,borderRadius:4,cursor:"pointer",width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>×</button></div>)}</div>
+      <button onClick={()=>setPhotos([])} style={{background:"none",border:"none",color:t.dim,fontSize:11,cursor:"pointer",padding:0,marginBottom:10}}>Clear all photos</button>
+    </div>}
+    <div style={s.crd}><div style={{fontSize:11,fontWeight:700,color:t.text,marginBottom:8}}>📱 Install as App (PWA)</div><div style={{fontSize:11,color:t.sub,lineHeight:1.6}}>Chrome → ⋮ → "Add to Home Screen" → launches fullscreen!</div></div>
+    <div style={s.crd}><div style={{fontSize:11,fontWeight:700,color:t.text,marginBottom:8}}>🖥️ Wall-Mount Setup</div><div style={{fontSize:11,color:t.sub,lineHeight:1.6}}>Use <b>Fully Kiosk Browser</b> (free) on Android for kiosk mode with wake/sleep scheduling.</div></div>
+    <button onClick={clearAll} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"none",background:t.dangerDim,color:t.danger,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FF,marginTop:8}}>Reset All Data</button>
+  </div>;
+}
+
+// ═════════════════ MAIN APP ═════════════════════════════════════════
+function Homelight(){
+  const[theme,setTheme]=useP("theme","dark");const t=THEMES[theme]||THEMES.dark;
+  const[view,setView]=useP("view","month"),[sel,setSel]=useState(new Date());
+  const[events,setEvents]=useP("events",makeSamples);
+  const[todos,setTodos]=useP("todos",[{id:"t1",text:"Pick up dry cleaning",done:false},{id:"t2",text:"Submit expense report",done:false},{id:"t3",text:"Buy birthday card for Mom",done:false},{id:"t4",text:"Schedule oil change",done:true},{id:"t5",text:"Refill prescriptions",done:false}]);
+  const[grocery,setGrocery]=useP("grocery",[{id:"g1",text:"Salmon fillets",done:false},{id:"g2",text:"Avocados (3)",done:false},{id:"g3",text:"Greek yogurt",done:true},{id:"g4",text:"Spinach",done:false},{id:"g5",text:"Chicken breast",done:false},{id:"g6",text:"Eggs",done:true}]);
+  const[meals,setMeals]=useP("meals",{0:{breakfast:"Eggs Benedict",lunch:"BLT",dinner:"Roast Chicken"},1:{breakfast:"Overnight Oats",lunch:"Turkey Wrap",dinner:"Grilled Salmon"},2:{breakfast:"Smoothie Bowl",lunch:"Chicken Salad",dinner:"Pasta"},3:{breakfast:"Avocado Toast",lunch:"Soup",dinner:"Stir Fry"},4:{breakfast:"Pancakes",lunch:"Burrito Bowl",dinner:"Tacos"},5:{breakfast:"Yogurt Parfait",lunch:"Poke Bowl",dinner:"Pizza Night"},6:{breakfast:"French Toast",lunch:"Leftovers",dinner:"Burgers"}});
+  const[loc,setLoc]=useP("loc",null),[wx,setWx]=useState(null);
+  const[modal,setModal]=useState(null),[showSS,setShowSS]=useState(false);
+  const[sideTab,setSideTab]=useState("tasks"),[panel,setPanel]=useState("main");
+  const[time,setTime]=useState(new Date()),[ssDelay,setSsDelay]=useP("ssDelay",0);
+  const[feeds,setFeeds]=useP("feeds",[]),[syncStatus,setSyncStatus]=useState(null);
+  const[photos,setPhotos]=useP("photos",[]);
+  const lastAct=useRef(Date.now());
+
+  useEffect(()=>{const i=setInterval(()=>setTime(new Date()),15000);return()=>clearInterval(i);},[]);
+  useEffect(()=>{if(!loc)return;(async()=>{try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit&timezone=auto`);const d=await r.json();if(d.current)setWx({temp:Math.round(d.current.temperature_2m),code:d.current.weather_code});}catch{}})();},[loc]);
+  useEffect(()=>{if(!ssDelay)return;const h=()=>{lastAct.current=Date.now();};window.addEventListener("mousemove",h);window.addEventListener("touchstart",h);window.addEventListener("keydown",h);const ck=setInterval(()=>{if(Date.now()-lastAct.current>ssDelay*60000&&!showSS)setShowSS(true);},10000);return()=>{window.removeEventListener("mousemove",h);window.removeEventListener("touchstart",h);window.removeEventListener("keydown",h);clearInterval(ck);};},[ssDelay,showSS]);
+
+  const syncFeed=useCallback(async feed=>{try{const r=await fetch(feed.url);if(!r.ok)throw new Error();const text=await r.text();const parsed=parseICS(text,feed.id,feed.color);setEvents(prev=>[...prev.filter(e=>e.feedId!==feed.id),...parsed]);setFeeds(prev=>prev.map(f=>f.id===feed.id?{...f,lastSync:Date.now(),count:parsed.length}:f));return true;}catch{return false;}},[setEvents,setFeeds]);
+  const syncAll=useCallback(async()=>{setSyncStatus("loading");const results=await Promise.all(feeds.filter(f=>f.enabled).map(syncFeed));setSyncStatus(results.every(Boolean)?"success":"error");},[feeds,syncFeed]);
+  useEffect(()=>{if(feeds.length===0)return;syncAll();const i=setInterval(syncAll,900000);return()=>clearInterval(i);},[feeds.length]);
+
+  const saveEvent=useCallback(ev=>{setEvents(prev=>{const idx=prev.findIndex(e=>e.id===ev.id);if(idx>=0){const n=[...prev];n[idx]=ev;return n;}return[...prev,ev];});},[setEvents]);
+  const deleteEvent=useCallback(id=>setEvents(prev=>prev.filter(e=>e.id!==id)),[setEvents]);
+  const onEv=useCallback(ev=>setModal(ev),[]);
+  const upcoming=useMemo(()=>events.filter(e=>e.date>=dkey(new Date())).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date)).slice(0,6),[events]);
+  const visibleEvents=useMemo(()=>{const dis=new Set(feeds.filter(f=>!f.enabled).map(f=>f.id));return events.filter(e=>!e.feedId||!dis.has(e.feedId));},[events,feeds]);
+
+  if(showSS)return<Screensaver onTap={()=>{setShowSS(false);lastAct.current=Date.now();}} wx={wx} loc={loc} customPhotos={photos}/>;
+
+  return<ThemeCtx.Provider value={t}>
+    <div style={{fontFamily:FF,height:"100vh",width:"100vw",background:t.grad,color:t.text,display:"flex",flexDirection:"column",overflow:"hidden",userSelect:"none"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 20px",borderBottom:`1px solid ${t.bdr}`,background:t.headerBg,backdropFilter:"blur(24px)",flexShrink:0,zIndex:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:16}}>
+          <span style={{fontSize:16,fontWeight:700,letterSpacing:3,color:t.accent,textTransform:"uppercase",fontFamily:FM}}>☀ Homelight</span>
+          <div style={{display:"flex",gap:2,background:t.card,borderRadius:24,padding:3}}>{["day","week","month"].map(v=><button key={v} onClick={()=>setView(v)} style={{padding:"6px 16px",borderRadius:22,border:"none",background:view===v?t.accent:"transparent",color:view===v?t.acText:t.sub,fontSize:11,fontWeight:view===v?700:500,cursor:"pointer",textTransform:"uppercase",letterSpacing:1,fontFamily:FF,transition:"all 0.2s"}}>{v}</button>)}</div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:14,fontWeight:400,color:t.sub,fontFamily:FM}}>{time.getHours()%12||12}:{String(time.getMinutes()).padStart(2,"0")} {time.getHours()>=12?"PM":"AM"}</span>
+          <span style={{fontSize:12,color:t.dim}}>{DAYS_F[time.getDay()]}, {MO[time.getMonth()]} {time.getDate()}</span>
+          <div style={{width:1,height:20,background:t.bdr}}/>
+          {[["📅","ical","Calendars"],["⚙","settings","Settings"],["🖼","ss","Photos"]].map(([ic,key,tip])=><button key={key} onClick={()=>key==="ss"?setShowSS(true):setPanel(panel===key?"main":key)} title={tip} style={{background:"none",border:"none",color:panel===key?t.accent:t.dim,cursor:"pointer",fontSize:15,padding:"4px 6px"}}>{ic}</button>)}
+          <button onClick={()=>setModal("add")} style={{padding:"6px 18px",borderRadius:22,border:"none",background:t.accent,color:t.acText,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+ Event</button>
+        </div>
+      </div>
+      <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+        <div style={{flex:1,overflow:"auto",padding:20}}>
+          {view==="month"&&<MonthView sel={sel} setSel={setSel} events={visibleEvents} setView={setView}/>}
+          {view==="week"&&<WeekView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv}/>}
+          {view==="day"&&<DayView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv}/>}
+        </div>
+        <div style={{width:320,borderLeft:`1px solid ${t.bdr}`,background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0}}>
+          {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
+          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} photos={photos} setPhotos={setPhotos}/>
+          :<>
+            <div style={{padding:16,borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc}/></div>
+            <div style={{padding:16,borderBottom:`1px solid ${t.bdr}`}}>
+              <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:2,color:t.accent,marginBottom:10}}>Coming Up</div>
+              {upcoming.length===0&&<div style={{fontSize:12,color:t.dim}}>Nothing scheduled</div>}
+              {upcoming.map(ev=><div key={ev.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,cursor:"pointer"}} onClick={()=>{setSel(new Date(ev.date+"T12:00:00"));setView("day");}}>
+                <div style={{width:3,height:30,borderRadius:2,background:evColor(ev),flexShrink:0}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:t.dim,fontFamily:FM}}>{ev.date} · {fmtT(ev.hour,ev.minute)}</div></div></div>)}
+            </div>
+            <div style={{display:"flex",borderBottom:`1px solid ${t.bdr}`}}>{["tasks","grocery","meals"].map(tab=><button key={tab} onClick={()=>setSideTab(tab)} style={{flex:1,padding:"10px 0",textAlign:"center",fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:1.5,color:sideTab===tab?t.accent:t.dim,background:"transparent",border:"none",cursor:"pointer",fontFamily:FF,borderBottom:`2px solid ${sideTab===tab?t.accent:"transparent"}`}}>{tab}</button>)}</div>
+            <div style={{flex:1,overflow:"auto",padding:16}}>
+              {sideTab==="tasks"&&<Checklist items={todos} setItems={setTodos} placeholder="Add task..." accentColor="#3B82F6"/>}
+              {sideTab==="grocery"&&<Checklist items={grocery} setItems={setGrocery} placeholder="Add item..." accentColor="#10B981"/>}
+              {sideTab==="meals"&&<Meals meals={meals} setMeals={setMeals}/>}
+            </div>
+            <div style={{padding:"8px 16px",borderTop:`1px solid ${t.bdr}`,display:"flex",flexWrap:"wrap",gap:8}}>
+              {Object.entries(CATS).map(([cat,col])=><div key={cat} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:7,height:7,borderRadius:"50%",background:col.bg}}/><span style={{fontSize:9,color:t.dim,textTransform:"capitalize"}}>{cat}</span></div>)}
+              {feeds.filter(f=>f.enabled).map(f=><div key={f.id} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:7,height:7,borderRadius:"50%",background:f.color}}/><span style={{fontSize:9,color:t.dim}}>{f.name}</span></div>)}
+            </div>
+          </>}
+        </div>
+      </div>
+      {modal&&<EventModal event={modal==="add"?null:modal} sel={sel} onClose={()=>setModal(null)} onSave={saveEvent} onDelete={deleteEvent}/>}
+    </div>
+  </ThemeCtx.Provider>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<Homelight/>);
+</script>
+</body>
+</html>
