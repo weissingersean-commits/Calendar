@@ -282,7 +282,7 @@ function MonthView({sel,setSel,events,setView}){
         </div>;})}
     </div></div>;
 }
-function WeekView({sel,setSel,events,onEv}){
+function WeekView({sel,setSel,events,onEv,onAdd}){
   const t=useT(),s=useS();const start=wkSt(sel),days=Array.from({length:7},(_,i)=>addD(start,i)),hrs=Array.from({length:24},(_,i)=>i),today=new Date();
   const rowH=60;const dayGridHeight=rowH*24;
   const isAllDay=ev=>ev.duration===24&&ev.hour===0;
@@ -293,10 +293,10 @@ function WeekView({sel,setSel,events,onEv}){
       <div/>{days.map((d,i)=><div key={i} style={{textAlign:"center",padding:"8px 0",fontSize:12,fontWeight:sameD(d,today)?700:500,color:sameD(d,today)?t.accent:t.sub,borderBottom:sameD(d,today)?`2px solid ${t.accent}`:`1px solid ${t.bdr}`}}>{DAYS[d.getDay()]} <span style={{fontFamily:FM,fontSize:11}}>{d.getDate()}</span></div>)}
       <div style={{fontSize:10,color:t.dim,textAlign:"right",paddingRight:8,paddingTop:8,fontFamily:FM}}>All day</div>{days.map((d,di)=>{const key=dkey(d),allDay=allDayByDate.get(key)||[];return<div key={di} style={{borderLeft:`1px solid ${t.bdr}`,borderBottom:`1px solid ${t.bdr}`,minHeight:rowH,padding:4,background:sameD(d,today)?"rgba(56,189,248,0.02)":"transparent"}}>{allDay.map(ev=><div key={ev.id} onClick={()=>onEv(ev)} style={{background:evColor(ev),color:"#fff",padding:"6px 8px",borderRadius:8,fontSize:11,fontWeight:600,marginBottom:4,cursor:"pointer",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div>)}</div>;})}
       <div style={{position:"relative",minHeight:dayGridHeight,borderTop:`1px solid ${t.bdr}`,borderRight:`1px solid ${t.bdr}`}}>{hrs.map(h=><div key={h} style={{height:rowH,borderBottom:`1px solid ${t.bdr}`,paddingRight:8,paddingTop:4,fontSize:10,color:t.dim,fontFamily:FM,textAlign:"right"}}>{fmtT(h)}</div>)}</div>
-      {days.map((d,di)=>{const key=dkey(d);const dayEvents=events.filter(e=>e.date===key&&!isAllDay(e));const layout=buildEventColumns(dayEvents);return<div key={di} style={{position:"relative",minHeight:dayGridHeight,borderLeft:`1px solid ${t.bdr}`,borderTop:`1px solid ${t.bdr}`,background:sameD(d,today)?"rgba(56,189,248,0.02)":"transparent"}}>{Array.from({length:24},(_,h)=><div key={h} style={{height:rowH,borderBottom:`1px solid ${t.bdr}`}}/>)}{dayEvents.map(ev=>{const top=(ev.hour+(ev.minute||0)/60)*rowH;const height=Math.max(36,ev.duration*rowH-4);const {col,total}=layout.get(ev.id)||{col:0,total:1};return<div key={ev.id} onClick={()=>onEv(ev)} style={{position:"absolute",top,left:`calc(${col*(100/total)}% + 4px)`,width:`calc(${100/total}% - 8px)`,height,background:evLt(ev),borderLeft:`4px solid ${evColor(ev)}`,borderRadius:10,color:t.text,padding:"8px 10px",fontSize:11,fontWeight:600,overflow:"hidden",cursor:"pointer",boxShadow:"0 4px 12px rgba(0,0,0,0.08)"}}><div style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:t.dim,marginTop:4}}>{fmtT(ev.hour,ev.minute)} – {fmtT(Math.floor(ev.hour+ev.duration),Math.round(((ev.hour+ev.duration)%1)*60))}</div></div>;})}</div>;})}
+      {days.map((d,di)=>{const key=dkey(d);const dayEvents=events.filter(e=>e.date===key&&!isAllDay(e));const layout=buildEventColumns(dayEvents);return<div key={di} style={{position:"relative",minHeight:dayGridHeight,borderLeft:`1px solid ${t.bdr}`,borderTop:`1px solid ${t.bdr}`,background:sameD(d,today)?"rgba(56,189,248,0.02)":"transparent"}}>{Array.from({length:24},(_,h)=><div key={h} onClick={()=>onAdd(d,h)} style={{height:rowH,borderBottom:`1px solid ${t.bdr}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=t.acDim} onMouseLeave={e=>e.currentTarget.style.background="transparent"}/>)}{dayEvents.map(ev=>{const top=(ev.hour+(ev.minute||0)/60)*rowH;const height=Math.max(36,ev.duration*rowH-4);const {col,total}=layout.get(ev.id)||{col:0,total:1};return<div key={ev.id} onClick={()=>onEv(ev)} style={{position:"absolute",top,left:`calc(${col*(100/total)}% + 4px)`,width:`calc(${100/total}% - 8px)`,height,background:evLt(ev),borderLeft:`4px solid ${evColor(ev)}`,borderRadius:10,color:t.text,padding:"8px 10px",fontSize:11,fontWeight:600,overflow:"hidden",cursor:"pointer",boxShadow:"0 4px 12px rgba(0,0,0,0.08)"}}><div style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:t.dim,marginTop:4}}>{fmtT(ev.hour,ev.minute)} – {fmtT(Math.floor(ev.hour+ev.duration),Math.round(((ev.hour+ev.duration)%1)*60))}</div></div>;})}</div>;})}
     </div></div></div>;
 }
-function DayView({sel,setSel,events,onEv}){
+function DayView({sel,setSel,events,onEv,onAdd}){
   const t=useT(),s=useS();const key=dkey(sel),dayEvs=events.filter(e=>e.date===key),today=new Date();
   const isAllDay=ev=>ev.duration===24&&ev.hour===0;
   const allDayEvs=dayEvs.filter(isAllDay);
@@ -312,15 +312,15 @@ function DayView({sel,setSel,events,onEv}){
     </div>}
     <div style={{display:"grid",gridTemplateColumns:"56px 1fr",minHeight:gridHeight,position:"relative"}}>
       <div style={{display:"grid",gridTemplateRows:`repeat(24, ${rowH}px)`}}>{hrs.map(h=><div key={h} style={{height:rowH,paddingRight:8,paddingTop:4,fontSize:10,color:t.dim,fontFamily:FM,textAlign:"right",borderBottom:`1px solid ${t.bdr}`}}>{fmtT(h)}</div>)}</div>
-      <div style={{position:"relative",minHeight:gridHeight,background:t.card,borderLeft:`1px solid ${t.bdr}`}}>{Array.from({length:24},(_,h)=><div key={h} style={{height:rowH,borderBottom:`1px solid ${t.bdr}`}}/>)}{timedEvents.map(ev=>{const top=(ev.hour+(ev.minute||0)/60)*rowH;const height=Math.max(38,ev.duration*rowH-4);const {col,total}=buildEventColumns(timedEvents).get(ev.id)||{col:0,total:1};return<div key={ev.id} onClick={()=>onEv(ev)} style={{position:"absolute",top,left:`calc(${col*(100/total)}% + 6px)`,width:`calc(${100/total}% - 12px)`,height,background:evLt(ev),borderLeft:`4px solid ${evColor(ev)}`,borderRadius:10,color:t.text,padding:"10px 12px",fontSize:12,fontWeight:600,overflow:"hidden",cursor:"pointer",boxShadow:"0 4px 10px rgba(0,0,0,0.08)"}}><div style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:t.dim,marginTop:4}}>{fmtT(ev.hour,ev.minute)} – {fmtT(Math.floor(ev.hour+ev.duration),Math.round(((ev.hour+ev.duration)%1)*60))}</div></div>;})}</div>
+      <div style={{position:"relative",minHeight:gridHeight,background:t.card,borderLeft:`1px solid ${t.bdr}`}}>{Array.from({length:24},(_,h)=><div key={h} onClick={()=>onAdd(h)} style={{height:rowH,borderBottom:`1px solid ${t.bdr}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=t.acDim} onMouseLeave={e=>e.currentTarget.style.background="transparent"}/>)}{timedEvents.map(ev=>{const top=(ev.hour+(ev.minute||0)/60)*rowH;const height=Math.max(38,ev.duration*rowH-4);const {col,total}=buildEventColumns(timedEvents).get(ev.id)||{col:0,total:1};return<div key={ev.id} onClick={()=>onEv(ev)} style={{position:"absolute",top,left:`calc(${col*(100/total)}% + 6px)`,width:`calc(${100/total}% - 12px)`,height,background:evLt(ev),borderLeft:`4px solid ${evColor(ev)}`,borderRadius:10,color:t.text,padding:"10px 12px",fontSize:12,fontWeight:600,overflow:"hidden",cursor:"pointer",boxShadow:"0 4px 10px rgba(0,0,0,0.08)"}}><div style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:t.dim,marginTop:4}}>{fmtT(ev.hour,ev.minute)} – {fmtT(Math.floor(ev.hour+ev.duration),Math.round(((ev.hour+ev.duration)%1)*60))}</div></div>;})}</div>
     </div>
   </div>;
 }
 
 // ═════════════════ EVENT MODAL ═══════════════════════════════════════
-function EventModal({event,sel,onClose,onSave,onDelete}){
+function EventModal({event,sel,defaultHour=9,onClose,onSave,onDelete}){
   const t=useT(),s=useS(),isEdit=!!event;
-  const[title,setTitle]=useState(event?.title||""),[hour,setHour]=useState(String(event?.hour||9)),[minute,setMinute]=useState(String(event?.minute||0)),[duration,setDur]=useState(String(event?.duration||1)),[category,setCat]=useState(event?.category||"personal"),[location,setLoc]=useState(event?.location||"");
+  const[title,setTitle]=useState(event?.title||""),[hour,setHour]=useState(String(event?.hour??defaultHour)),[minute,setMinute]=useState(String(event?.minute||0)),[duration,setDur]=useState(String(event?.duration||1)),[category,setCat]=useState(event?.category||"personal"),[location,setLoc]=useState(event?.location||"");
   const[allDay,setAllDay]=useState(event?.duration===24&&event?.hour===0);
   const[color,setColor]=useState(event?.color||"");
   const[repeat,setRepeat]=useState(event?.repeat?.freq||"none");
@@ -587,7 +587,7 @@ function Homelight(){
   const[grocery,setGrocery]=useP("grocery",[]);
   const[meals,setMeals]=useP("meals",{});
   const[loc,setLoc]=useP("loc",null),[wx,setWx]=useState(null);
-  const[modal,setModal]=useState(null),[showSS,setShowSS]=useState(false),[showSearch,setShowSearch]=useState(false);
+  const[modal,setModal]=useState(null),[showSS,setShowSS]=useState(false),[showSearch,setShowSearch]=useState(false),[addHour,setAddHour]=useState(9);
   const[sideTab,setSideTab]=useState("tasks"),[panel,setPanel]=useState("main");
   const[time,setTime]=useState(new Date()),[ssDelay,setSsDelay]=useP("ssDelay",0);
   const[feeds,setFeeds]=useP("feeds",[]),[syncStatus,setSyncStatus]=useState(null);
@@ -612,6 +612,7 @@ function Homelight(){
   const saveEvent=useCallback(ev=>{setEvents(prev=>{const idx=prev.findIndex(e=>e.id===ev.id);if(idx>=0){const n=[...prev];n[idx]=ev;return n;}return[...prev,ev];});},[setEvents]);
   const deleteEvent=useCallback(id=>setEvents(prev=>prev.filter(e=>e.id!==id)),[setEvents]);
   const onEv=useCallback(ev=>{if(ev._masterId){const master=events.find(e=>e.id===ev._masterId);if(master){setModal(master);return;}}setModal(ev);},[events]);
+  const onAddEvent=useCallback((date,hour)=>{setSel(new Date(date+"T12:00:00"));setAddHour(hour);setModal("add");},[setSel]);
   const upcoming=useMemo(()=>events.filter(e=>e.date>=dkey(new Date())).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date)).slice(0,6),[events]);
   const visibleEvents=useMemo(()=>{const dis=new Set(feeds.filter(f=>!f.enabled).map(f=>f.id));const filtered=events.filter(e=>!e.feedId||!dis.has(e.feedId));return expandManualRecurrences(filtered);},[events,feeds]);
 
@@ -658,8 +659,8 @@ function Homelight(){
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
         <div style={{flex:1,overflow:"auto",padding:20}}>
           {view==="month"&&<MonthView sel={sel} setSel={setSel} events={visibleEvents} setView={setView}/>}
-          {view==="week"&&<WeekView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv}/>}
-          {view==="day"&&<DayView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv}/>}
+          {view==="week"&&<WeekView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv} onAdd={(d,h)=>onAddEvent(dkey(d),h)}/>}
+          {view==="day"&&<DayView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv} onAdd={h=>onAddEvent(dkey(sel),h)}/>}
         </div>
         <div style={{width:400,borderLeft:`1px solid ${t.bdr}`,background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0}}>
           {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
@@ -685,7 +686,7 @@ function Homelight(){
           </>}
         </div>
       </div>
-      {modal&&<EventModal event={modal==="add"?null:modal} sel={sel} onClose={()=>setModal(null)} onSave={saveEvent} onDelete={deleteEvent}/>}
+      {modal&&<EventModal event={modal==="add"?null:modal} sel={sel} defaultHour={addHour} onClose={()=>setModal(null)} onSave={saveEvent} onDelete={deleteEvent}/>}
       {showSearch&&<SearchModal events={visibleEvents} onSelect={ev=>{setSel(new Date(ev.date+"T12:00:00"));setView("day");setShowSearch(false);}} onClose={()=>setShowSearch(false)}/>}
     </div>
   </ThemeCtx.Provider>;
