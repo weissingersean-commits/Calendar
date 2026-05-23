@@ -143,7 +143,7 @@ function calcEventDuration(e,st,allDay){
 }
 function buildParsedICSItem(start,durationMs,e,feedId,feedColor,allDay){
   const dateKey=dkey(start);const hour=allDay?0:start.getHours();const minute=allDay?0:start.getMinutes();
-  return{id:`ical-${feedId}-${e.uid||mkId()}-${dateKey}-${hour}-${minute}`,title:e.summary||"Untitled",date:dateKey,hour,minute,duration:Math.min(12,Math.max(0.25,durationMs/3600000)),category:"synced",feedId,feedColor,location:e.location||"",synced:true};
+  return{id:`ical-${feedId}-${e.uid||mkId()}-${dateKey}-${hour}-${minute}`,title:e.summary||"Untitled",date:dateKey,hour,minute,duration:allDay?Math.max(24,Math.round(durationMs/3600000)):Math.min(12,Math.max(0.25,durationMs/3600000)),category:"synced",feedId,feedColor,location:e.location||"",synced:true};
 }
 const WEEKDAY_MAP={SU:0,MO:1,TU:2,WE:3,TH:4,FR:5,SA:6};
 function parseRRule(rule){return rule.split(";").reduce((acc,p)=>{const [k,v]=p.split("=");if(k&&v)acc[k.toUpperCase()]=v;return acc;},{ });}
@@ -284,21 +284,46 @@ function MonthView({sel,setSel,events,setView}){
 }
 function WeekView({sel,setSel,events,onEv,onAdd}){
   const t=useT(),s=useS();const start=wkSt(sel),days=Array.from({length:7},(_,i)=>addD(start,i)),hrs=Array.from({length:24},(_,i)=>i),today=new Date();
-  const rowH=60;const dayGridHeight=rowH*24;
-  const isAllDay=ev=>ev.duration===24&&ev.hour===0;
-  const allDayByDate=events.filter(isAllDay).reduce((map,ev)=>{const list=map.get(ev.date)||[];list.push(ev);map.set(ev.date,list);return map;},new Map());
+  const rowH=60,dayGridHeight=rowH*24;
+  const isAllDay=ev=>ev.hour===0&&(ev.minute||0)===0&&ev.duration>=24;
+  const weekEndKey=dkey(addD(start,6));
+  const allDayEvs=events.filter(ev=>{
+    if(!isAllDay(ev))return false;
+    const ddays=Math.max(1,Math.round(ev.duration/24));
+    const p=ev.date.split('-');const evEnd=dkey(addD(new Date(+p[0],+p[1]-1,+p[2]),ddays-1));
+    return ev.date<=weekEndKey&&evEnd>=dkey(start);
+  });
+  const withCols=allDayEvs.map(ev=>{
+    const ddays=Math.max(1,Math.round(ev.duration/24));
+    const p=ev.date.split('-');const evSt=new Date(+p[0],+p[1]-1,+p[2]);
+    const sc=Math.max(0,Math.round((evSt-start)/86400000));
+    return{ev,sc,ec:Math.min(7,sc+ddays)};
+  });
+  const laneEnds=[];
+  const laned=withCols.map(item=>{let lane=0;while(laneEnds[lane]!==undefined&&laneEnds[lane]>item.sc)lane++;laneEnds[lane]=item.ec;return{...item,lane};});
+  const laneCount=Math.max(1,laned.reduce((m,x)=>Math.max(m,x.lane+1),0));
   return<div>
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><button style={s.iconBtn} onClick={()=>setSel(addD(sel,-7))}>‹</button><span style={{fontSize:17,fontWeight:600,fontFamily:FF}}>{MO[start.getMonth()]} {start.getDate()} – {MO[addD(start,6).getMonth()]} {addD(start,6).getDate()}, {start.getFullYear()}</span><button style={s.iconBtn} onClick={()=>setSel(addD(sel,7))}>›</button></div>
-    <div style={{overflowX:"auto"}}><div style={{display:"grid",gridTemplateColumns:"56px repeat(7,minmax(140px,1fr))",minWidth:980}}>
-      <div/>{days.map((d,i)=><div key={i} style={{textAlign:"center",padding:"8px 0",fontSize:12,fontWeight:sameD(d,today)?700:500,color:sameD(d,today)?t.accent:t.sub,borderBottom:sameD(d,today)?`2px solid ${t.accent}`:`1px solid ${t.bdr}`}}>{DAYS[d.getDay()]} <span style={{fontFamily:FM,fontSize:11}}>{d.getDate()}</span></div>)}
-      <div style={{fontSize:10,color:t.dim,textAlign:"right",paddingRight:8,paddingTop:8,fontFamily:FM}}>All day</div>{days.map((d,di)=>{const key=dkey(d),allDay=allDayByDate.get(key)||[];return<div key={di} style={{borderLeft:`1px solid ${t.bdr}`,borderBottom:`1px solid ${t.bdr}`,minHeight:rowH,padding:4,background:sameD(d,today)?"rgba(56,189,248,0.02)":"transparent"}}>{allDay.map(ev=><div key={ev.id} onClick={()=>onEv(ev)} style={{background:evColor(ev),color:"#fff",padding:"6px 8px",borderRadius:8,fontSize:11,fontWeight:600,marginBottom:4,cursor:"pointer",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div>)}</div>;})}
-      <div style={{position:"relative",minHeight:dayGridHeight,borderTop:`1px solid ${t.bdr}`,borderRight:`1px solid ${t.bdr}`}}>{hrs.map(h=><div key={h} style={{height:rowH,borderBottom:`1px solid ${t.bdr}`,paddingRight:8,paddingTop:4,fontSize:10,color:t.dim,fontFamily:FM,textAlign:"right"}}>{fmtT(h)}</div>)}</div>
-      {days.map((d,di)=>{const key=dkey(d);const dayEvents=events.filter(e=>e.date===key&&!isAllDay(e));const layout=buildEventColumns(dayEvents);return<div key={di} style={{position:"relative",minHeight:dayGridHeight,borderLeft:`1px solid ${t.bdr}`,borderTop:`1px solid ${t.bdr}`,background:sameD(d,today)?"rgba(56,189,248,0.02)":"transparent"}}>{Array.from({length:24},(_,h)=><div key={h} onClick={()=>onAdd(d,h)} style={{height:rowH,borderBottom:`1px solid ${t.bdr}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=t.acDim} onMouseLeave={e=>e.currentTarget.style.background="transparent"}/>)}{dayEvents.map(ev=>{const top=(ev.hour+(ev.minute||0)/60)*rowH;const height=Math.max(36,ev.duration*rowH-4);const {col,total}=layout.get(ev.id)||{col:0,total:1};return<div key={ev.id} onClick={()=>onEv(ev)} style={{position:"absolute",top,left:`calc(${col*(100/total)}% + 4px)`,width:`calc(${100/total}% - 8px)`,height,background:evLt(ev),borderLeft:`4px solid ${evColor(ev)}`,borderRadius:10,color:t.text,padding:"8px 10px",fontSize:11,fontWeight:600,overflow:"hidden",cursor:"pointer",boxShadow:"0 4px 12px rgba(0,0,0,0.08)"}}><div style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:t.dim,marginTop:4}}>{fmtT(ev.hour,ev.minute)} – {fmtT(Math.floor(ev.hour+ev.duration),Math.round(((ev.hour+ev.duration)%1)*60))}</div></div>;})}</div>;})}
-    </div></div></div>;
+    <div style={{overflowX:"auto"}}><div style={{minWidth:980}}>
+      <div style={{display:"grid",gridTemplateColumns:"56px repeat(7,minmax(140px,1fr))"}}>
+        <div/>{days.map((d,i)=><div key={i} style={{textAlign:"center",padding:"8px 0",fontSize:12,fontWeight:sameD(d,today)?700:500,color:sameD(d,today)?t.accent:t.sub,borderBottom:sameD(d,today)?`2px solid ${t.accent}`:`1px solid ${t.bdr}`}}>{DAYS[d.getDay()]} <span style={{fontFamily:FM,fontSize:11}}>{d.getDate()}</span></div>)}
+      </div>
+      <div style={{display:"flex",borderBottom:`1px solid ${t.bdr}`}}>
+        <div style={{width:56,flexShrink:0,fontSize:10,color:t.dim,textAlign:"right",paddingRight:8,paddingTop:6,fontFamily:FM}}>All day</div>
+        <div style={{flex:1,position:"relative",height:laneCount*28+8,minHeight:36}}>
+          {laned.map(({ev,sc,ec,lane})=><div key={ev.id} onClick={()=>onEv(ev)} style={{position:"absolute",left:`calc(${sc*(100/7)}% + 2px)`,width:`calc(${(ec-sc)*(100/7)}% - 4px)`,top:lane*28+4,height:22,background:evColor(ev),color:"#fff",borderRadius:6,fontSize:11,fontWeight:600,padding:"3px 8px",cursor:"pointer",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",boxSizing:"border-box"}}>{ev.title}</div>)}
+        </div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"56px repeat(7,minmax(140px,1fr))"}}>
+        <div style={{position:"relative",minHeight:dayGridHeight,borderTop:`1px solid ${t.bdr}`,borderRight:`1px solid ${t.bdr}`}}>{hrs.map(h=><div key={h} style={{height:rowH,borderBottom:`1px solid ${t.bdr}`,paddingRight:8,paddingTop:4,fontSize:10,color:t.dim,fontFamily:FM,textAlign:"right"}}>{fmtT(h)}</div>)}</div>
+        {days.map((d,di)=>{const key=dkey(d);const dayEvents=events.filter(e=>e.date===key&&!isAllDay(e));const layout=buildEventColumns(dayEvents);return<div key={di} style={{position:"relative",minHeight:dayGridHeight,borderLeft:`1px solid ${t.bdr}`,borderTop:`1px solid ${t.bdr}`,background:sameD(d,today)?"rgba(56,189,248,0.02)":"transparent"}}>{Array.from({length:24},(_,h)=><div key={h} onClick={()=>onAdd(d,h)} style={{height:rowH,borderBottom:`1px solid ${t.bdr}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=t.acDim} onMouseLeave={e=>e.currentTarget.style.background="transparent"}/>)}{dayEvents.map(ev=>{const top=(ev.hour+(ev.minute||0)/60)*rowH;const height=Math.max(36,ev.duration*rowH-4);const {col,total}=layout.get(ev.id)||{col:0,total:1};return<div key={ev.id} onClick={()=>onEv(ev)} style={{position:"absolute",top,left:`calc(${col*(100/total)}% + 4px)`,width:`calc(${100/total}% - 8px)`,height,background:evLt(ev),borderLeft:`4px solid ${evColor(ev)}`,borderRadius:10,color:t.text,padding:"8px 10px",fontSize:11,fontWeight:600,overflow:"hidden",cursor:"pointer",boxShadow:"0 4px 12px rgba(0,0,0,0.08)"}}><div style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:t.dim,marginTop:4}}>{fmtT(ev.hour,ev.minute)} – {fmtT(Math.floor(ev.hour+ev.duration),Math.round(((ev.hour+ev.duration)%1)*60))}</div></div>;})}</div>;})}
+      </div>
+    </div></div>
+  </div>;
 }
 function DayView({sel,setSel,events,onEv,onAdd}){
   const t=useT(),s=useS();const key=dkey(sel),dayEvs=events.filter(e=>e.date===key),today=new Date();
-  const isAllDay=ev=>ev.duration===24&&ev.hour===0;
+  const isAllDay=ev=>ev.hour===0&&(ev.minute||0)===0&&ev.duration>=24;
   const allDayEvs=dayEvs.filter(isAllDay);
   const timedEvents=dayEvs.filter(e=>!isAllDay(e));
   const layout=buildEventColumns(timedEvents);
@@ -321,10 +346,12 @@ function DayView({sel,setSel,events,onEv,onAdd}){
 function EventModal({event,sel,defaultHour=9,onClose,onSave,onDelete}){
   const t=useT(),s=useS(),isEdit=!!event;
   const[title,setTitle]=useState(event?.title||""),[hour,setHour]=useState(String(event?.hour??defaultHour)),[minute,setMinute]=useState(String(event?.minute||0)),[duration,setDur]=useState(String(event?.duration||1)),[category,setCat]=useState(event?.category||"personal"),[location,setLoc]=useState(event?.location||"");
-  const[allDay,setAllDay]=useState(event?.duration===24&&event?.hour===0);
+  const[allDay,setAllDay]=useState(event?.hour===0&&(event?.minute||0)===0&&(event?.duration||0)>=24);
   const[color,setColor]=useState(event?.color||"");
   const[repeat,setRepeat]=useState(event?.repeat?.freq||"none");
   const[repeatUntil,setRepeatUntil]=useState(event?.repeat?.until||"");
+  const initEndDate=()=>{if(!event||event.duration<=24)return dkey(sel);const p=event.date.split('-');return dkey(addD(new Date(+p[0],+p[1]-1,+p[2]),Math.round(event.duration/24)-1));};
+  const[endDate,setEndDate]=useState(initEndDate());
   const exportICS=()=>{const ev=event||{id:mkId(),title,date:dkey(sel),hour:allDay?0:parseInt(hour),minute:allDay?0:parseInt(minute),duration:allDay?24:parseFloat(duration),category,location};const blob=new Blob([eventToICS(ev)],{type:"text/calendar"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`${(ev.title||"event").replace(/[^a-z0-9]/gi,"_")}.ics`;a.click();URL.revokeObjectURL(url);};
   return<div style={s.overlay} onClick={onClose}><div style={s.modal} onClick={e=>e.stopPropagation()}>
     <div style={{fontSize:20,fontWeight:800,marginBottom:6,color:t.text}}>{isEdit?event.synced?"Event Details":"Edit Event":"New Event"}</div>
@@ -339,9 +366,10 @@ function EventModal({event,sel,defaultHour=9,onClose,onSave,onDelete}){
       <input style={s.inp} placeholder="What's happening?" value={title} onChange={e=>setTitle(e.target.value)} autoFocus/>
       <input style={s.inp} placeholder="Location (optional)" value={location} onChange={e=>setLoc(e.target.value)}/>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-        <input id="all-day-toggle" type="checkbox" checked={allDay} onChange={e=>{setAllDay(e.target.checked);if(e.target.checked){setHour("0");setMinute("0");setDur("24");}}} style={{width:16,height:16,cursor:"pointer"}}/>
+        <input id="all-day-toggle" type="checkbox" checked={allDay} onChange={e=>{const v=e.target.checked;setAllDay(v);if(v){setHour("0");setMinute("0");setDur("24");setEndDate(dkey(sel));}}} style={{width:16,height:16,cursor:"pointer"}}/>
         <label htmlFor="all-day-toggle" style={{fontSize:12,color:t.text,cursor:"pointer"}}>All-day block</label>
       </div>
+      {allDay&&<div style={{marginBottom:12}}><label style={s.lbl}>End Date</label><input type="date" style={{...s.inp,marginBottom:0}} value={endDate} onChange={e=>setEndDate(e.target.value)} min={dkey(sel)}/></div>}
       <label style={s.lbl}>Repeat</label>
       <select style={s.sel} value={repeat} onChange={e=>setRepeat(e.target.value)}>
         <option value="none">Does not repeat</option>
@@ -366,7 +394,7 @@ function EventModal({event,sel,defaultHour=9,onClose,onSave,onDelete}){
       <div style={{display:"flex",gap:8}}>
         {isEdit&&<button style={s.btnD} onClick={()=>{onDelete(event.id);onClose();}}>Delete</button>}
         <button style={s.btnS} onClick={onClose}>Cancel</button>
-        <button style={s.btnP} onClick={()=>{if(!title.trim())return;onSave({id:event?.id||mkId(),title:title.trim(),date:dkey(sel),hour:allDay?0:parseInt(hour),minute:allDay?0:parseInt(minute),duration:allDay?24:parseFloat(duration),category,location,synced:false,color:color||null,repeat:repeat!=="none"?{freq:repeat,until:repeatUntil||null}:null});onClose();}}>
+        <button style={s.btnP} onClick={()=>{if(!title.trim())return;let dur;if(allDay){const sp=(event?.date||dkey(sel)).split('-'),ep=endDate.split('-');const days=Math.max(1,Math.round((new Date(+ep[0],+ep[1]-1,+ep[2])-new Date(+sp[0],+sp[1]-1,+sp[2]))/86400000)+1);dur=days*24;}else{dur=parseFloat(duration);}onSave({id:event?.id||mkId(),title:title.trim(),date:dkey(sel),hour:allDay?0:parseInt(hour),minute:allDay?0:parseInt(minute),duration:dur,category,location,synced:false,color:color||null,repeat:repeat!=="none"?{freq:repeat,until:repeatUntil||null}:null});onClose();}}>
           {isEdit?"Save":"Add Event"}</button>
       </div>
       {isEdit&&<button onClick={exportICS} style={{marginTop:10,background:"none",border:"none",color:t.accent,fontSize:12,cursor:"pointer",padding:0,fontFamily:FF}}>📥 Download .ics (add to phone)</button>}
