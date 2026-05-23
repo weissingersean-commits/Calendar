@@ -179,6 +179,34 @@ function eventToICS(ev){
   return`BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Homelight//EN\r\nBEGIN:VEVENT\r\nDTSTART:${fmtDate(start)}\r\nDTEND:${fmtDate(end)}\r\nSUMMARY:${ev.title}\r\n${ev.location?`LOCATION:${ev.location}\r\n`:""}UID:${ev.id}@homelight\r\nEND:VEVENT\r\nEND:VCALENDAR`;
 }
 
+// ─── Recurring Event Expansion ───────────────────────────────────────
+function expandManualRecurrences(events){
+  const now=new Date(),wStart=addD(now,-30),wEnd=addD(now,180);
+  const result=[];
+  for(const ev of events){
+    if(!ev.repeat||ev.synced){result.push(ev);continue;}
+    const{freq,until}=ev.repeat;
+    const maxEnd=until?new Date(until+"T23:59:59"):wEnd;
+    const effectiveEnd=maxEnd<wEnd?maxEnd:wEnd;
+    let current=new Date(ev.date+"T12:00:00"),count=0;
+    while(current<=effectiveEnd&&count<500){
+      if(current>=wStart){
+        const dateStr=dkey(current);
+        result.push(count===0?ev:{...ev,id:`${ev.id}~${dateStr}`,date:dateStr,_masterId:ev.id});
+      }
+      const next=new Date(current);
+      if(freq==="daily")next.setDate(next.getDate()+1);
+      else if(freq==="weekly")next.setDate(next.getDate()+7);
+      else if(freq==="monthly"){const d=current.getDate();next.setMonth(next.getMonth()+1);if(next.getDate()!==d)next.setDate(0);}
+      else if(freq==="yearly")next.setFullYear(next.getFullYear()+1);
+      else break;
+      if(next.getTime()===current.getTime())break;
+      current=next;count++;
+    }
+  }
+  return result;
+}
+
 // ─── Sample Data ─────────────────────────────────────────────────────
 function makeSamples(){const evs=[],tpls=[{t:"Morning Run",c:"health",h:6,d:1},{t:"Team Standup",c:"work",h:9,d:.5},{t:"Dentist",c:"health",h:14,d:1},{t:"Grocery Run",c:"errand",h:17,d:1},{t:"Dinner w/ Alex",c:"social",h:19,d:2},{t:"Project Review",c:"work",h:11,d:1.5},{t:"Yoga",c:"health",h:7,d:1},{t:"Call Mom",c:"family",h:20,d:.5},{t:"Lunch Meeting",c:"work",h:12,d:1},{t:"Soccer Practice",c:"family",h:16,d:1.5}];
   const now=new Date();for(let i=-5;i<=14;i++){const d=addD(now,i),cnt=1+Math.floor(Math.random()*3);[...tpls].sort(()=>Math.random()-.5).slice(0,cnt).forEach(e=>evs.push({id:mkId(),title:e.t,date:dkey(d),hour:e.h,minute:0,duration:e.d,category:e.c,synced:false}));}return evs;}
@@ -296,6 +324,8 @@ function EventModal({event,sel,onClose,onSave,onDelete}){
   const t=useT(),s=useS(),isEdit=!!event;
   const[title,setTitle]=useState(event?.title||""),[hour,setHour]=useState(String(event?.hour||9)),[minute,setMinute]=useState(String(event?.minute||0)),[duration,setDur]=useState(String(event?.duration||1)),[category,setCat]=useState(event?.category||"personal"),[location,setLoc]=useState(event?.location||"");
   const[allDay,setAllDay]=useState(event?.duration===24&&event?.hour===0);
+  const[repeat,setRepeat]=useState(event?.repeat?.freq||"none");
+  const[repeatUntil,setRepeatUntil]=useState(event?.repeat?.until||"");
   const exportICS=()=>{const ev=event||{id:mkId(),title,date:dkey(sel),hour:allDay?0:parseInt(hour),minute:allDay?0:parseInt(minute),duration:allDay?24:parseFloat(duration),category,location};const blob=new Blob([eventToICS(ev)],{type:"text/calendar"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`${(ev.title||"event").replace(/[^a-z0-9]/gi,"_")}.ics`;a.click();URL.revokeObjectURL(url);};
   return<div style={s.overlay} onClick={onClose}><div style={s.modal} onClick={e=>e.stopPropagation()}>
     <div style={{fontSize:20,fontWeight:800,marginBottom:6,color:t.text}}>{isEdit?event.synced?"Event Details":"Edit Event":"New Event"}</div>
@@ -313,6 +343,16 @@ function EventModal({event,sel,onClose,onSave,onDelete}){
         <input id="all-day-toggle" type="checkbox" checked={allDay} onChange={e=>{setAllDay(e.target.checked);if(e.target.checked){setHour("0");setMinute("0");setDur("24");}}} style={{width:16,height:16,cursor:"pointer"}}/>
         <label htmlFor="all-day-toggle" style={{fontSize:12,color:t.text,cursor:"pointer"}}>All-day block</label>
       </div>
+      <label style={s.lbl}>Repeat</label>
+      <select style={s.sel} value={repeat} onChange={e=>setRepeat(e.target.value)}>
+        <option value="none">Does not repeat</option>
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly on {DAYS_F[sel.getDay()]}</option>
+        <option value="monthly">Monthly on the {sel.getDate()}th</option>
+        <option value="yearly">Annually on {MO[sel.getMonth()]} {sel.getDate()}</option>
+      </select>
+      {repeat!=="none"&&<div style={{marginBottom:12}}><label style={s.lbl}>End Date (optional)</label><input type="date" style={{...s.inp,marginBottom:0}} value={repeatUntil} onChange={e=>setRepeatUntil(e.target.value)} min={dkey(sel)}/></div>}
+      {isEdit&&event?.repeat&&<div style={{fontSize:11,color:t.accent,marginBottom:12}}>↻ Recurring — changes apply to all instances</div>}
       <div style={{display:"flex",gap:8,marginBottom:4}}>
         <div style={{flex:1}}><label style={s.lbl}>Start</label><div style={{display:"flex",gap:4}}><select style={{...s.sel,flex:1}} value={hour} onChange={e=>setHour(e.target.value)} disabled={allDay}>{Array.from({length:24},(_,i)=>i).map(h=><option key={h} value={h}>{fmtT(h)}</option>)}</select><select style={{...s.sel,width:60}} value={minute} onChange={e=>setMinute(e.target.value)} disabled={allDay}><option value="0">:00</option><option value="15">:15</option><option value="30">:30</option><option value="45">:45</option></select></div></div>
         <div style={{flex:1}}><label style={s.lbl}>Duration</label><select style={s.sel} value={duration} onChange={e=>setDur(e.target.value)} disabled={allDay}>{["0.25","0.5","0.75","1","1.5","2","3","4","6","8","12","24"].map(d=><option key={d} value={d}>{d==="24"?"24h":d<1?`${d*60}min`:`${d}h`}</option>)}</select></div>
@@ -322,7 +362,7 @@ function EventModal({event,sel,onClose,onSave,onDelete}){
       <div style={{display:"flex",gap:8}}>
         {isEdit&&<button style={s.btnD} onClick={()=>{onDelete(event.id);onClose();}}>Delete</button>}
         <button style={s.btnS} onClick={onClose}>Cancel</button>
-        <button style={s.btnP} onClick={()=>{if(!title.trim())return;onSave({id:event?.id||mkId(),title:title.trim(),date:dkey(sel),hour:allDay?0:parseInt(hour),minute:allDay?0:parseInt(minute),duration:allDay?24:parseFloat(duration),category,location,synced:false});onClose();}}>
+        <button style={s.btnP} onClick={()=>{if(!title.trim())return;onSave({id:event?.id||mkId(),title:title.trim(),date:dkey(sel),hour:allDay?0:parseInt(hour),minute:allDay?0:parseInt(minute),duration:allDay?24:parseFloat(duration),category,location,synced:false,repeat:repeat!=="none"?{freq:repeat,until:repeatUntil||null}:null});onClose();}}>
           {isEdit?"Save":"Add Event"}</button>
       </div>
       {isEdit&&<button onClick={exportICS} style={{marginTop:10,background:"none",border:"none",color:t.accent,fontSize:12,cursor:"pointer",padding:0,fontFamily:FF}}>📥 Download .ics (add to phone)</button>}
@@ -484,9 +524,9 @@ function Homelight(){
 
   const saveEvent=useCallback(ev=>{setEvents(prev=>{const idx=prev.findIndex(e=>e.id===ev.id);if(idx>=0){const n=[...prev];n[idx]=ev;return n;}return[...prev,ev];});},[setEvents]);
   const deleteEvent=useCallback(id=>setEvents(prev=>prev.filter(e=>e.id!==id)),[setEvents]);
-  const onEv=useCallback(ev=>setModal(ev),[]);
+  const onEv=useCallback(ev=>{if(ev._masterId){const master=events.find(e=>e.id===ev._masterId);if(master){setModal(master);return;}}setModal(ev);},[events]);
   const upcoming=useMemo(()=>events.filter(e=>e.date>=dkey(new Date())).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date)).slice(0,6),[events]);
-  const visibleEvents=useMemo(()=>{const dis=new Set(feeds.filter(f=>!f.enabled).map(f=>f.id));return events.filter(e=>!e.feedId||!dis.has(e.feedId));},[events,feeds]);
+  const visibleEvents=useMemo(()=>{const dis=new Set(feeds.filter(f=>!f.enabled).map(f=>f.id));const filtered=events.filter(e=>!e.feedId||!dis.has(e.feedId));return expandManualRecurrences(filtered);},[events,feeds]);
 
   if(showSS)return<Screensaver onTap={()=>{setShowSS(false);lastAct.current=Date.now();}} wx={wx} loc={loc} customPhotos={photos}/>;
 
