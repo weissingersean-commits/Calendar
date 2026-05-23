@@ -242,14 +242,16 @@ function MonthView({sel,setSel,events,setView}){
   for(let i=0;i<fd;i++)cells.push({d:new Date(y,m-1,pd-fd+1+i),c:false});
   for(let i=1;i<=dinm;i++)cells.push({d:new Date(y,m,i),c:true});
   const rem=7-(cells.length%7);if(rem<7)for(let i=1;i<=rem;i++)cells.push({d:new Date(y,m+1,i),c:false});
-  return<div>
+  return<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><button style={s.iconBtn} onClick={()=>setSel(new Date(y,m-1,1))}>‹</button><span style={{fontSize:22,fontWeight:700,fontFamily:FF,letterSpacing:-.5}}>{MO[m]} {y}</span><button style={s.iconBtn} onClick={()=>setSel(new Date(y,m+1,1))}>›</button><div style={{flex:1}}/><button style={s.todayBtn} onClick={()=>setSel(new Date())}>Today</button></div>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
-      {DAYS.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:600,color:t.dim,textTransform:"uppercase",letterSpacing:1,padding:"8px 0"}}>{d}</div>)}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gridTemplateRows:"auto repeat(6,1fr)",gap:3,flex:1}}>
+      {DAYS.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:600,color:t.dim,textTransform:"uppercase",letterSpacing:1,padding:"8px 0"}}>{d}</div>) }
       {cells.map((c,i)=>{const key=dkey(c.d),isT=sameD(c.d,today),evs=events.filter(e=>e.date===key);
-        return<div key={i} onClick={()=>{setSel(c.d);setView("day");}} style={{minHeight:88,padding:6,borderRadius:10,cursor:"pointer",background:isT?t.acDim:c.c?t.card:"rgba(128,128,128,0.05)",border:isT?`1px solid ${t.acGlow}`:"1px solid transparent",transition:"all 0.15s",overflow:"hidden"}} onMouseEnter={e=>{if(!isT)e.currentTarget.style.background=t.cardH;}} onMouseLeave={e=>{if(!isT)e.currentTarget.style.background=c.c?t.card:"rgba(128,128,128,0.05)";}}>
-          <div style={{fontSize:13,fontWeight:isT?800:400,color:isT?t.accent:c.c?t.sub:t.dim,marginBottom:4}}>{c.d.getDate()}</div>
-          {evs.slice(0,3).map(ev=><div key={ev.id} style={{background:evColor(ev),color:"#fff",padding:"1px 6px",borderRadius:4,fontSize:10,fontWeight:500,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div>)}
+        return<div key={i} onClick={()=>{setSel(c.d);setView("day");}} style={{padding:6,borderRadius:10,cursor:"pointer",background:isT?t.acDim:c.c?t.card:"rgba(128,128,128,0.05)",border:isT?`1px solid ${t.acGlow}`:"1px solid transparent",transition:"all 0.15s",overflow:"hidden",display:"flex",flexDirection:"column",justifyContent:"space-between"}} onMouseEnter={e=>{if(!isT)e.currentTarget.style.background=t.cardH;}} onMouseLeave={e=>{if(!isT)e.currentTarget.style.background=c.c?t.card:"rgba(128,128,128,0.05)";}}>
+          <div>
+            <div style={{fontSize:13,fontWeight:isT?800:400,color:isT?t.accent:c.c?t.sub:t.dim,marginBottom:4}}>{c.d.getDate()}</div>
+            {evs.slice(0,3).map(ev=><div key={ev.id} style={{background:evColor(ev),color:"#fff",padding:"1px 6px",borderRadius:4,fontSize:10,fontWeight:500,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div>)}
+          </div>
           {evs.length>3&&<div style={{fontSize:9,color:t.dim}}>+{evs.length-3}</div>}
         </div>;})}
     </div></div>;
