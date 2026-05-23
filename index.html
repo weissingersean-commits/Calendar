@@ -453,9 +453,11 @@ function Homelight(){
   const[time,setTime]=useState(new Date()),[ssDelay,setSsDelay]=useP("ssDelay",0);
   const[feeds,setFeeds]=useP("feeds",[]),[syncStatus,setSyncStatus]=useState(null);
   const[photos,setPhotos]=useP("photos",[]);
+  const[deferredPrompt,setDeferredPrompt]=useState(null),[installStatus,setInstallStatus]=useState(null);
   const lastAct=useRef(Date.now());
 
   useEffect(()=>{const i=setInterval(()=>setTime(new Date()),15000);return()=>clearInterval(i);},[]);
+  useEffect(()=>{const handler=e=>{e.preventDefault();setDeferredPrompt(e);setInstallStatus(null);};window.addEventListener("beforeinstallprompt",handler);const installed=()=>setInstallStatus("installed");window.addEventListener("appinstalled",installed);return()=>{window.removeEventListener("beforeinstallprompt",handler);window.removeEventListener("appinstalled",installed);};},[]);
   useEffect(()=>{if(!loc)return;(async()=>{try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit&timezone=auto`);const d=await r.json();if(d.current)setWx({temp:Math.round(d.current.temperature_2m),code:d.current.weather_code});}catch{}})();},[loc]);
   useEffect(()=>{if(!ssDelay)return;const h=()=>{lastAct.current=Date.now();};window.addEventListener("mousemove",h);window.addEventListener("touchstart",h);window.addEventListener("keydown",h);const ck=setInterval(()=>{if(Date.now()-lastAct.current>ssDelay*60000&&!showSS)setShowSS(true);},10000);return()=>{window.removeEventListener("mousemove",h);window.removeEventListener("touchstart",h);window.removeEventListener("keydown",h);clearInterval(ck);};},[ssDelay,showSS]);
 
@@ -485,8 +487,9 @@ function Homelight(){
           <span style={{fontSize:12,color:t.dim}}>{DAYS_F[time.getDay()]}, {MO[time.getMonth()]} {time.getDate()}</span>
           <div style={{width:1,height:20,background:t.bdr}}/>
           {[["📅","ical","Calendars"],["⚙","settings","Settings"],["🖼","ss","Photos"]].map(([ic,key,tip])=><button key={key} onClick={()=>key==="ss"?setShowSS(true):setPanel(panel===key?"main":key)} title={tip} style={{background:"none",border:"none",color:panel===key?t.accent:t.dim,cursor:"pointer",fontSize:15,padding:"4px 6px"}}>{ic}</button>)}
+          {deferredPrompt && <button onClick={async()=>{deferredPrompt.prompt();const choice=await deferredPrompt.userChoice;setInstallStatus(choice.outcome);setDeferredPrompt(null);}} style={{padding:"6px 14px",borderRadius:22,border:"none",background:t.success,color:t.acText,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>Install</button>}
+          {installStatus && <span style={{fontSize:12,color:t.success,whiteSpace:"nowrap"}}>{installStatus==="installed"?"App installed!":"Install prompt shown"}</span>}
           <button onClick={()=>setModal("add")} style={{padding:"6px 18px",borderRadius:22,border:"none",background:t.accent,color:t.acText,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+ Event</button>
-        </div>
       </div>
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
         <div style={{flex:1,overflow:"auto",padding:20}}>
