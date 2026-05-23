@@ -72,7 +72,7 @@ const wmo=c=>WMO[c]||{l:"Unknown",i:"🌡️"};
 const dkey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const sameD=(a,b)=>dkey(a)===dkey(b);
 const addD=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r;};
-const wkSt=d=>{const r=new Date(d);r.setDate(r.getDate()-r.getDay());return r;};
+const wkSt=(d,s=0)=>{const r=new Date(d);const day=r.getDay();r.setDate(r.getDate()-((day-s+7)%7));return r;};
 const dInM=(y,m)=>new Date(y,m+1,0).getDate();
 const fmtT=(h,m)=>`${h%12||12}:${String(m||0).padStart(2,"0")} ${h>=12?"PM":"AM"}`;
 const mkId=()=>`${Date.now()}-${Math.random().toString(36).slice(2,9)}`;
@@ -193,7 +193,8 @@ function expandManualRecurrences(events){
     while(current<=effectiveEnd&&count<500){
       if(current>=wStart){
         const dateStr=dkey(current);
-        result.push(count===0?ev:{...ev,id:`${ev.id}~${dateStr}`,date:dateStr,_masterId:ev.id});
+        if(!(ev.exdates||[]).includes(dateStr))
+          result.push(count===0?ev:{...ev,id:`${ev.id}~${dateStr}`,date:dateStr,_masterId:ev.id});
       }
       const next=new Date(current);
       if(freq==="daily")next.setDate(next.getDate()+1);
@@ -262,8 +263,9 @@ function Weather({loc,setLoc,onWx}){
 }
 
 // ═════════════════ CALENDAR VIEWS ════════════════════════════════════
-function MonthView({sel,setSel,events,setView,onEv}){
-  const t=useT(),s=useS();const y=sel.getFullYear(),m=sel.getMonth(),dinm=dInM(y,m),fd=new Date(y,m,1).getDay(),pd=dInM(y,m-1);
+function MonthView({sel,setSel,events,setView,onEv,weekStart=0}){
+  const t=useT(),s=useS();const y=sel.getFullYear(),m=sel.getMonth(),dinm=dInM(y,m),pd=dInM(y,m-1);
+  const fd=(new Date(y,m,1).getDay()-weekStart+7)%7;
   const today=new Date();
   const isAllDay=ev=>ev.hour===0&&(ev.minute||0)===0&&ev.duration>=24;
   const cells=[];
@@ -286,23 +288,25 @@ function MonthView({sel,setSel,events,setView,onEv}){
       const evEndDate=addD(evSt,ddays-1);
       const clampedEnd=dkey(evEndDate)<=wEndKey?evEndDate:wEnd;
       const ec=Math.min(7,Math.round((clampedEnd.getTime()-wStart.getTime())/86400000)+1);
-      return{ev,sc,ec};
+      const continuesLeft=ev.date<wStartKey,continuesRight=dkey(evEndDate)>wEndKey;
+      return{ev,sc,ec,continuesLeft,continuesRight};
     });
     const laneEnds=[];
     const laned=withCols.map(item=>{let lane=0;while(laneEnds[lane]!==undefined&&laneEnds[lane]>item.sc)lane++;laneEnds[lane]=item.ec;return{...item,lane};});
     const laneCount=laned.reduce((mx,x)=>Math.max(mx,x.lane+1),0);
     return{week,laned,laneCount};
   });
+  const hdrDays=Array.from({length:7},(_,i)=>DAYS[(weekStart+i)%7]);
   return<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><button style={s.iconBtn} onClick={()=>setSel(new Date(y,m-1,1))}>‹</button><span style={{fontSize:22,fontWeight:700,fontFamily:FF,letterSpacing:-.5}}>{MO[m]} {y}</span><button style={s.iconBtn} onClick={()=>setSel(new Date(y,m+1,1))}>›</button><div style={{flex:1}}/><button style={s.todayBtn} onClick={()=>setSel(new Date())}>Today</button></div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:3}}>
-      {DAYS.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:600,color:t.dim,textTransform:"uppercase",letterSpacing:1,padding:"8px 0"}}>{d}</div>)}
+      {hdrDays.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:600,color:t.dim,textTransform:"uppercase",letterSpacing:1,padding:"8px 0"}}>{d}</div>)}
     </div>
     <div style={{flex:1,display:"flex",flexDirection:"column",gap:3}}>
       {weekData.map(({week,laned,laneCount},wi)=>{
         const spanH=laneCount*20;
         return<div key={wi} style={{flex:1,display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,position:"relative",minHeight:80}}>
-          {laned.map(({ev,sc,ec,lane})=><div key={ev.id} onClick={e=>{e.stopPropagation();onEv(ev);}} style={{position:"absolute",left:`calc(${sc*(100/7)}% + 2px)`,width:`calc(${(ec-sc)*(100/7)}% - 4px)`,top:28+lane*20,height:18,background:evColor(ev),color:"#fff",borderRadius:4,fontSize:10,fontWeight:600,padding:"2px 6px",cursor:"pointer",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",zIndex:2,boxSizing:"border-box"}}>{ev.title}</div>)}
+          {laned.map(({ev,sc,ec,lane,continuesLeft,continuesRight})=>{const lm=continuesLeft?0:2,rm=continuesRight?0:2;return<div key={ev.id} onClick={e=>{e.stopPropagation();onEv(ev);}} style={{position:"absolute",left:`calc(${sc*(100/7)}% + ${lm}px)`,width:`calc(${(ec-sc)*(100/7)}% - ${lm+rm}px)`,top:28+lane*20,height:18,background:evColor(ev),color:"#fff",borderRadius:`${continuesLeft?0:4}px ${continuesRight?0:4}px ${continuesRight?0:4}px ${continuesLeft?0:4}px`,fontSize:10,fontWeight:600,padding:`2px ${rm?6:3}px 2px ${lm?6:4}px`,cursor:"pointer",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",zIndex:2,boxSizing:"border-box"}}>{continuesLeft?"‹ ":""}{ev.title}{continuesRight?" ›":""}</div>;})}
           {week.map((c,ci)=>{const key=dkey(c.d),isT=sameD(c.d,today),evs=events.filter(e=>e.date===key&&!isAllDay(e));
             return<div key={ci} onClick={()=>{setSel(c.d);setView("day");}} style={{padding:6,paddingTop:28+spanH+4,borderRadius:10,cursor:"pointer",background:isT?t.acDim:c.c?t.card:"rgba(128,128,128,0.05)",border:isT?`1px solid ${t.acGlow}`:"1px solid transparent",transition:"all 0.15s",overflow:"hidden",position:"relative",display:"flex",flexDirection:"column",justifyContent:"space-between"}} onMouseEnter={e=>{if(!isT)e.currentTarget.style.background=t.cardH;}} onMouseLeave={e=>{if(!isT)e.currentTarget.style.background=c.c?t.card:"rgba(128,128,128,0.05)";}}>
               <div style={{position:"absolute",top:6,left:8,fontSize:13,fontWeight:isT?800:400,color:isT?t.accent:c.c?t.sub:t.dim}}>{c.d.getDate()}</div>
@@ -314,8 +318,8 @@ function MonthView({sel,setSel,events,setView,onEv}){
     </div>
   </div>;
 }
-function WeekView({sel,setSel,events,onEv,onAdd}){
-  const t=useT(),s=useS();const start=wkSt(sel),days=Array.from({length:7},(_,i)=>addD(start,i)),hrs=Array.from({length:24},(_,i)=>i),today=new Date();
+function WeekView({sel,setSel,events,onEv,onAdd,weekStart=0}){
+  const t=useT(),s=useS();const start=wkSt(sel,weekStart),days=Array.from({length:7},(_,i)=>addD(start,i)),hrs=Array.from({length:24},(_,i)=>i),today=new Date();
   const rowH=60,dayGridHeight=rowH*24;
   const nowTop=(today.getHours()+today.getMinutes()/60)*rowH;
   const isAllDay=ev=>ev.hour===0&&(ev.minute||0)===0&&ev.duration>=24;
@@ -526,7 +530,7 @@ function Screensaver({onTap,wx,loc,customPhotos,events}){
 }
 
 // ═════════════════ SETTINGS ═════════════════════════════════════════
-function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,photos,setPhotos,reminderMins,setReminderMins,onClearEvents,onClearLists,onClearMeals,deferredPrompt,onInstallPrompt,installStatus}){
+function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart,photos,setPhotos,reminderMins,setReminderMins,onClearEvents,onClearLists,onClearMeals,deferredPrompt,onInstallPrompt,installStatus}){
   const t=useT(),s=useS(),fileRef=useRef(null);
   const[notifPerm,setNotifPerm]=useState(typeof Notification!=="undefined"?Notification.permission:"unsupported");
   const requestNotif=async()=>{if(typeof Notification==="undefined")return;const p=await Notification.requestPermission();setNotifPerm(p);};
@@ -541,6 +545,8 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,photos,setPhotos,remin
     <div style={s.secT}>Settings</div>
     <label style={s.lbl}>Theme</label>
     <div style={{display:"flex",gap:8,marginBottom:16}}>{["dark","light"].map(th=><button key={th} onClick={()=>setTheme(th)} style={{flex:1,padding:"10px 0",borderRadius:10,border:theme===th?`2px solid ${t.accent}`:`1px solid ${t.bdr}`,background:theme===th?t.acDim:"transparent",color:theme===th?t.accent:t.sub,fontSize:13,fontWeight:600,cursor:"pointer",textTransform:"capitalize",fontFamily:FF}}>{th==="dark"?"🌙 Dark":"☀️ Light"}</button>)}</div>
+    <label style={s.lbl}>Week Starts On</label>
+    <div style={{display:"flex",gap:8,marginBottom:16}}>{[["Sunday",0],["Monday",1]].map(([label,val])=><button key={val} onClick={()=>setWeekStart(val)} style={{flex:1,padding:"10px 0",borderRadius:10,border:weekStart===val?`2px solid ${t.accent}`:`1px solid ${t.bdr}`,background:weekStart===val?t.acDim:"transparent",color:weekStart===val?t.accent:t.sub,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FF}}>{label}</button>)}</div>
     <label style={s.lbl}>Auto-Screensaver</label>
     <select style={s.sel} value={ssDelay} onChange={e=>setSsDelay(parseInt(e.target.value))}><option value={0}>Off</option><option value={2}>2 min</option><option value={5}>5 min</option><option value={10}>10 min</option><option value={15}>15 min</option><option value={30}>30 min</option></select>
     <label style={s.lbl}>Screensaver Photos</label>
@@ -668,9 +674,12 @@ function Homelight(){
   const[isStandalone,setIsStandalone]=useState(false);
   const[sidebarOpen,setSidebarOpen]=useP("sidebarOpen",true);
   const handleInstallPrompt=useCallback(async()=>{if(deferredPrompt){deferredPrompt.prompt();const choice=await deferredPrompt.userChoice;setInstallStatus(choice.outcome==="accepted"?"installed":"dismissed");setDeferredPrompt(null);}else if(isStandalone){setInstallStatus("installed");}else{setInstallStatus("menu");}},[deferredPrompt,isStandalone]);
+  const[weekStart,setWeekStart]=useP("weekStart",0);
+  const[recurChoice,setRecurChoice]=useState(null);
   const lastAct=useRef(Date.now());
   const notifiedRef=useRef(new Set());
   const swipeRef=useRef({});
+  const editOneRef=useRef(null);
 
   useEffect(()=>{const i=setInterval(()=>setTime(new Date()),15000);return()=>clearInterval(i);},[]);
   useEffect(()=>{setIsStandalone(window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true);const handler=e=>{e.preventDefault();setDeferredPrompt(e);setInstallStatus(null);};window.addEventListener("beforeinstallprompt",handler);const installed=()=>setInstallStatus("installed");window.addEventListener("appinstalled",installed);return()=>{window.removeEventListener("beforeinstallprompt",handler);window.removeEventListener("appinstalled",installed);};},[]);
@@ -688,7 +697,7 @@ function Homelight(){
   const onTouchEnd=useCallback(e=>{const dx=e.changedTouches[0].clientX-swipeRef.current.x,dy=e.changedTouches[0].clientY-swipeRef.current.y;if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.5)return;onSwipe(dx<0?1:-1);},[onSwipe]);
   const saveEvent=useCallback(ev=>{setEvents(prev=>{const idx=prev.findIndex(e=>e.id===ev.id);if(idx>=0){const n=[...prev];n[idx]=ev;return n;}return[...prev,ev];});},[setEvents]);
   const deleteEvent=useCallback(id=>setEvents(prev=>prev.filter(e=>e.id!==id)),[setEvents]);
-  const onEv=useCallback(ev=>{if(ev._masterId){const master=events.find(e=>e.id===ev._masterId);if(master){setModal(master);return;}}setModal(ev);},[events]);
+  const onEv=useCallback(ev=>{if(ev._masterId){setRecurChoice(ev);return;}setModal(ev);},[]);
   const onAddEvent=useCallback((date,hour)=>{setSel(new Date(date+"T12:00:00"));setAddHour(hour);setModal("add");},[setSel]);
   const upcoming=useMemo(()=>events.filter(e=>e.date>=dkey(new Date())).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date)).slice(0,6),[events]);
   const visibleEvents=useMemo(()=>{const dis=new Set(feeds.filter(f=>!f.enabled).map(f=>f.id));const filtered=events.filter(e=>!e.feedId||!dis.has(e.feedId));return expandManualRecurrences(filtered);},[events,feeds]);
@@ -736,13 +745,13 @@ function Homelight(){
       </div>
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
         <div style={{flex:1,overflow:"auto",padding:20}} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-          {view==="month"&&<MonthView sel={sel} setSel={setSel} events={visibleEvents} setView={setView} onEv={onEv}/>}
-          {view==="week"&&<WeekView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv} onAdd={(d,h)=>onAddEvent(dkey(d),h)}/>}
+          {view==="month"&&<MonthView sel={sel} setSel={setSel} events={visibleEvents} setView={setView} onEv={onEv} weekStart={weekStart}/>}
+          {view==="week"&&<WeekView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv} onAdd={(d,h)=>onAddEvent(dkey(d),h)} weekStart={weekStart}/>}
           {view==="day"&&<DayView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv} onAdd={h=>onAddEvent(dkey(sel),h)}/>}
         </div>
         <div style={{width:sidebarOpen?400:0,borderLeft:sidebarOpen?`1px solid ${t.bdr}`:"none",background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0,transition:"width 0.25s ease"}}>
           {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
-          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} photos={photos} setPhotos={setPhotos} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt}/>
+          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt}/>
           :<>
             <div style={{padding:20,borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc} onWx={setWx}/></div>
             <div style={{padding:16,borderBottom:`1px solid ${t.bdr}`}}>
@@ -764,7 +773,8 @@ function Homelight(){
           </>}
         </div>
       </div>
-      {modal&&<EventModal event={modal==="add"?null:modal} sel={sel} defaultHour={addHour} onClose={()=>setModal(null)} onSave={saveEvent} onDelete={deleteEvent}/>}
+      {modal&&<EventModal event={modal==="add"?null:modal} sel={sel} defaultHour={addHour} onClose={()=>{editOneRef.current=null;setModal(null);}} onSave={ev=>{if(editOneRef.current){const{masterId,date}=editOneRef.current;const master=events.find(e=>e.id===masterId);if(master)saveEvent({...master,exdates:[...(master.exdates||[]),date]});editOneRef.current=null;}saveEvent(ev);}} onDelete={deleteEvent}/>}
+      {recurChoice&&<div style={{position:"fixed",inset:0,zIndex:60,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(14px)",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setRecurChoice(null)}><div style={{background:t.card,borderRadius:20,padding:28,width:"min(400px,90vw)",border:`1px solid ${t.bdr}`}} onClick={e=>e.stopPropagation()}><div style={{fontSize:18,fontWeight:700,color:t.text,marginBottom:6}}>Recurring Event</div><div style={{fontSize:13,color:t.sub,marginBottom:22}}>"{recurChoice.title}" · {recurChoice.date}</div><div style={{display:"flex",gap:8}}><button style={{flex:1,padding:"11px 0",borderRadius:10,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:FF}} onClick={()=>setRecurChoice(null)}>Cancel</button><button style={{flex:1,padding:"11px 0",borderRadius:10,border:`1px solid ${t.bdr}`,background:"transparent",color:t.text,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FF}} onClick={()=>{const master=events.find(e=>e.id===recurChoice._masterId);if(master)setModal(master);setRecurChoice(null);}}>All Events</button><button style={{flex:1,padding:"11px 0",borderRadius:10,border:"none",background:t.accent,color:t.acText,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FF}} onClick={()=>{editOneRef.current={masterId:recurChoice._masterId,date:recurChoice.date};setModal({...recurChoice,id:mkId(),_masterId:undefined,repeat:null});setRecurChoice(null);}}>Just This One</button></div></div></div>}
       {showSearch&&<SearchModal events={visibleEvents} onSelect={ev=>{setSel(new Date(ev.date+"T12:00:00"));setView("day");setShowSearch(false);}} onClose={()=>setShowSearch(false)}/>}
     </div>
   </ThemeCtx.Provider>;
