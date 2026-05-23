@@ -575,7 +575,7 @@ function VoiceAssistant({events,todos,geminiKey,geminiModel,onClose,onSaveEvent,
       if(data.promptFeedback?.blockReason){setResponse(`Blocked: ${data.promptFeedback.blockReason}`);setPhase("idle");return;}
       const reply=data.candidates?.[0]?.content?.parts?.[0]?.text;
       if(!reply){setResponse("Empty response from Gemini. Check your API key in Settings.");setPhase("idle");return;}
-      const display=reply.replace(/\nACTION:\s*\{[\s\S]*?\}/g,"").trim();
+      const display=reply.replace(/ACTION:\s*\{[^]*?\}/g,"").trim()||"Done!";
       setResponse(display);
       setHistory([...rawHist,{role:"model",parts:[{text:reply}]}]);
       parseAction(reply);
