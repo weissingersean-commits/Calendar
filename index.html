@@ -499,20 +499,29 @@ function CalSyncPanel({feeds,setFeeds,syncAll,syncStatus}){
 
 // ═════════════════ SCREENSAVER ═══════════════════════════════════════
 const DEFAULT_PHOTOS=["https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1501854140801-50d01698950b?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1400&h=900&fit=crop"];
-function Screensaver({onTap,wx,loc,customPhotos}){
+function Screensaver({onTap,wx,loc,customPhotos,events}){
   const photos=customPhotos?.length>0?customPhotos:DEFAULT_PHOTOS;
   const[idx,setIdx]=useState(0),[time,setTime]=useState(new Date()),[fade,setFade]=useState(true);
   useEffect(()=>{const t1=setInterval(()=>{setFade(false);setTimeout(()=>{setIdx(i=>(i+1)%photos.length);setFade(true);},700);},10000);const t2=setInterval(()=>setTime(new Date()),1000);return()=>{clearInterval(t1);clearInterval(t2);};},[photos.length]);
   const info=wx?wmo(wx.code):null;
+  const todayKey=dkey(time),nowMins=time.getHours()*60+time.getMinutes();
+  const upcoming=(events||[]).filter(e=>e.date>todayKey||(e.date===todayKey&&(e.hour*60+(e.minute||0))>=nowMins)).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date)).slice(0,3);
   return<div style={{position:"fixed",inset:0,zIndex:100,background:"#000",cursor:"pointer"}} onClick={onTap}>
     <img src={photos[idx]} alt="" style={{width:"100%",height:"100%",objectFit:"cover",position:"absolute",transition:"opacity 0.7s ease-in-out",opacity:fade?1:0}}/>
-    <div style={{position:"absolute",inset:0,background:"linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.15) 30%, transparent 55%)"}}/>
-    <div style={{position:"absolute",bottom:48,left:48,zIndex:1}}>
-      <div style={{fontSize:80,fontWeight:300,color:"#fff",lineHeight:1,fontFamily:FM,letterSpacing:-3}}>{String(time.getHours()%12||12).padStart(2,"0")}:{String(time.getMinutes()).padStart(2,"0")}<span style={{fontSize:28,fontWeight:400,marginLeft:10,opacity:.5}}>{time.getHours()>=12?"PM":"AM"}</span></div>
-      <div style={{fontSize:22,fontWeight:300,color:"rgba(255,255,255,0.6)",marginTop:8,fontFamily:FF}}>{DAYS_F[time.getDay()]}, {MO[time.getMonth()]} {time.getDate()}</div>
-      {wx&&info&&<div style={{fontSize:16,color:"rgba(255,255,255,0.4)",marginTop:8,fontFamily:FF}}>{info.i} {wx.temp}° · {info.l}{loc?.name?` · ${loc.name}`:""}</div>}
+    <div style={{position:"absolute",inset:0,background:"linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.2) 45%, transparent 70%)"}}/>
+    <div style={{position:"absolute",bottom:48,left:52,zIndex:1}}>
+      <div style={{fontSize:120,fontWeight:200,color:"#fff",lineHeight:1,fontFamily:FM,letterSpacing:-6}}>{String(time.getHours()%12||12).padStart(2,"0")}:{String(time.getMinutes()).padStart(2,"0")}<span style={{fontSize:40,fontWeight:300,marginLeft:16,opacity:.45}}>{time.getHours()>=12?"PM":"AM"}</span></div>
+      <div style={{fontSize:28,fontWeight:300,color:"rgba(255,255,255,0.55)",marginTop:12,fontFamily:FF}}>{DAYS_F[time.getDay()]}, {MO[time.getMonth()]} {time.getDate()}</div>
+      {wx&&info&&<div style={{fontSize:18,color:"rgba(255,255,255,0.35)",marginTop:8,fontFamily:FF}}>{info.i} {wx.temp}° · {info.l}{loc?.name?` · ${loc.name}`:""}</div>}
     </div>
-    <div style={{position:"absolute",bottom:20,right:28,fontSize:11,color:"rgba(255,255,255,0.25)",fontFamily:FF}}>Tap anywhere to return</div>
+    {upcoming.length>0&&<div style={{position:"absolute",bottom:52,right:52,zIndex:1,textAlign:"right",maxWidth:340}}>
+      <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.3)",textTransform:"uppercase",letterSpacing:2,marginBottom:16}}>Coming Up</div>
+      {upcoming.map(ev=><div key={ev.id} style={{marginBottom:14,display:"flex",alignItems:"center",gap:12,justifyContent:"flex-end"}}>
+        <div style={{textAlign:"right"}}><div style={{fontSize:16,fontWeight:600,color:"rgba(255,255,255,0.85)",marginBottom:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:300}}>{ev.title}</div><div style={{fontSize:12,color:"rgba(255,255,255,0.38)"}}>{ev.date===todayKey?"Today":ev.date} · {fmtT(ev.hour,ev.minute||0)}</div></div>
+        <div style={{width:3,height:38,borderRadius:2,background:evColor(ev),flexShrink:0}}/>
+      </div>)}
+    </div>}
+    <div style={{position:"absolute",bottom:22,right:32,fontSize:11,color:"rgba(255,255,255,0.2)",fontFamily:FF}}>Tap anywhere to return</div>
   </div>;
 }
 
@@ -704,7 +713,7 @@ function Homelight(){
     return()=>clearInterval(i);
   },[reminderMins,visibleEvents]);
 
-  if(showSS)return<Screensaver onTap={()=>{setShowSS(false);lastAct.current=Date.now();}} wx={wx} loc={loc} customPhotos={photos}/>;
+  if(showSS)return<Screensaver onTap={()=>{setShowSS(false);lastAct.current=Date.now();}} wx={wx} loc={loc} customPhotos={photos} events={visibleEvents}/>;
 
   return<ThemeCtx.Provider value={t}>
     <div style={{fontFamily:FF,height:"100vh",width:"100vw",background:t.grad,color:t.text,display:"flex",flexDirection:"column",overflow:"hidden",userSelect:"none"}}>
