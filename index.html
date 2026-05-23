@@ -601,15 +601,22 @@ function VoiceAssistant({events,todos,geminiKey,geminiModel,onClose,onSaveEvent,
     if(!SR){setResponse("Voice input isn't supported in this browser. Please type instead.");return;}
     window.speechSynthesis.cancel();
     const recog=new SR();
-    recog.lang="en-US";recog.interimResults=false;recog.maxAlternatives=1;
+    recog.lang="en-US";recog.interimResults=true;recog.continuous=true;recog.maxAlternatives=1;
     recognitionRef.current=recog;
     setPhase("listening");setTranscript("");setResponse("");
-    recog.onresult=e=>{const tx=e.results[0][0].transcript;setTranscript(tx);callGemini(tx);};
+    let silenceTimer=null,accumulated="";
+    recog.onresult=e=>{
+      accumulated="";
+      for(let i=0;i<e.results.length;i++)accumulated+=e.results[i][0].transcript+(e.results[i].isFinal?" ":"");
+      setTranscript(accumulated.trim());
+      clearTimeout(silenceTimer);
+      if(e.results[e.results.length-1].isFinal)silenceTimer=setTimeout(()=>recog.stop(),1500);
+    };
     recog.onerror=()=>setPhase("idle");
-    recog.onend=()=>{};
+    recog.onend=()=>{const tx=accumulated.trim();if(tx)callGemini(tx);else setPhase("idle");};
     recog.start();
   };
-  const stopListening=()=>{recognitionRef.current?.stop();setPhase("idle");};
+  const stopListening=()=>{recognitionRef.current?.stop();};
   const sendText=()=>{if(!textInput.trim())return;const m=textInput.trim();setTextInput("");setTranscript(m);setResponse("");callGemini(m);};
   useEffect(()=>()=>{recognitionRef.current?.stop();window.speechSynthesis.cancel();},[]);
   const phaseColor={idle:t.dim,listening:"#EF4444",processing:t.accent,speaking:"#10B981"}[phase];
