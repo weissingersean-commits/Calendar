@@ -590,7 +590,7 @@ function VoiceAssistant({events,todos,geminiKey,geminiModel,onClose,onSaveEvent,
       utt.onerror=()=>setPhase("idle");
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(utt);
-      if(didAct)setTimeout(onClose,2500);
+      if(didAct)setTimeout(onClose,5000);
     }catch(e){
       setResponse("Connection error — tap Try Again.");
       setHasError(true);setPhase("idle");
