@@ -46,7 +46,7 @@ const FM="'JetBrains Mono',monospace";
 // ─── Theme System ────────────────────────────────────────────────────
 const THEMES={
   dark:{bg:"#06080D",bg2:"#0C1018",card:"rgba(255,255,255,0.028)",cardH:"rgba(255,255,255,0.055)",bdr:"rgba(255,255,255,0.065)",text:"#E8EDF5",sub:"#8B99AE",dim:"#4A5568",accent:"#38BDF8",acDim:"rgba(56,189,248,0.1)",acGlow:"rgba(56,189,248,0.22)",acText:"#020617",danger:"#F43F5E",dangerDim:"rgba(244,63,94,0.12)",success:"#34D399",headerBg:"rgba(0,0,0,0.35)",sidebarBg:"rgba(0,0,0,0.22)",inputBg:"rgba(0,0,0,0.35)",modalBg:"#111827",grad:"linear-gradient(155deg,#06080D 0%,#0C1018 40%,#0F172A 100%)"},
-  light:{bg:"#F8FAFC",bg2:"#F1F5F9",card:"rgba(0,0,0,0.03)",cardH:"rgba(0,0,0,0.06)",bdr:"rgba(0,0,0,0.08)",text:"#1E293B",sub:"#64748B",dim:"#94A3B8",accent:"#0284C7",acDim:"rgba(2,132,199,0.08)",acGlow:"rgba(2,132,199,0.18)",acText:"#FFFFFF",danger:"#E11D48",dangerDim:"rgba(225,29,72,0.08)",success:"#059669",headerBg:"rgba(255,255,255,0.85)",sidebarBg:"rgba(255,255,255,0.6)",inputBg:"rgba(0,0,0,0.04)",modalBg:"#FFFFFF",grad:"linear-gradient(155deg,#F8FAFC 0%,#F1F5F9 40%,#E2E8F0 100%)"},
+  light:{bg:"#EDF2F7",bg2:"#E2ECF5",card:"rgba(255,255,255,0.82)",cardH:"rgba(255,255,255,0.97)",bdr:"rgba(0,0,0,0.10)",text:"#1A202C",sub:"#4A5568",dim:"#A0AEC0",accent:"#2563EB",acDim:"rgba(37,99,235,0.09)",acGlow:"rgba(37,99,235,0.22)",acText:"#FFFFFF",danger:"#DC2626",dangerDim:"rgba(220,38,38,0.09)",success:"#059669",headerBg:"rgba(255,255,255,0.94)",sidebarBg:"rgba(255,255,255,0.78)",inputBg:"rgba(255,255,255,0.88)",modalBg:"#FFFFFF",grad:"linear-gradient(155deg,#EBF4FF 0%,#EDF2F7 50%,#E6FFF8 100%)"},
 };
 
 const CATS={
@@ -58,6 +58,7 @@ const CATS={
   family:{bg:"#EC4899",lt:a=>`rgba(236,72,153,${a})`,tx:"#F9A8D4"},
 };
 const FEED_COLORS=["#06B6D4","#8B5CF6","#F43F5E","#F59E0B","#10B981","#EC4899","#6366F1","#14B8A6"];
+const PALETTE=["#EF4444","#F97316","#F59E0B","#EAB308","#84CC16","#22C55E","#10B981","#14B8A6","#06B6D4","#0EA5E9","#3B82F6","#6366F1","#8B5CF6","#A855F7","#EC4899","#F43F5E","#78716C","#64748B"];
 const ThemeCtx=createContext(THEMES.dark);
 const useT=()=>useContext(ThemeCtx);
 
@@ -209,8 +210,8 @@ function expandManualRecurrences(events){
 
 
 // ─── Shared Styles ───────────────────────────────────────────────────
-function evColor(ev){return ev.feedColor||CATS[ev.category]?.bg||"#38BDF8";}
-function evLt(ev){return ev.feedColor?ev.feedColor+"18":CATS[ev.category]?.lt?.(0.1)||"rgba(56,189,248,0.1)";}
+function evColor(ev){return ev.color||ev.feedColor||CATS[ev.category]?.bg||"#38BDF8";}
+function evLt(ev){const c=ev.color||ev.feedColor;if(c)return c+"22";return CATS[ev.category]?.lt?.(0.1)||"rgba(56,189,248,0.1)";}
 
 function useS(){const t=useT();return useMemo(()=>({
   iconBtn:{background:"none",border:"none",color:t.accent,fontSize:20,cursor:"pointer",padding:"4px 10px",borderRadius:8,fontWeight:300},
@@ -321,6 +322,7 @@ function EventModal({event,sel,onClose,onSave,onDelete}){
   const t=useT(),s=useS(),isEdit=!!event;
   const[title,setTitle]=useState(event?.title||""),[hour,setHour]=useState(String(event?.hour||9)),[minute,setMinute]=useState(String(event?.minute||0)),[duration,setDur]=useState(String(event?.duration||1)),[category,setCat]=useState(event?.category||"personal"),[location,setLoc]=useState(event?.location||"");
   const[allDay,setAllDay]=useState(event?.duration===24&&event?.hour===0);
+  const[color,setColor]=useState(event?.color||"");
   const[repeat,setRepeat]=useState(event?.repeat?.freq||"none");
   const[repeatUntil,setRepeatUntil]=useState(event?.repeat?.until||"");
   const exportICS=()=>{const ev=event||{id:mkId(),title,date:dkey(sel),hour:allDay?0:parseInt(hour),minute:allDay?0:parseInt(minute),duration:allDay?24:parseFloat(duration),category,location};const blob=new Blob([eventToICS(ev)],{type:"text/calendar"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`${(ev.title||"event").replace(/[^a-z0-9]/gi,"_")}.ics`;a.click();URL.revokeObjectURL(url);};
@@ -355,11 +357,16 @@ function EventModal({event,sel,onClose,onSave,onDelete}){
         <div style={{flex:1}}><label style={s.lbl}>Duration</label><select style={s.sel} value={duration} onChange={e=>setDur(e.target.value)} disabled={allDay}>{["0.25","0.5","0.75","1","1.5","2","3","4","6","8","12","24"].map(d=><option key={d} value={d}>{d==="24"?"24h":d<1?`${d*60}min`:`${d}h`}</option>)}</select></div>
       </div>
       <label style={s.lbl}>Category</label>
-      <div style={{display:"flex",gap:6,marginBottom:20,flexWrap:"wrap"}}>{Object.entries(CATS).map(([cat,col])=><button key={cat} onClick={()=>setCat(cat)} style={{padding:"6px 14px",borderRadius:20,border:category===cat?`2px solid ${col.bg}`:`1px solid ${t.bdr}`,background:category===cat?col.lt(0.15):"transparent",color:category===cat?col.tx:t.sub,fontSize:12,fontWeight:500,cursor:"pointer",textTransform:"capitalize",fontFamily:FF}}>{cat}</button>)}</div>
+      <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>{Object.entries(CATS).map(([cat,col])=><button key={cat} onClick={()=>setCat(cat)} style={{padding:"6px 14px",borderRadius:20,border:category===cat?`2px solid ${col.bg}`:`1px solid ${t.bdr}`,background:category===cat?col.lt(0.15):"transparent",color:category===cat?col.tx:t.sub,fontSize:12,fontWeight:500,cursor:"pointer",textTransform:"capitalize",fontFamily:FF}}>{cat}</button>)}</div>
+      <label style={s.lbl}>Color Override</label>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:20,alignItems:"center"}}>
+        {PALETTE.map(c=><div key={c} onClick={()=>setColor(color===c?"":c)} style={{width:22,height:22,borderRadius:"50%",background:c,cursor:"pointer",flexShrink:0,border:color===c?`3px solid ${t.text}`:"3px solid transparent",boxSizing:"border-box",transform:color===c?"scale(1.18)":"scale(1)",transition:"transform 0.12s"}}/>)}
+        {color&&<button onClick={()=>setColor("")} style={{background:"none",border:`1px dashed ${t.dim}`,borderRadius:20,color:t.dim,fontSize:10,padding:"2px 8px",cursor:"pointer",fontFamily:FF}}>reset</button>}
+      </div>
       <div style={{display:"flex",gap:8}}>
         {isEdit&&<button style={s.btnD} onClick={()=>{onDelete(event.id);onClose();}}>Delete</button>}
         <button style={s.btnS} onClick={onClose}>Cancel</button>
-        <button style={s.btnP} onClick={()=>{if(!title.trim())return;onSave({id:event?.id||mkId(),title:title.trim(),date:dkey(sel),hour:allDay?0:parseInt(hour),minute:allDay?0:parseInt(minute),duration:allDay?24:parseFloat(duration),category,location,synced:false,repeat:repeat!=="none"?{freq:repeat,until:repeatUntil||null}:null});onClose();}}>
+        <button style={s.btnP} onClick={()=>{if(!title.trim())return;onSave({id:event?.id||mkId(),title:title.trim(),date:dkey(sel),hour:allDay?0:parseInt(hour),minute:allDay?0:parseInt(minute),duration:allDay?24:parseFloat(duration),category,location,synced:false,color:color||null,repeat:repeat!=="none"?{freq:repeat,until:repeatUntil||null}:null});onClose();}}>
           {isEdit?"Save":"Add Event"}</button>
       </div>
       {isEdit&&<button onClick={exportICS} style={{marginTop:10,background:"none",border:"none",color:t.accent,fontSize:12,cursor:"pointer",padding:0,fontFamily:FF}}>📥 Download .ics (add to phone)</button>}
