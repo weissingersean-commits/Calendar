@@ -490,6 +490,7 @@ function Homelight(){
           {deferredPrompt && <button onClick={async()=>{deferredPrompt.prompt();const choice=await deferredPrompt.userChoice;setInstallStatus(choice.outcome);setDeferredPrompt(null);}} style={{padding:"6px 14px",borderRadius:22,border:"none",background:t.success,color:t.acText,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>Install</button>}
           {installStatus && <span style={{fontSize:12,color:t.success,whiteSpace:"nowrap"}}>{installStatus==="installed"?"App installed!":"Install prompt shown"}</span>}
           <button onClick={()=>setModal("add")} style={{padding:"6px 18px",borderRadius:22,border:"none",background:t.accent,color:t.acText,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+ Event</button>
+        </div>
       </div>
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
         <div style={{flex:1,overflow:"auto",padding:20}}>
