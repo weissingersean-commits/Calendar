@@ -262,25 +262,57 @@ function Weather({loc,setLoc,onWx}){
 }
 
 // ═════════════════ CALENDAR VIEWS ════════════════════════════════════
-function MonthView({sel,setSel,events,setView}){
+function MonthView({sel,setSel,events,setView,onEv}){
   const t=useT(),s=useS();const y=sel.getFullYear(),m=sel.getMonth(),dinm=dInM(y,m),fd=new Date(y,m,1).getDay(),pd=dInM(y,m-1);
-  const cells=[],today=new Date();
+  const today=new Date();
+  const isAllDay=ev=>ev.hour===0&&(ev.minute||0)===0&&ev.duration>=24;
+  const cells=[];
   for(let i=0;i<fd;i++)cells.push({d:new Date(y,m-1,pd-fd+1+i),c:false});
   for(let i=1;i<=dinm;i++)cells.push({d:new Date(y,m,i),c:true});
   const rem=7-(cells.length%7);if(rem<7)for(let i=1;i<=rem;i++)cells.push({d:new Date(y,m+1,i),c:false});
+  const weeks=[];for(let i=0;i<cells.length;i+=7)weeks.push(cells.slice(i,i+7));
+  const weekData=weeks.map(week=>{
+    const wStart=week[0].d,wEnd=week[6].d,wStartKey=dkey(wStart),wEndKey=dkey(wEnd);
+    const spanning=events.filter(ev=>{
+      if(!isAllDay(ev))return false;
+      const ddays=Math.max(1,Math.round(ev.duration/24));const p=ev.date.split('-');
+      const evEnd=dkey(addD(new Date(+p[0],+p[1]-1,+p[2]),ddays-1));
+      return ev.date<=wEndKey&&evEnd>=wStartKey;
+    });
+    const withCols=spanning.map(ev=>{
+      const ddays=Math.max(1,Math.round(ev.duration/24));const p=ev.date.split('-');
+      const evSt=new Date(+p[0],+p[1]-1,+p[2]);
+      const sc=Math.max(0,Math.round((evSt.getTime()-wStart.getTime())/86400000));
+      const evEndDate=addD(evSt,ddays-1);
+      const clampedEnd=dkey(evEndDate)<=wEndKey?evEndDate:wEnd;
+      const ec=Math.min(7,Math.round((clampedEnd.getTime()-wStart.getTime())/86400000)+1);
+      return{ev,sc,ec};
+    });
+    const laneEnds=[];
+    const laned=withCols.map(item=>{let lane=0;while(laneEnds[lane]!==undefined&&laneEnds[lane]>item.sc)lane++;laneEnds[lane]=item.ec;return{...item,lane};});
+    const laneCount=laned.reduce((mx,x)=>Math.max(mx,x.lane+1),0);
+    return{week,laned,laneCount};
+  });
   return<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><button style={s.iconBtn} onClick={()=>setSel(new Date(y,m-1,1))}>‹</button><span style={{fontSize:22,fontWeight:700,fontFamily:FF,letterSpacing:-.5}}>{MO[m]} {y}</span><button style={s.iconBtn} onClick={()=>setSel(new Date(y,m+1,1))}>›</button><div style={{flex:1}}/><button style={s.todayBtn} onClick={()=>setSel(new Date())}>Today</button></div>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gridTemplateRows:"auto repeat(6,1fr)",gap:3,flex:1}}>
-      {DAYS.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:600,color:t.dim,textTransform:"uppercase",letterSpacing:1,padding:"8px 0"}}>{d}</div>) }
-      {cells.map((c,i)=>{const key=dkey(c.d),isT=sameD(c.d,today),evs=events.filter(e=>e.date===key);
-        return<div key={i} onClick={()=>{setSel(c.d);setView("day");}} style={{padding:6,borderRadius:10,cursor:"pointer",background:isT?t.acDim:c.c?t.card:"rgba(128,128,128,0.05)",border:isT?`1px solid ${t.acGlow}`:"1px solid transparent",transition:"all 0.15s",overflow:"hidden",display:"flex",flexDirection:"column",justifyContent:"space-between"}} onMouseEnter={e=>{if(!isT)e.currentTarget.style.background=t.cardH;}} onMouseLeave={e=>{if(!isT)e.currentTarget.style.background=c.c?t.card:"rgba(128,128,128,0.05)";}}>
-          <div>
-            <div style={{fontSize:13,fontWeight:isT?800:400,color:isT?t.accent:c.c?t.sub:t.dim,marginBottom:4}}>{c.d.getDate()}</div>
-            {evs.slice(0,3).map(ev=><div key={ev.id} style={{background:evColor(ev),color:"#fff",padding:"1px 6px",borderRadius:4,fontSize:10,fontWeight:500,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div>)}
-          </div>
-          {evs.length>3&&<div style={{fontSize:9,color:t.dim}}>+{evs.length-3}</div>}
-        </div>;})}
-    </div></div>;
+    <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:3}}>
+      {DAYS.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:600,color:t.dim,textTransform:"uppercase",letterSpacing:1,padding:"8px 0"}}>{d}</div>)}
+    </div>
+    <div style={{flex:1,display:"flex",flexDirection:"column",gap:3}}>
+      {weekData.map(({week,laned,laneCount},wi)=>{
+        const spanH=laneCount*20;
+        return<div key={wi} style={{flex:1,display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,position:"relative",minHeight:80}}>
+          {laned.map(({ev,sc,ec,lane})=><div key={ev.id} onClick={e=>{e.stopPropagation();onEv(ev);}} style={{position:"absolute",left:`calc(${sc*(100/7)}% + 2px)`,width:`calc(${(ec-sc)*(100/7)}% - 4px)`,top:28+lane*20,height:18,background:evColor(ev),color:"#fff",borderRadius:4,fontSize:10,fontWeight:600,padding:"2px 6px",cursor:"pointer",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",zIndex:2,boxSizing:"border-box"}}>{ev.title}</div>)}
+          {week.map((c,ci)=>{const key=dkey(c.d),isT=sameD(c.d,today),evs=events.filter(e=>e.date===key&&!isAllDay(e));
+            return<div key={ci} onClick={()=>{setSel(c.d);setView("day");}} style={{padding:6,paddingTop:28+spanH+4,borderRadius:10,cursor:"pointer",background:isT?t.acDim:c.c?t.card:"rgba(128,128,128,0.05)",border:isT?`1px solid ${t.acGlow}`:"1px solid transparent",transition:"all 0.15s",overflow:"hidden",position:"relative",display:"flex",flexDirection:"column",justifyContent:"space-between"}} onMouseEnter={e=>{if(!isT)e.currentTarget.style.background=t.cardH;}} onMouseLeave={e=>{if(!isT)e.currentTarget.style.background=c.c?t.card:"rgba(128,128,128,0.05)";}}>
+              <div style={{position:"absolute",top:6,left:8,fontSize:13,fontWeight:isT?800:400,color:isT?t.accent:c.c?t.sub:t.dim}}>{c.d.getDate()}</div>
+              <div>{evs.slice(0,2).map(ev=><div key={ev.id} style={{background:evColor(ev),color:"#fff",padding:"1px 6px",borderRadius:4,fontSize:10,fontWeight:500,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div>)}</div>
+              {evs.length>2&&<div style={{fontSize:9,color:t.dim}}>+{evs.length-2}</div>}
+            </div>;})}
+        </div>;
+      })}
+    </div>
+  </div>;
 }
 function WeekView({sel,setSel,events,onEv,onAdd}){
   const t=useT(),s=useS();const start=wkSt(sel),days=Array.from({length:7},(_,i)=>addD(start,i)),hrs=Array.from({length:24},(_,i)=>i),today=new Date();
@@ -686,7 +718,7 @@ function Homelight(){
       </div>
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
         <div style={{flex:1,overflow:"auto",padding:20}}>
-          {view==="month"&&<MonthView sel={sel} setSel={setSel} events={visibleEvents} setView={setView}/>}
+          {view==="month"&&<MonthView sel={sel} setSel={setSel} events={visibleEvents} setView={setView} onEv={onEv}/>}
           {view==="week"&&<WeekView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv} onAdd={(d,h)=>onAddEvent(dkey(d),h)}/>}
           {view==="day"&&<DayView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv} onAdd={h=>onAddEvent(dkey(sel),h)}/>}
         </div>
