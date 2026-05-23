@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-  *{margin:0;padding:0;box-sizing:border-box;}
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body,#root{height:100%;width:100%;overflow:hidden;}
   body{font-family:'Outfit',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
   ::-webkit-scrollbar{width:6px;}
@@ -214,8 +214,8 @@ function evColor(ev){return ev.color||ev.feedColor||CATS[ev.category]?.bg||"#38B
 function evLt(ev){const c=ev.color||ev.feedColor;if(c)return c+"22";return CATS[ev.category]?.lt?.(0.1)||"rgba(56,189,248,0.1)";}
 
 function useS(){const t=useT();return useMemo(()=>({
-  iconBtn:{background:"none",border:"none",color:t.accent,fontSize:20,cursor:"pointer",padding:"4px 10px",borderRadius:8,fontWeight:300},
-  todayBtn:{padding:"5px 14px",borderRadius:20,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF},
+  iconBtn:{background:"none",border:"none",color:t.accent,fontSize:22,cursor:"pointer",padding:"8px 14px",borderRadius:10,fontWeight:300,minHeight:44,minWidth:44},
+  todayBtn:{padding:"8px 18px",borderRadius:20,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF,minHeight:44},
   overlay:{position:"fixed",inset:0,zIndex:60,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(14px)",display:"flex",alignItems:"center",justifyContent:"center"},
   modal:{background:t.modalBg,borderRadius:20,padding:28,width:440,maxWidth:"94vw",border:`1px solid ${t.bdr}`,maxHeight:"90vh",overflow:"auto",boxShadow:"0 25px 60px rgba(0,0,0,0.4)"},
   inp:{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:14,fontFamily:FF,outline:"none",marginBottom:12,boxSizing:"border-box"},
@@ -658,10 +658,12 @@ function Homelight(){
   const handleInstallPrompt=useCallback(async()=>{if(deferredPrompt){deferredPrompt.prompt();const choice=await deferredPrompt.userChoice;setInstallStatus(choice.outcome==="accepted"?"installed":"dismissed");setDeferredPrompt(null);}else if(isStandalone){setInstallStatus("installed");}else{setInstallStatus("menu");}},[deferredPrompt,isStandalone]);
   const lastAct=useRef(Date.now());
   const notifiedRef=useRef(new Set());
+  const swipeRef=useRef({});
 
   useEffect(()=>{const i=setInterval(()=>setTime(new Date()),15000);return()=>clearInterval(i);},[]);
   useEffect(()=>{setIsStandalone(window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true);const handler=e=>{e.preventDefault();setDeferredPrompt(e);setInstallStatus(null);};window.addEventListener("beforeinstallprompt",handler);const installed=()=>setInstallStatus("installed");window.addEventListener("appinstalled",installed);return()=>{window.removeEventListener("beforeinstallprompt",handler);window.removeEventListener("appinstalled",installed);};},[]);
   useEffect(()=>{if(!ssDelay)return;const h=()=>{lastAct.current=Date.now();};window.addEventListener("mousemove",h);window.addEventListener("touchstart",h);window.addEventListener("keydown",h);const ck=setInterval(()=>{if(Date.now()-lastAct.current>ssDelay*60000&&!showSS)setShowSS(true);},10000);return()=>{window.removeEventListener("mousemove",h);window.removeEventListener("touchstart",h);window.removeEventListener("keydown",h);clearInterval(ck);};},[ssDelay,showSS]);
+  useEffect(()=>{if(!("wakeLock" in navigator))return;let lock=null;const acquire=async()=>{try{lock=await navigator.wakeLock.request("screen");}catch(e){}};acquire();const onVis=()=>{if(document.visibilityState==="visible")acquire();};document.addEventListener("visibilitychange",onVis);return()=>{document.removeEventListener("visibilitychange",onVis);lock?.release();};},[]);
 
   const syncFeed=useCallback(async feed=>{try{const url=normalizeFeedUrl(feed.url);const text=await fetchWithCorsFallback(url);const parsed=parseICS(text,feed.id,feed.color);setEvents(prev=>[...prev.filter(e=>e.feedId!==feed.id),...parsed]);setFeeds(prev=>prev.map(f=>f.id===feed.id?{...f,url, lastSync:Date.now(),count:parsed.length,error:null}:f));return true;}catch(err){const message=err?.message||"Failed to load feed";setFeeds(prev=>prev.map(f=>f.id===feed.id?{...f,count:0,error:message}:f));return false;}},[setEvents,setFeeds]);
   const syncAll=useCallback(async(feedToSync)=>{setSyncStatus("loading");
@@ -669,6 +671,9 @@ function Homelight(){
     const results=await Promise.all(feeds.filter(f=>f.enabled).map(syncFeed));setSyncStatus(results.every(Boolean)?"success":"error");},[feeds,syncFeed]);
   useEffect(()=>{if(feeds.length===0)return;syncAll();const i=setInterval(syncAll,900000);return()=>clearInterval(i);},[feeds.length]);
 
+  const onSwipe=useCallback(dir=>{if(view==="day")setSel(prev=>addD(prev,dir));else if(view==="week")setSel(prev=>addD(prev,dir*7));else setSel(prev=>new Date(prev.getFullYear(),prev.getMonth()+dir,1));},[view,setSel]);
+  const onTouchStart=useCallback(e=>{swipeRef.current={x:e.touches[0].clientX,y:e.touches[0].clientY};},[]);
+  const onTouchEnd=useCallback(e=>{const dx=e.changedTouches[0].clientX-swipeRef.current.x,dy=e.changedTouches[0].clientY-swipeRef.current.y;if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.5)return;onSwipe(dx<0?1:-1);},[onSwipe]);
   const saveEvent=useCallback(ev=>{setEvents(prev=>{const idx=prev.findIndex(e=>e.id===ev.id);if(idx>=0){const n=[...prev];n[idx]=ev;return n;}return[...prev,ev];});},[setEvents]);
   const deleteEvent=useCallback(id=>setEvents(prev=>prev.filter(e=>e.id!==id)),[setEvents]);
   const onEv=useCallback(ev=>{if(ev._masterId){const master=events.find(e=>e.id===ev._masterId);if(master){setModal(master);return;}}setModal(ev);},[events]);
@@ -709,7 +714,7 @@ function Homelight(){
           <span style={{fontSize:14,fontWeight:400,color:t.sub,fontFamily:FM}}>{time.getHours()%12||12}:{String(time.getMinutes()).padStart(2,"0")} {time.getHours()>=12?"PM":"AM"}</span>
           <span style={{fontSize:12,color:t.dim}}>{DAYS_F[time.getDay()]}, {MO[time.getMonth()]} {time.getDate()}</span>
           <div style={{width:1,height:20,background:t.bdr}}/>
-          {[["📅","ical","Calendars"],["⚙","settings","Settings"],["🖼","ss","Photos"]].map(([ic,key,tip])=><button key={key} onClick={()=>key==="ss"?setShowSS(true):setPanel(panel===key?"main":key)} title={tip} style={{background:"none",border:"none",color:panel===key?t.accent:t.dim,cursor:"pointer",fontSize:15,padding:"4px 6px"}}>{ic}</button>)}
+          {[["📅","ical","Calendars"],["⚙","settings","Settings"],["🖼","ss","Photos"]].map(([ic,key,tip])=><button key={key} onClick={()=>key==="ss"?setShowSS(true):setPanel(panel===key?"main":key)} title={tip} style={{background:"none",border:"none",color:panel===key?t.accent:t.dim,cursor:"pointer",fontSize:18,padding:"8px 10px",minHeight:44,minWidth:44}}>{ic}</button>)}
           {deferredPrompt && <button onClick={async()=>{deferredPrompt.prompt();const choice=await deferredPrompt.userChoice;setInstallStatus(choice.outcome);setDeferredPrompt(null);}} style={{padding:"6px 14px",borderRadius:22,border:"none",background:t.success,color:t.acText,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>Install</button>}
           {installStatus && <span style={{fontSize:12,color:t.success,whiteSpace:"nowrap"}}>{installStatus==="installed"?"App installed!":"Install prompt shown"}</span>}
           <button onClick={()=>setShowSearch(true)} style={{padding:"6px 14px",borderRadius:22,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>🔍 Search</button>
@@ -717,7 +722,7 @@ function Homelight(){
         </div>
       </div>
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
-        <div style={{flex:1,overflow:"auto",padding:20}}>
+        <div style={{flex:1,overflow:"auto",padding:20}} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
           {view==="month"&&<MonthView sel={sel} setSel={setSel} events={visibleEvents} setView={setView} onEv={onEv}/>}
           {view==="week"&&<WeekView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv} onAdd={(d,h)=>onAddEvent(dkey(d),h)}/>}
           {view==="day"&&<DayView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv} onAdd={h=>onAddEvent(dkey(sel),h)}/>}
