@@ -551,19 +551,20 @@ function VoiceAssistant({events,todos,geminiKey,geminiModel,onClose,onSaveEvent,
   };
   const parseAction=text=>{
     const idx=text.indexOf('ACTION:');
-    if(idx===-1)return;
+    if(idx===-1)return false;
     const after=text.slice(idx+7).trim();
     const start=after.indexOf('{');
-    if(start===-1)return;
+    if(start===-1)return false;
     let depth=0,end=-1;
     for(let i=start;i<after.length;i++){if(after[i]==='{')depth++;else if(after[i]==='}'){depth--;if(depth===0){end=i;break;}}}
-    if(end===-1)return;
+    if(end===-1)return false;
     try{
       const a=JSON.parse(after.slice(start,end+1));
-      if(a.type==="add_event")onSaveEvent({id:mkId(),title:a.title||"Event",date:a.date||dkey(today),hour:a.hour??9,minute:a.minute??0,duration:a.duration||1,category:a.category||"personal",location:a.location||"",synced:false,color:null,repeat:null});
-      else if(a.type==="add_todo")onAddTodo(a.text);
-      else if(a.type==="add_grocery")onAddGrocery(a.text);
+      if(a.type==="add_event"){onSaveEvent({id:mkId(),title:a.title||"Event",date:a.date||dkey(today),hour:a.hour??9,minute:a.minute??0,duration:a.duration||1,category:a.category||"personal",location:a.location||"",synced:false,color:null,repeat:null});return true;}
+      if(a.type==="add_todo"){onAddTodo(a.text);return true;}
+      if(a.type==="add_grocery"){onAddGrocery(a.text);return true;}
     }catch(e){}
+    return false;
   };
   const callGemini=async msg=>{
     setPhase("processing");setHasError(false);
@@ -581,12 +582,12 @@ function VoiceAssistant({events,todos,geminiKey,geminiModel,onClose,onSaveEvent,
       const display=reply.replace(/ACTION:\s*\{[^]*?\}/g,"").trim()||"Done!";
       setResponse(display);
       setHistory([...rawHist,{role:"model",parts:[{text:reply}]}]);
-      parseAction(reply);
+      const didAct=parseAction(reply);
       setPhase("speaking");
       const utt=new SpeechSynthesisUtterance(display);
       utt.rate=1.0;
-      utt.onend=()=>setPhase("idle");
-      utt.onerror=()=>setPhase("idle");
+      utt.onend=()=>{setPhase("idle");if(didAct)setTimeout(onClose,600);};
+      utt.onerror=()=>{setPhase("idle");if(didAct)setTimeout(onClose,600);};
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(utt);
     }catch(e){
