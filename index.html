@@ -529,8 +529,97 @@ function Screensaver({onTap,wx,loc,customPhotos,events}){
   </div>;
 }
 
+// ═════════════════ VOICE ASSISTANT ══════════════════════════════════
+function VoiceAssistant({events,todos,geminiKey,onClose,onSaveEvent,onAddTodo,onAddGrocery}){
+  const t=useT(),s=useS();
+  const[phase,setPhase]=useState("idle");
+  const[transcript,setTranscript]=useState("");
+  const[response,setResponse]=useState("");
+  const[history,setHistory]=useState([]);
+  const[textInput,setTextInput]=useState("");
+  const recognitionRef=useRef(null);
+  const today=new Date();
+  const upcoming=(events||[]).filter(e=>e.date>=dkey(today)).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date)).slice(0,10);
+  const buildSysPrompt=()=>{
+    const todayStr=`${DAYS_F[today.getDay()]}, ${MO[today.getMonth()]} ${today.getDate()}, ${today.getFullYear()}`;
+    const timeStr=fmtT(today.getHours(),today.getMinutes());
+    const upStr=upcoming.length?upcoming.map(e=>`- ${e.title} on ${e.date} at ${fmtT(e.hour,e.minute||0)}`).join("\n"):"None scheduled";
+    const tdStr=(todos||[]).filter(i=>!i.done).slice(0,10).map(i=>`- ${i.text}`).join("\n")||"None";
+    return`You are a helpful voice assistant for Homelight, a family calendar app. Keep responses short and conversational (under 60 words when possible) — they will be spoken aloud.\n\nToday is ${todayStr}. Current time: ${timeStr}.\n\nUpcoming events:\n${upStr}\n\nPending tasks:\n${tdStr}\n\nTo add a calendar event, append on its own line: ACTION:{"type":"add_event","title":"...","date":"YYYY-MM-DD","hour":14,"minute":0,"duration":1,"category":"personal"}\nTo add a task: ACTION:{"type":"add_todo","text":"..."}\nTo add a grocery item: ACTION:{"type":"add_grocery","text":"..."}\nCategories: personal, work, health, social, errand, family. Default date if unspecified: ${dkey(today)}.`;
+  };
+  const parseAction=text=>{
+    const m=text.match(/ACTION:\s*(\{[\s\S]*?\})/);
+    if(!m)return;
+    try{
+      const a=JSON.parse(m[1]);
+      if(a.type==="add_event")onSaveEvent({id:mkId(),title:a.title||"Event",date:a.date||dkey(today),hour:a.hour??9,minute:a.minute??0,duration:a.duration||1,category:a.category||"personal",location:a.location||"",synced:false,color:null,repeat:null});
+      else if(a.type==="add_todo")onAddTodo(a.text);
+      else if(a.type==="add_grocery")onAddGrocery(a.text);
+    }catch(e){}
+  };
+  const callGemini=async msg=>{
+    setPhase("processing");
+    const newHist=[...history,{role:"user",parts:[{text:msg}]}];
+    try{
+      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({systemInstruction:{parts:[{text:buildSysPrompt()}]},contents:newHist,generationConfig:{temperature:0.7,maxOutputTokens:400}})});
+      const data=await res.json();
+      const reply=data.candidates?.[0]?.content?.parts?.[0]?.text||"I didn't get a response. Please try again.";
+      const display=reply.replace(/\nACTION:\s*\{[\s\S]*?\}/g,"").trim();
+      setResponse(display);
+      setHistory([...newHist,{role:"model",parts:[{text:reply}]}]);
+      parseAction(reply);
+      setPhase("speaking");
+      const utt=new SpeechSynthesisUtterance(display);
+      utt.rate=1.0;
+      utt.onend=()=>setPhase("idle");
+      utt.onerror=()=>setPhase("idle");
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utt);
+    }catch(e){
+      setResponse("Couldn't connect. Check your Gemini API key in Settings.");
+      setPhase("idle");
+    }
+  };
+  const startListening=()=>{
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){setResponse("Voice input isn't supported in this browser. Please type instead.");return;}
+    window.speechSynthesis.cancel();
+    const recog=new SR();
+    recog.lang="en-US";recog.interimResults=false;recog.maxAlternatives=1;
+    recognitionRef.current=recog;
+    setPhase("listening");setTranscript("");setResponse("");
+    recog.onresult=e=>{const tx=e.results[0][0].transcript;setTranscript(tx);callGemini(tx);};
+    recog.onerror=()=>setPhase("idle");
+    recog.onend=()=>{};
+    recog.start();
+  };
+  const stopListening=()=>{recognitionRef.current?.stop();setPhase("idle");};
+  const sendText=()=>{if(!textInput.trim())return;const m=textInput.trim();setTextInput("");setTranscript(m);setResponse("");callGemini(m);};
+  useEffect(()=>()=>{recognitionRef.current?.stop();window.speechSynthesis.cancel();},[]);
+  const phaseColor={idle:t.dim,listening:"#EF4444",processing:t.accent,speaking:"#10B981"}[phase];
+  const phaseLabel={idle:"Tap mic to speak",listening:"Listening…",processing:"Thinking…",speaking:"Speaking…"}[phase];
+  return<div style={s.overlay} onClick={onClose}><div style={{...s.modal,width:480}} onClick={e=>e.stopPropagation()}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+      <div style={{fontSize:18,fontWeight:800,color:t.text}}>✨ Ask Homelight</div>
+      <button onClick={onClose} style={{background:"none",border:"none",color:t.dim,fontSize:22,cursor:"pointer",lineHeight:1}}>×</button>
+    </div>
+    {!geminiKey&&<div style={{padding:"12px 16px",borderRadius:10,background:t.dangerDim,color:t.danger,fontSize:12,marginBottom:16,lineHeight:1.6}}>No Gemini API key set. Add yours in <b>Settings ⚙ → AI Assistant</b>. Get a free key at <b>aistudio.google.com</b>.</div>}
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12,marginBottom:20,paddingTop:8}}>
+      <button onClick={phase==="listening"?stopListening:startListening} disabled={phase==="processing"||phase==="speaking"||!geminiKey} style={{width:80,height:80,borderRadius:"50%",border:"none",background:phase==="listening"?"rgba(239,68,68,0.15)":t.acDim,color:phaseColor,fontSize:32,cursor:(phase==="processing"||phase==="speaking"||!geminiKey)?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:phase==="listening"?"0 0 0 8px rgba(239,68,68,0.15),0 0 0 18px rgba(239,68,68,0.07)":"none",transition:"all 0.3s"}}>🎤</button>
+      <div style={{fontSize:13,color:phaseColor,fontWeight:600}}>{phaseLabel}</div>
+    </div>
+    {transcript&&<div style={{...s.crd,marginBottom:12}}><div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.dim,marginBottom:6}}>You said</div><div style={{fontSize:13,color:t.text}}>{transcript}</div></div>}
+    {response&&<div style={{...s.crd,marginBottom:12,background:t.acDim,border:`1px solid ${t.acGlow}`}}><div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.accent,marginBottom:6}}>Homelight</div><div style={{fontSize:13,color:t.text,lineHeight:1.6}}>{response}</div></div>}
+    <div style={{display:"flex",gap:8,marginTop:4}}>
+      <input style={{...s.inp,marginBottom:0,flex:1}} placeholder="Or type a message..." value={textInput} onChange={e=>setTextInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendText()} disabled={phase==="processing"||!geminiKey}/>
+      <button onClick={sendText} disabled={!textInput.trim()||phase==="processing"||!geminiKey} style={{padding:"10px 16px",borderRadius:10,border:"none",background:t.accent,color:t.acText,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FF}}>Send</button>
+    </div>
+    {history.length>0&&<button onClick={()=>{setHistory([]);setTranscript("");setResponse("");}} style={{marginTop:10,background:"none",border:"none",color:t.dim,fontSize:11,cursor:"pointer",padding:0,fontFamily:FF}}>Clear conversation</button>}
+  </div></div>;
+}
+
 // ═════════════════ SETTINGS ═════════════════════════════════════════
-function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart,photos,setPhotos,reminderMins,setReminderMins,onClearEvents,onClearLists,onClearMeals,deferredPrompt,onInstallPrompt,installStatus}){
+function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart,photos,setPhotos,reminderMins,setReminderMins,onClearEvents,onClearLists,onClearMeals,deferredPrompt,onInstallPrompt,installStatus,geminiKey,setGeminiKey}){
   const t=useT(),s=useS(),fileRef=useRef(null);
   const[notifPerm,setNotifPerm]=useState(typeof Notification!=="undefined"?Notification.permission:"unsupported");
   const requestNotif=async()=>{if(typeof Notification==="undefined")return;const p=await Notification.requestPermission();setNotifPerm(p);};
@@ -547,6 +636,9 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart
     <div style={{display:"flex",gap:8,marginBottom:16}}>{["dark","light"].map(th=><button key={th} onClick={()=>setTheme(th)} style={{flex:1,padding:"10px 0",borderRadius:10,border:theme===th?`2px solid ${t.accent}`:`1px solid ${t.bdr}`,background:theme===th?t.acDim:"transparent",color:theme===th?t.accent:t.sub,fontSize:13,fontWeight:600,cursor:"pointer",textTransform:"capitalize",fontFamily:FF}}>{th==="dark"?"🌙 Dark":"☀️ Light"}</button>)}</div>
     <label style={s.lbl}>Week Starts On</label>
     <div style={{display:"flex",gap:8,marginBottom:16}}>{[["Sunday",0],["Monday",1]].map(([label,val])=><button key={val} onClick={()=>setWeekStart(val)} style={{flex:1,padding:"10px 0",borderRadius:10,border:weekStart===val?`2px solid ${t.accent}`:`1px solid ${t.bdr}`,background:weekStart===val?t.acDim:"transparent",color:weekStart===val?t.accent:t.sub,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FF}}>{label}</button>)}</div>
+    <label style={s.lbl}>AI Assistant — Gemini API Key</label>
+    <div style={{fontSize:11,color:t.sub,marginBottom:8,lineHeight:1.6}}>Powers the voice assistant (🎤). Get a free key at <b>aistudio.google.com</b> → Get API key.</div>
+    <input type="password" style={{...s.inp,fontFamily:FM,fontSize:12}} placeholder="Paste Gemini API key here..." value={geminiKey||""} onChange={e=>setGeminiKey(e.target.value)}/>
     <label style={s.lbl}>Auto-Screensaver</label>
     <select style={s.sel} value={ssDelay} onChange={e=>setSsDelay(parseInt(e.target.value))}><option value={0}>Off</option><option value={2}>2 min</option><option value={5}>5 min</option><option value={10}>10 min</option><option value={15}>15 min</option><option value={30}>30 min</option></select>
     <label style={s.lbl}>Screensaver Photos</label>
@@ -675,6 +767,8 @@ function Homelight(){
   const[sidebarOpen,setSidebarOpen]=useP("sidebarOpen",true);
   const handleInstallPrompt=useCallback(async()=>{if(deferredPrompt){deferredPrompt.prompt();const choice=await deferredPrompt.userChoice;setInstallStatus(choice.outcome==="accepted"?"installed":"dismissed");setDeferredPrompt(null);}else if(isStandalone){setInstallStatus("installed");}else{setInstallStatus("menu");}},[deferredPrompt,isStandalone]);
   const[weekStart,setWeekStart]=useP("weekStart",0);
+  const[geminiKey,setGeminiKey]=useP("geminiKey","");
+  const[showVoice,setShowVoice]=useState(false);
   const[recurChoice,setRecurChoice]=useState(null);
   const lastAct=useRef(Date.now());
   const notifiedRef=useRef(new Set());
@@ -697,6 +791,8 @@ function Homelight(){
   const onTouchEnd=useCallback(e=>{const dx=e.changedTouches[0].clientX-swipeRef.current.x,dy=e.changedTouches[0].clientY-swipeRef.current.y;if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.5)return;onSwipe(dx<0?1:-1);},[onSwipe]);
   const saveEvent=useCallback(ev=>{setEvents(prev=>{const idx=prev.findIndex(e=>e.id===ev.id);if(idx>=0){const n=[...prev];n[idx]=ev;return n;}return[...prev,ev];});},[setEvents]);
   const deleteEvent=useCallback(id=>setEvents(prev=>prev.filter(e=>e.id!==id)),[setEvents]);
+  const onAddTodo=useCallback(text=>setTodos(prev=>[...prev,{id:mkId(),text,done:false}]),[setTodos]);
+  const onAddGrocery=useCallback(text=>setGrocery(prev=>[...prev,{id:mkId(),text,done:false}]),[setGrocery]);
   const onEv=useCallback(ev=>{if(ev._masterId){setRecurChoice(ev);return;}setSel(new Date(ev.date+"T12:00:00"));setModal(ev);},[setSel]);
   const onAddEvent=useCallback((date,hour)=>{setSel(new Date(date+"T12:00:00"));setAddHour(hour);setModal("add");},[setSel]);
   const upcoming=useMemo(()=>events.filter(e=>e.date>=dkey(new Date())).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date)).slice(0,6),[events]);
@@ -739,6 +835,7 @@ function Homelight(){
           {deferredPrompt && <button onClick={async()=>{deferredPrompt.prompt();const choice=await deferredPrompt.userChoice;setInstallStatus(choice.outcome);setDeferredPrompt(null);}} style={{padding:"6px 14px",borderRadius:22,border:"none",background:t.success,color:t.acText,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>Install</button>}
           {installStatus && <span style={{fontSize:12,color:t.success,whiteSpace:"nowrap"}}>{installStatus==="installed"?"App installed!":"Install prompt shown"}</span>}
           <button onClick={()=>setShowSearch(true)} style={{padding:"6px 14px",borderRadius:22,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>🔍 Search</button>
+          <button onClick={()=>setShowVoice(true)} title="AI Assistant" style={{padding:"6px 14px",borderRadius:22,border:`1px solid ${t.bdr}`,background:geminiKey?t.acDim:"transparent",color:geminiKey?t.accent:t.dim,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>🎤 Ask</button>
           <button onClick={()=>setModal("add")} style={{padding:"6px 18px",borderRadius:22,border:"none",background:t.accent,color:t.acText,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+ Event</button>
           <button onClick={()=>setSidebarOpen(o=>!o)} title={sidebarOpen?"Hide sidebar":"Show sidebar"} style={{background:"none",border:`1px solid ${t.bdr}`,color:t.dim,cursor:"pointer",fontSize:13,padding:"6px 10px",borderRadius:8,fontFamily:FM,minHeight:44}}>{sidebarOpen?"▶":"◀"}</button>
         </div>
@@ -751,7 +848,7 @@ function Homelight(){
         </div>
         <div style={{width:sidebarOpen?400:0,borderLeft:sidebarOpen?`1px solid ${t.bdr}`:"none",background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0,transition:"width 0.25s ease"}}>
           {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
-          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt}/>
+          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt} geminiKey={geminiKey} setGeminiKey={setGeminiKey}/>
           :<>
             <div style={{padding:20,borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc} onWx={setWx}/></div>
             <div style={{padding:16,borderBottom:`1px solid ${t.bdr}`}}>
@@ -776,6 +873,7 @@ function Homelight(){
       {modal&&<EventModal event={modal==="add"?null:modal} sel={sel} defaultHour={addHour} onClose={()=>{editOneRef.current=null;setModal(null);}} onSave={ev=>{if(editOneRef.current){const{masterId,date}=editOneRef.current;const master=events.find(e=>e.id===masterId);if(master)saveEvent({...master,exdates:[...(master.exdates||[]),date]});editOneRef.current=null;}saveEvent(ev);}} onDelete={deleteEvent}/>}
       {recurChoice&&<div style={{position:"fixed",inset:0,zIndex:60,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(14px)",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setRecurChoice(null)}><div style={{background:t.card,borderRadius:20,padding:28,width:"min(400px,90vw)",border:`1px solid ${t.bdr}`}} onClick={e=>e.stopPropagation()}><div style={{fontSize:18,fontWeight:700,color:t.text,marginBottom:6}}>Recurring Event</div><div style={{fontSize:13,color:t.sub,marginBottom:22}}>"{recurChoice.title}" · {recurChoice.date}</div><div style={{display:"flex",gap:8}}><button style={{flex:1,padding:"11px 0",borderRadius:10,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:FF}} onClick={()=>setRecurChoice(null)}>Cancel</button><button style={{flex:1,padding:"11px 0",borderRadius:10,border:`1px solid ${t.bdr}`,background:"transparent",color:t.text,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FF}} onClick={()=>{const master=events.find(e=>e.id===recurChoice._masterId);if(master){setSel(new Date(master.date+"T12:00:00"));setModal(master);}setRecurChoice(null);}}>All Events</button><button style={{flex:1,padding:"11px 0",borderRadius:10,border:"none",background:t.accent,color:t.acText,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FF}} onClick={()=>{editOneRef.current={masterId:recurChoice._masterId,date:recurChoice.date};setSel(new Date(recurChoice.date+"T12:00:00"));setModal({...recurChoice,id:mkId(),_masterId:undefined,repeat:null});setRecurChoice(null);}}>Just This One</button></div></div></div>}
       {showSearch&&<SearchModal events={visibleEvents} onSelect={ev=>{setSel(new Date(ev.date+"T12:00:00"));setView("day");setShowSearch(false);}} onClose={()=>setShowSearch(false)}/>}
+      {showVoice&&<VoiceAssistant events={visibleEvents} todos={todos} geminiKey={geminiKey} onClose={()=>setShowVoice(false)} onSaveEvent={saveEvent} onAddTodo={onAddTodo} onAddGrocery={onAddGrocery}/>}
     </div>
   </ThemeCtx.Provider>;
 }
