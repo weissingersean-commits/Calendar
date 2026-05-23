@@ -1,49 +1,63 @@
-const CACHE_NAME = 'homelight-cache-v1';
-const PRECACHE_URLS = ['./', './index.html', './manifest.json'];
+const CACHE = 'homelight-v2';
 
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(PRECACHE_URLS))
+// Pre-cache everything the app needs to render offline
+const PRECACHE = [
+  './',
+  './index.html',
+  './manifest.json',
+  'https://unpkg.com/react@18/umd/react.production.min.js',
+  'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
+  'https://unpkg.com/@babel/standalone/babel.min.js',
+  'https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap',
+];
+
+// Hosts whose responses should never be cached (live data)
+const PASSTHROUGH_HOSTS = [
+  'api.open-meteo.com',
+  'geocoding-api.open-meteo.com',
+  'nominatim.openstreetmap.org',
+  'ipapi.co',
+  'corsproxy.io',
+];
+
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => c.addAll(PRECACHE))
       .then(() => self.skipWaiting())
   );
 });
 
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(
-      keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-    )).then(() => self.clients.claim())
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
-self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') return;
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
 
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put('./', copy));
-          return response;
-        })
-        .catch(() => caches.match('./index.html').then(resp => resp || caches.match('./')))
-    );
-    return;
-  }
+  const url = new URL(e.request.url);
 
-  event.respondWith(
-    caches.match(event.request).then(cached => {
+  // Let weather, geocoding, and iCal feeds always go to the network
+  if (PASSTHROUGH_HOSTS.some(h => url.hostname.includes(h))) return;
+
+  e.respondWith(
+    caches.match(e.request).then(cached => {
       if (cached) return cached;
-      return fetch(event.request)
-        .then(response => {
-          if (!response || response.status !== 200 || response.type === 'opaque') return response;
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
-          return response;
-        })
-        .catch(() => cached);
+      return fetch(e.request).then(res => {
+        // Only cache valid, non-opaque responses (opaque = cross-origin without CORS)
+        if (res && res.status === 200 && res.type !== 'opaque') {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return res;
+      }).catch(() => {
+        // Navigation offline fallback — return the cached shell
+        if (e.request.mode === 'navigate') return caches.match('./');
+      });
     })
   );
 });

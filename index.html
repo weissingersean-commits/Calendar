@@ -467,11 +467,12 @@ function Homelight(){
   const[feeds,setFeeds]=useP("feeds",[]),[syncStatus,setSyncStatus]=useState(null);
   const[photos,setPhotos]=useP("photos",[]);
   const[deferredPrompt,setDeferredPrompt]=useState(null),[installStatus,setInstallStatus]=useState(null);
-  const handleInstallPrompt=useCallback(async()=>{if(deferredPrompt){deferredPrompt.prompt();const choice=await deferredPrompt.userChoice;setInstallStatus(choice.outcome);setDeferredPrompt(null);}else{alert('Open the browser menu ⋮ and choose "Add to Home Screen" to install the app.');}},[deferredPrompt]);
+  const[isStandalone,setIsStandalone]=useState(false);
+  const handleInstallPrompt=useCallback(async()=>{if(deferredPrompt){deferredPrompt.prompt();const choice=await deferredPrompt.userChoice;setInstallStatus(choice.outcome==="accepted"?"installed":"dismissed");setDeferredPrompt(null);}else if(isStandalone){setInstallStatus("installed");}else{setInstallStatus("menu");}},[deferredPrompt,isStandalone]);
   const lastAct=useRef(Date.now());
 
   useEffect(()=>{const i=setInterval(()=>setTime(new Date()),15000);return()=>clearInterval(i);},[]);
-  useEffect(()=>{const handler=e=>{e.preventDefault();setDeferredPrompt(e);setInstallStatus(null);};window.addEventListener("beforeinstallprompt",handler);const installed=()=>setInstallStatus("installed");window.addEventListener("appinstalled",installed);return()=>{window.removeEventListener("beforeinstallprompt",handler);window.removeEventListener("appinstalled",installed);};},[]);
+  useEffect(()=>{setIsStandalone(window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true);const handler=e=>{e.preventDefault();setDeferredPrompt(e);setInstallStatus(null);};window.addEventListener("beforeinstallprompt",handler);const installed=()=>setInstallStatus("installed");window.addEventListener("appinstalled",installed);return()=>{window.removeEventListener("beforeinstallprompt",handler);window.removeEventListener("appinstalled",installed);};},[]);
   useEffect(()=>{if(!loc)return;(async()=>{try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit&timezone=auto`);const d=await r.json();if(d.current)setWx({temp:Math.round(d.current.temperature_2m),code:d.current.weather_code});}catch{}})();},[loc]);
   useEffect(()=>{if(!ssDelay)return;const h=()=>{lastAct.current=Date.now();};window.addEventListener("mousemove",h);window.addEventListener("touchstart",h);window.addEventListener("keydown",h);const ck=setInterval(()=>{if(Date.now()-lastAct.current>ssDelay*60000&&!showSS)setShowSS(true);},10000);return()=>{window.removeEventListener("mousemove",h);window.removeEventListener("touchstart",h);window.removeEventListener("keydown",h);clearInterval(ck);};},[ssDelay,showSS]);
 
