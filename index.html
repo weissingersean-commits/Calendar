@@ -586,10 +586,11 @@ function VoiceAssistant({events,todos,geminiKey,geminiModel,onClose,onSaveEvent,
       setPhase("speaking");
       const utt=new SpeechSynthesisUtterance(display);
       utt.rate=1.0;
-      utt.onend=()=>{setPhase("idle");if(didAct)setTimeout(onClose,600);};
-      utt.onerror=()=>{setPhase("idle");if(didAct)setTimeout(onClose,600);};
+      utt.onend=()=>setPhase("idle");
+      utt.onerror=()=>setPhase("idle");
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(utt);
+      if(didAct)setTimeout(onClose,2500);
     }catch(e){
       setResponse("Connection error — tap Try Again.");
       setHasError(true);setPhase("idle");
