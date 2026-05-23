@@ -545,13 +545,19 @@ function VoiceAssistant({events,todos,geminiKey,geminiModel,onClose,onSaveEvent,
     const timeStr=fmtT(today.getHours(),today.getMinutes());
     const upStr=upcoming.length?upcoming.map(e=>`- ${e.title} on ${e.date} at ${fmtT(e.hour,e.minute||0)}`).join("\n"):"None scheduled";
     const tdStr=(todos||[]).filter(i=>!i.done).slice(0,10).map(i=>`- ${i.text}`).join("\n")||"None";
-    return`You are a helpful voice assistant for Homelight, a family calendar app. Keep responses short and conversational (under 60 words when possible) — they will be spoken aloud.\n\nToday is ${todayStr}. Current time: ${timeStr}.\n\nUpcoming events:\n${upStr}\n\nPending tasks:\n${tdStr}\n\nTo add a calendar event, append on its own line: ACTION:{"type":"add_event","title":"...","date":"YYYY-MM-DD","hour":14,"minute":0,"duration":1,"category":"personal"}\nTo add a task: ACTION:{"type":"add_todo","text":"..."}\nTo add a grocery item: ACTION:{"type":"add_grocery","text":"..."}\nCategories: personal, work, health, social, errand, family. Default date if unspecified: ${dkey(today)}.`;
+    return`You are a voice assistant built into Homelight, a family calendar app. Responses are spoken aloud — keep them under 40 words and conversational.\n\nToday is ${todayStr}. Current time: ${timeStr}.\n\nUpcoming events:\n${upStr}\n\nPending tasks:\n${tdStr}\n\nCRITICAL RULES:\n- When asked to add an event, task, or grocery item — DO IT IMMEDIATELY. Never ask for more information. Use the details given and make reasonable assumptions for anything missing.\n- Always include the ACTION line at the end of your response when adding something.\n- Use today's date (${dkey(today)}) if no date is given. Use 1 hour duration if not specified. Use "personal" category if not specified.\n\nACTION format (append on its own line, no markdown, no code block):\nTo add event: ACTION:{"type":"add_event","title":"...","date":"YYYY-MM-DD","hour":14,"minute":0,"duration":1,"category":"personal"}\nTo add task: ACTION:{"type":"add_todo","text":"..."}\nTo add grocery: ACTION:{"type":"add_grocery","text":"..."}\nCategories: personal, work, health, social, errand, family.`;
   };
   const parseAction=text=>{
-    const m=text.match(/ACTION:\s*(\{[\s\S]*?\})/);
-    if(!m)return;
+    const idx=text.indexOf('ACTION:');
+    if(idx===-1)return;
+    const after=text.slice(idx+7).trim();
+    const start=after.indexOf('{');
+    if(start===-1)return;
+    let depth=0,end=-1;
+    for(let i=start;i<after.length;i++){if(after[i]==='{')depth++;else if(after[i]==='}'){depth--;if(depth===0){end=i;break;}}}
+    if(end===-1)return;
     try{
-      const a=JSON.parse(m[1]);
+      const a=JSON.parse(after.slice(start,end+1));
       if(a.type==="add_event")onSaveEvent({id:mkId(),title:a.title||"Event",date:a.date||dkey(today),hour:a.hour??9,minute:a.minute??0,duration:a.duration||1,category:a.category||"personal",location:a.location||"",synced:false,color:null,repeat:null});
       else if(a.type==="add_todo")onAddTodo(a.text);
       else if(a.type==="add_grocery")onAddGrocery(a.text);
