@@ -502,13 +502,13 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,photos,setPhotos,remin
         </div>
         <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.accent,marginBottom:10}}>Setup Steps</div>
         {[
-          ["1","Install Fully Kiosk Browser","Search "Fully Kiosk Browser" in the Google Play Store and install it — it's free."],
-          ["2","Open it and enter the URL","Tap the address bar at the top → paste the URL above, or scan the QR code with your phone camera and open it on the tablet."],
-          ["3","Keep the screen on","Tap ☰ → Settings → Screen & Orientation → turn on "Keep Screen On While Plugged In""],
-          ["4","Set brightness","While in Screen & Orientation, set Brightness to 70–80% to prevent dim images."],
-          ["5","Auto-start after reboot","Tap ☰ → Settings → Autostart → turn on "Autostart on Boot" so a power cut doesn't leave it blank."],
-          ["6","Set a sleep schedule (optional)","Tap ☰ → Settings → Screen On/Off Times → set a bedtime (e.g. off at 11 PM, on at 7 AM)."],
-          ["7","Plug in and mount","Keep the tablet plugged in at all times. Use a wall mount or stand and you're done!"],
+          ["1","Install Fully Kiosk Browser","Search for Fully Kiosk Browser in the Google Play Store and install it. It is free."],
+          ["2","Open it and enter the URL","Tap the address bar at the top, then paste the URL above. Or scan the QR code with your phone camera and open it on the tablet."],
+          ["3","Keep the screen on","Tap the menu icon, then Settings, then Screen and Orientation. Turn on: Keep Screen On While Plugged In."],
+          ["4","Set brightness","While in Screen and Orientation, set Brightness to 70-80% to prevent dim images."],
+          ["5","Auto-start after reboot","Tap Settings, then Autostart, then turn on Autostart on Boot so a power cut does not leave it blank."],
+          ["6","Set a sleep schedule (optional)","Tap Settings, then Screen On/Off Times. Set a bedtime, for example off at 11 PM and on at 7 AM."],
+          ["7","Plug in and mount","Keep the tablet plugged in at all times. Use a wall mount or stand and you are done!"],
         ].map(([n,title,desc])=><div key={n} style={{display:"flex",gap:10,marginBottom:12}}>
           <div style={{width:22,height:22,borderRadius:"50%",background:t.acDim,border:`1px solid ${t.acGlow}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:t.accent,flexShrink:0}}>{n}</div>
           <div><div style={{fontSize:12,fontWeight:600,color:t.text,marginBottom:2}}>{title}</div><div style={{fontSize:11,color:t.sub,lineHeight:1.6}}>{desc}</div></div>
