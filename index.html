@@ -455,6 +455,9 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,photos,setPhotos,remin
   const t=useT(),s=useS(),fileRef=useRef(null);
   const[notifPerm,setNotifPerm]=useState(typeof Notification!=="undefined"?Notification.permission:"unsupported");
   const requestNotif=async()=>{if(typeof Notification==="undefined")return;const p=await Notification.requestPermission();setNotifPerm(p);};
+  const[showKiosk,setShowKiosk]=useState(false),[copied,setCopied]=useState(false);
+  const appUrl=window.location.origin+window.location.pathname.replace(/\/$/,"")+"/";
+  const copyUrl=()=>{if(navigator.clipboard){navigator.clipboard.writeText(appUrl).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);});}else{const el=document.createElement("textarea");el.value=appUrl;document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);setCopied(true);setTimeout(()=>setCopied(false),2000);}};
   const handleFiles=e=>{Array.from(e.target.files||[]).forEach(file=>{if(!file.type.startsWith("image/"))return;const reader=new FileReader();reader.onload=ev=>{setPhotos(prev=>[...prev,ev.target.result]);};reader.readAsDataURL(file);});};
   const clearAll=()=>{if(confirm("Clear ALL Homelight data?")){Object.keys(localStorage).filter(k=>k.startsWith("hl4_")).forEach(k=>localStorage.removeItem(k));window.location.reload();}};
   return<div style={{padding:16,overflow:"auto",flex:1}}>
@@ -484,11 +487,38 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,photos,setPhotos,remin
         {installStatus&&<span style={{fontSize:11,color:t.success}}>{installStatus==="installed"?"Installed":"Prompt shown"}</span>}
       </div>
     </button>
-    <button onClick={()=>window.open("https://www.fully-kiosk.com/","_blank") } style={{...s.crd,display:"block",width:"100%",textAlign:"left",cursor:"pointer",border:`1px solid ${t.bdr}`,background:t.card}}>
-      <div style={{fontSize:11,fontWeight:700,color:t.text,marginBottom:8}}>🖥️ Wall-Mount Setup</div>
-      <div style={{fontSize:11,color:t.sub,lineHeight:1.6}}>Use <b>Fully Kiosk Browser</b> (free) on Android for kiosk mode with wake/sleep scheduling.</div>
-      <div style={{fontSize:12,fontWeight:700,color:t.accent,marginTop:10}}>Open setup guide</div>
-    </button>
+    <div style={{...s.crd,marginBottom:10}}>
+      <div onClick={()=>setShowKiosk(!showKiosk)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
+        <div style={{fontSize:11,fontWeight:700,color:t.text}}>🖥️ Wall-Mount Setup</div>
+        <span style={{color:t.dim,fontSize:12,lineHeight:1}}>{showKiosk?"▲":"▼"}</span>
+      </div>
+      {!showKiosk&&<div style={{fontSize:11,color:t.sub,marginTop:6}}>Step-by-step guide for Lenovo/Samsung tablets.</div>}
+      {showKiosk&&<div style={{marginTop:14}}>
+        <div style={{textAlign:"center",marginBottom:16}}>
+          <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.dim,marginBottom:10}}>Your App URL</div>
+          <img src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(appUrl)}&bgcolor=ffffff&color=06080D&margin=10`} alt="QR code" style={{borderRadius:10,display:"block",margin:"0 auto",border:"4px solid #fff"}}/>
+          <div style={{fontSize:11,color:t.sub,margin:"8px 0 4px",wordBreak:"break-all"}}>{appUrl}</div>
+          <button onClick={copyUrl} style={{background:"none",border:`1px solid ${t.bdr}`,color:copied?t.success:t.accent,borderRadius:8,padding:"5px 14px",fontSize:11,cursor:"pointer",fontFamily:FF}}>{copied?"✓ Copied!":"📋 Copy URL"}</button>
+        </div>
+        <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.accent,marginBottom:10}}>Setup Steps</div>
+        {[
+          ["1","Install Fully Kiosk Browser","Search "Fully Kiosk Browser" in the Google Play Store and install it — it's free."],
+          ["2","Open it and enter the URL","Tap the address bar at the top → paste the URL above, or scan the QR code with your phone camera and open it on the tablet."],
+          ["3","Keep the screen on","Tap ☰ → Settings → Screen & Orientation → turn on "Keep Screen On While Plugged In""],
+          ["4","Set brightness","While in Screen & Orientation, set Brightness to 70–80% to prevent dim images."],
+          ["5","Auto-start after reboot","Tap ☰ → Settings → Autostart → turn on "Autostart on Boot" so a power cut doesn't leave it blank."],
+          ["6","Set a sleep schedule (optional)","Tap ☰ → Settings → Screen On/Off Times → set a bedtime (e.g. off at 11 PM, on at 7 AM)."],
+          ["7","Plug in and mount","Keep the tablet plugged in at all times. Use a wall mount or stand and you're done!"],
+        ].map(([n,title,desc])=><div key={n} style={{display:"flex",gap:10,marginBottom:12}}>
+          <div style={{width:22,height:22,borderRadius:"50%",background:t.acDim,border:`1px solid ${t.acGlow}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:t.accent,flexShrink:0}}>{n}</div>
+          <div><div style={{fontSize:12,fontWeight:600,color:t.text,marginBottom:2}}>{title}</div><div style={{fontSize:11,color:t.sub,lineHeight:1.6}}>{desc}</div></div>
+        </div>)}
+        <div style={{fontSize:10,color:t.dim,padding:"8px 10px",borderRadius:8,background:t.card,lineHeight:1.6,marginTop:4}}>
+          💡 <b style={{color:t.text}}>Fully Kiosk Plus</b> (~$7 one-time per device) adds motion-activated wake, kiosk lockdown, and remote management. Totally optional.
+        </div>
+        <button onClick={()=>window.open("https://www.fully-kiosk.com/","_blank")} style={{...s.btnS,width:"100%",marginTop:10,fontSize:11}}>Open Fully Kiosk website ↗</button>
+      </div>}
+    </div>
     <label style={{...s.lbl,marginTop:8}}>Clear Data</label>
     <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
       <button onClick={onClearEvents} style={{flex:1,padding:"9px 0",borderRadius:8,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF}}>Clear Events</button>
