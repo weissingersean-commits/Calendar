@@ -1,4 +1,4 @@
-const CACHE = 'homelight-v2';
+const CACHE = 'homelight-v3';
 
 // Pre-cache everything the app needs to render offline
 const PRECACHE = [
