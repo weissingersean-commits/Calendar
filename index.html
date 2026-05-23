@@ -451,8 +451,10 @@ function Screensaver({onTap,wx,loc,customPhotos}){
 }
 
 // ═════════════════ SETTINGS ═════════════════════════════════════════
-function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,photos,setPhotos,onClearEvents,onClearLists,onClearMeals,deferredPrompt,onInstallPrompt,installStatus}){
+function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,photos,setPhotos,reminderMins,setReminderMins,onClearEvents,onClearLists,onClearMeals,deferredPrompt,onInstallPrompt,installStatus}){
   const t=useT(),s=useS(),fileRef=useRef(null);
+  const[notifPerm,setNotifPerm]=useState(typeof Notification!=="undefined"?Notification.permission:"unsupported");
+  const requestNotif=async()=>{if(typeof Notification==="undefined")return;const p=await Notification.requestPermission();setNotifPerm(p);};
   const handleFiles=e=>{Array.from(e.target.files||[]).forEach(file=>{if(!file.type.startsWith("image/"))return;const reader=new FileReader();reader.onload=ev=>{setPhotos(prev=>[...prev,ev.target.result]);};reader.readAsDataURL(file);});};
   const clearAll=()=>{if(confirm("Clear ALL Homelight data?")){Object.keys(localStorage).filter(k=>k.startsWith("hl4_")).forEach(k=>localStorage.removeItem(k));window.location.reload();}};
   return<div style={{padding:16,overflow:"auto",flex:1}}>
@@ -469,6 +471,11 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,photos,setPhotos,onCle
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>{photos.map((p,i)=><div key={i} style={{width:60,height:40,borderRadius:6,overflow:"hidden",position:"relative",border:`1px solid ${t.bdr}`}}><img src={p} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/><button onClick={()=>setPhotos(photos.filter((_,j)=>j!==i))} style={{position:"absolute",top:1,right:1,background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:10,borderRadius:4,cursor:"pointer",width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>×</button></div>)}</div>
       <button onClick={()=>setPhotos([])} style={{background:"none",border:"none",color:t.dim,fontSize:11,cursor:"pointer",padding:0,marginBottom:10}}>Clear all photos</button>
     </div>}
+    <label style={s.lbl}>Event Reminders</label>
+    {notifPerm==="unsupported"&&<div style={{fontSize:11,color:t.dim,marginBottom:12}}>Notifications not supported in this browser.</div>}
+    {notifPerm==="denied"&&<div style={{fontSize:11,color:t.danger,marginBottom:12}}>Notifications blocked — enable them in browser settings, then reload.</div>}
+    {notifPerm==="default"&&<><button onClick={requestNotif} style={{...s.btnP,marginBottom:8}}>Enable Notifications</button><div style={{fontSize:11,color:t.dim,marginBottom:12}}>Required before reminders will fire.</div></>}
+    {notifPerm==="granted"&&<><select style={s.sel} value={reminderMins} onChange={e=>setReminderMins(parseInt(e.target.value))}><option value={0}>Off</option><option value={5}>5 min before</option><option value={10}>10 min before</option><option value={15}>15 min before</option><option value={30}>30 min before</option><option value={60}>1 hour before</option></select><div style={{fontSize:11,color:t.dim,marginBottom:12}}>Works best on Android Chrome. iOS support varies.</div></>}
     <button onClick={onInstallPrompt} style={{...s.crd,display:"block",width:"100%",textAlign:"left",cursor:"pointer",border:`1px solid ${t.bdr}`,background:t.card}}>
       <div style={{fontSize:11,fontWeight:700,color:t.text,marginBottom:8}}>📱 Install as App (PWA)</div>
       <div style={{fontSize:11,color:t.sub,lineHeight:1.6}}>{deferredPrompt?"Tap below to install the app now." : "Open Chrome menu ⋮ → Add to Home Screen."}</div>
@@ -506,10 +513,12 @@ function Homelight(){
   const[time,setTime]=useState(new Date()),[ssDelay,setSsDelay]=useP("ssDelay",0);
   const[feeds,setFeeds]=useP("feeds",[]),[syncStatus,setSyncStatus]=useState(null);
   const[photos,setPhotos]=useP("photos",[]);
+  const[reminderMins,setReminderMins]=useP("reminderMins",0);
   const[deferredPrompt,setDeferredPrompt]=useState(null),[installStatus,setInstallStatus]=useState(null);
   const[isStandalone,setIsStandalone]=useState(false);
   const handleInstallPrompt=useCallback(async()=>{if(deferredPrompt){deferredPrompt.prompt();const choice=await deferredPrompt.userChoice;setInstallStatus(choice.outcome==="accepted"?"installed":"dismissed");setDeferredPrompt(null);}else if(isStandalone){setInstallStatus("installed");}else{setInstallStatus("menu");}},[deferredPrompt,isStandalone]);
   const lastAct=useRef(Date.now());
+  const notifiedRef=useRef(new Set());
 
   useEffect(()=>{const i=setInterval(()=>setTime(new Date()),15000);return()=>clearInterval(i);},[]);
   useEffect(()=>{setIsStandalone(window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true);const handler=e=>{e.preventDefault();setDeferredPrompt(e);setInstallStatus(null);};window.addEventListener("beforeinstallprompt",handler);const installed=()=>setInstallStatus("installed");window.addEventListener("appinstalled",installed);return()=>{window.removeEventListener("beforeinstallprompt",handler);window.removeEventListener("appinstalled",installed);};},[]);
@@ -527,6 +536,26 @@ function Homelight(){
   const onEv=useCallback(ev=>{if(ev._masterId){const master=events.find(e=>e.id===ev._masterId);if(master){setModal(master);return;}}setModal(ev);},[events]);
   const upcoming=useMemo(()=>events.filter(e=>e.date>=dkey(new Date())).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date)).slice(0,6),[events]);
   const visibleEvents=useMemo(()=>{const dis=new Set(feeds.filter(f=>!f.enabled).map(f=>f.id));const filtered=events.filter(e=>!e.feedId||!dis.has(e.feedId));return expandManualRecurrences(filtered);},[events,feeds]);
+
+  useEffect(()=>{
+    if(!reminderMins||typeof Notification==="undefined"||Notification.permission!=="granted")return;
+    const check=()=>{
+      const now=new Date(),todayKey=dkey(now),nowMins=now.getHours()*60+now.getMinutes();
+      visibleEvents.forEach(ev=>{
+        if(ev.date!==todayKey)return;
+        const evMins=ev.hour*60+(ev.minute||0),diff=evMins-nowMins;
+        const key=`${ev.id}~${ev.date}`;
+        if(diff>0&&diff<=reminderMins&&!notifiedRef.current.has(key)){
+          notifiedRef.current.add(key);
+          const when=diff<=1?"Starting now":`In ${diff} min · ${fmtT(ev.hour,ev.minute||0)}`;
+          new Notification(ev.title,{body:when+(ev.location?` · ${ev.location}`:""),tag:key});
+        }
+      });
+    };
+    check();
+    const i=setInterval(check,60000);
+    return()=>clearInterval(i);
+  },[reminderMins,visibleEvents]);
 
   if(showSS)return<Screensaver onTap={()=>{setShowSS(false);lastAct.current=Date.now();}} wx={wx} loc={loc} customPhotos={photos}/>;
 
@@ -555,7 +584,7 @@ function Homelight(){
         </div>
         <div style={{width:400,borderLeft:`1px solid ${t.bdr}`,background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0}}>
           {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
-          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} photos={photos} setPhotos={setPhotos} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt}/>
+          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} photos={photos} setPhotos={setPhotos} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt}/>
           :<>
             <div style={{padding:20,borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc}/></div>
             <div style={{padding:16,borderBottom:`1px solid ${t.bdr}`}}>
