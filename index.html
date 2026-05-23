@@ -500,7 +500,7 @@ function Homelight(){
           {view==="week"&&<WeekView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv}/>}
           {view==="day"&&<DayView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv}/>}
         </div>
-        <div style={{width:360,borderLeft:`1px solid ${t.bdr}`,background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0}}>
+        <div style={{width:400,borderLeft:`1px solid ${t.bdr}`,background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0}}>
           {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
           :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} photos={photos} setPhotos={setPhotos} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}}/>
           :<>
