@@ -207,9 +207,6 @@ function expandManualRecurrences(events){
   return result;
 }
 
-// ─── Sample Data ─────────────────────────────────────────────────────
-function makeSamples(){const evs=[],tpls=[{t:"Morning Run",c:"health",h:6,d:1},{t:"Team Standup",c:"work",h:9,d:.5},{t:"Dentist",c:"health",h:14,d:1},{t:"Grocery Run",c:"errand",h:17,d:1},{t:"Dinner w/ Alex",c:"social",h:19,d:2},{t:"Project Review",c:"work",h:11,d:1.5},{t:"Yoga",c:"health",h:7,d:1},{t:"Call Mom",c:"family",h:20,d:.5},{t:"Lunch Meeting",c:"work",h:12,d:1},{t:"Soccer Practice",c:"family",h:16,d:1.5}];
-  const now=new Date();for(let i=-5;i<=14;i++){const d=addD(now,i),cnt=1+Math.floor(Math.random()*3);[...tpls].sort(()=>Math.random()-.5).slice(0,cnt).forEach(e=>evs.push({id:mkId(),title:e.t,date:dkey(d),hour:e.h,minute:0,duration:e.d,category:e.c,synced:false}));}return evs;}
 
 // ─── Shared Styles ───────────────────────────────────────────────────
 function evColor(ev){return ev.feedColor||CATS[ev.category]?.bg||"#38BDF8";}
@@ -231,12 +228,12 @@ function useS(){const t=useT();return useMemo(()=>({
 }),[t]);}
 
 // ═════════════════ WEATHER ════════════════════════════════════════════
-function Weather({loc,setLoc}){
+function Weather({loc,setLoc,onWx}){
   const t=useT(),s=useS();
   const[wx,setWx]=useState(null),[fc,setFc]=useState([]),[ld,setLd]=useState(true),[open,setOpen]=useState(false);
   const[q,setQ]=useState(""),[res,setRes]=useState([]),[srch,setSrch]=useState(false),[gErr,setGErr]=useState(null);
   const[useF,setUseF]=useP("unit",true);
-  const fetchWx=useCallback(async(lat,lon)=>{try{setLd(true);const u=useF?"fahrenheit":"celsius";const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=${u}&wind_speed_unit=mph&timezone=auto&forecast_days=7`);const d=await r.json();if(d.current)setWx({temp:Math.round(d.current.temperature_2m),feels:Math.round(d.current.apparent_temperature),hum:d.current.relative_humidity_2m,wind:Math.round(d.current.wind_speed_10m),code:d.current.weather_code});if(d.daily)setFc(d.daily.time.slice(1,6).map((x,i)=>({date:x,hi:Math.round(d.daily.temperature_2m_max[i+1]),lo:Math.round(d.daily.temperature_2m_min[i+1]),code:d.daily.weather_code[i+1],prec:d.daily.precipitation_probability_max[i+1]})));}catch(e){console.error(e);}finally{setLd(false);}
+  const fetchWx=useCallback(async(lat,lon)=>{try{setLd(true);const u=useF?"fahrenheit":"celsius";const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=${u}&wind_speed_unit=mph&timezone=auto&forecast_days=7`);const d=await r.json();if(d.current){const w={temp:Math.round(d.current.temperature_2m),feels:Math.round(d.current.apparent_temperature),hum:d.current.relative_humidity_2m,wind:Math.round(d.current.wind_speed_10m),code:d.current.weather_code};setWx(w);onWx?.({temp:w.temp,code:w.code});}if(d.daily)setFc(d.daily.time.slice(1,6).map((x,i)=>({date:x,hi:Math.round(d.daily.temperature_2m_max[i+1]),lo:Math.round(d.daily.temperature_2m_min[i+1]),code:d.daily.weather_code[i+1],prec:d.daily.precipitation_probability_max[i+1]})));}catch(e){console.error(e);}finally{setLd(false);}
   },[useF]);
   const detectViaIP=useCallback(async()=>{try{const r=await fetch("https://ipapi.co/json/");const d=await r.json();if(d.latitude&&d.longitude){setLoc({name:`${d.city||"My Location"}${d.region?", "+d.region:""}${d.country_name?` · ${d.country_name}`:""}`,lat:d.latitude,lon:d.longitude});setGErr(null);return;}}catch(e){console.error(e);}setGErr("Unable to auto-detect location. Please search manually.");},[setLoc]);
   const detect=useCallback(()=>{if(!navigator.geolocation){setGErr("Geolocation unavailable — trying IP fallback...");detectViaIP();return;}setGErr(null);navigator.geolocation.getCurrentPosition(async p=>{const{latitude:la,longitude:lo}=p.coords;try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${la}&lon=${lo}&format=json&addressdetails=1`);const d=await r.json();const city=d?.address?.city||d?.address?.town||d?.address?.village||d?.address?.county||"My Location";const st=d?.address?.state||"";setLoc({name:`${city}${st?", "+st:""}`,lat:la,lon:lo});}catch{setLoc({name:"My Location",lat:la,lon:lo});}},async e=>{setGErr("Location denied — trying IP fallback...");await detectViaIP();},{timeout:10000});},[setLoc,detectViaIP]);
@@ -597,7 +594,6 @@ function Homelight(){
 
   useEffect(()=>{const i=setInterval(()=>setTime(new Date()),15000);return()=>clearInterval(i);},[]);
   useEffect(()=>{setIsStandalone(window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true);const handler=e=>{e.preventDefault();setDeferredPrompt(e);setInstallStatus(null);};window.addEventListener("beforeinstallprompt",handler);const installed=()=>setInstallStatus("installed");window.addEventListener("appinstalled",installed);return()=>{window.removeEventListener("beforeinstallprompt",handler);window.removeEventListener("appinstalled",installed);};},[]);
-  useEffect(()=>{if(!loc)return;(async()=>{try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit&timezone=auto`);const d=await r.json();if(d.current)setWx({temp:Math.round(d.current.temperature_2m),code:d.current.weather_code});}catch{}})();},[loc]);
   useEffect(()=>{if(!ssDelay)return;const h=()=>{lastAct.current=Date.now();};window.addEventListener("mousemove",h);window.addEventListener("touchstart",h);window.addEventListener("keydown",h);const ck=setInterval(()=>{if(Date.now()-lastAct.current>ssDelay*60000&&!showSS)setShowSS(true);},10000);return()=>{window.removeEventListener("mousemove",h);window.removeEventListener("touchstart",h);window.removeEventListener("keydown",h);clearInterval(ck);};},[ssDelay,showSS]);
 
   const syncFeed=useCallback(async feed=>{try{const url=normalizeFeedUrl(feed.url);const text=await fetchWithCorsFallback(url);const parsed=parseICS(text,feed.id,feed.color);setEvents(prev=>[...prev.filter(e=>e.feedId!==feed.id),...parsed]);setFeeds(prev=>prev.map(f=>f.id===feed.id?{...f,url, lastSync:Date.now(),count:parsed.length,error:null}:f));return true;}catch(err){const message=err?.message||"Failed to load feed";setFeeds(prev=>prev.map(f=>f.id===feed.id?{...f,count:0,error:message}:f));return false;}},[setEvents,setFeeds]);
@@ -662,7 +658,7 @@ function Homelight(){
           {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
           :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} photos={photos} setPhotos={setPhotos} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt}/>
           :<>
-            <div style={{padding:20,borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc}/></div>
+            <div style={{padding:20,borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc} onWx={setWx}/></div>
             <div style={{padding:16,borderBottom:`1px solid ${t.bdr}`}}>
               <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:2,color:t.accent,marginBottom:10}}>Coming Up</div>
               {upcoming.length===0&&<div style={{fontSize:12,color:t.dim}}>Nothing scheduled</div>}
