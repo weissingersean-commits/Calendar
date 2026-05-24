@@ -72,6 +72,7 @@ const wmo=c=>WMO[c]||{l:"Unknown",i:"🌡️"};
 
 // ─── Utils ───────────────────────────────────────────────────────────
 const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;};
+const inSleepWindow=(now,sleepT,wakeT)=>{const[sh,sm]=(sleepT||"22:00").split(":").map(Number);const[wh,wm]=(wakeT||"07:00").split(":").map(Number);const cur=now.getHours()*60+now.getMinutes();const s=sh*60+sm,w=wh*60+wm;return s>w?cur>=s||cur<w:cur>=s&&cur<w;};
 const dkey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const sameD=(a,b)=>dkey(a)===dkey(b);
 const addD=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r;};
@@ -519,10 +520,20 @@ function CalSyncPanel({feeds,setFeeds,syncAll,syncStatus}){
 // ═════════════════ SCREENSAVER ═══════════════════════════════════════
 const DEFAULT_PHOTOS=["https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1501854140801-50d01698950b?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1400&h=900&fit=crop"];
 const NATURE_PHOTOS=shuffle([10,11,12,13,14,15,16,17,18,19,20,23,24,25,26,28,29,36,37,39,40,41,42,43,44,45,46,47,48,49,50,51,53,54,56,57,58,59,60,63,64,65,66,67,69,70,72,73,74,75,76,77,78,79,80,83,84,85,86,87,88,90,91,92,93,94,95,96,97,98,99,100,110,112,113,114,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130].map(id=>`https://picsum.photos/id/${id}/1920/1080`));
-function Screensaver({onTap,wx,loc,customPhotos,ssCollections,events}){
+function Screensaver({onTap,wx,loc,customPhotos,ssCollections,ssSleepEnabled,ssSleepTime,ssWakeTime,events}){
   const base=useMemo(()=>customPhotos?.length>0?customPhotos:DEFAULT_PHOTOS,[]);
   const[photos,setPhotos]=useState(base);
   const[idx,setIdx]=useState(0),[time,setTime]=useState(new Date()),[fade,setFade]=useState(true);
+  const[tempWake,setTempWake]=useState(false);
+  const tempWakeRef=useRef(null);
+  const sleeping=ssSleepEnabled&&inSleepWindow(time,ssSleepTime,ssWakeTime)&&!tempWake;
+  const handleTap=()=>{
+    if(ssSleepEnabled&&inSleepWindow(time,ssSleepTime,ssWakeTime)){
+      setTempWake(true);
+      clearTimeout(tempWakeRef.current);
+      tempWakeRef.current=setTimeout(()=>setTempWake(false),30000);
+    }else{onTap();}
+  };
   useEffect(()=>{
     (async()=>{
       let extra=[];
@@ -550,7 +561,8 @@ function Screensaver({onTap,wx,loc,customPhotos,ssCollections,events}){
   const info=wx?wmo(wx.code):null;
   const todayKey=dkey(time),nowMins=time.getHours()*60+time.getMinutes();
   const upcoming=(events||[]).filter(e=>e.date>todayKey||(e.date===todayKey&&(e.hour*60+(e.minute||0))>=nowMins)).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date)).slice(0,3);
-  return<div style={{position:"fixed",inset:0,zIndex:100,background:"#000",cursor:"pointer"}} onClick={onTap}>
+  if(sleeping)return<div style={{position:"fixed",inset:0,zIndex:100,background:"#000",cursor:"pointer"}} onClick={handleTap}/>;
+  return<div style={{position:"fixed",inset:0,zIndex:100,background:"#000",cursor:"pointer"}} onClick={handleTap}>
     <img src={photos[idx]} alt="" style={{width:"100%",height:"100%",objectFit:"cover",position:"absolute",transition:"opacity 0.7s ease-in-out",opacity:fade?1:0}}/>
     <div style={{position:"absolute",inset:0,background:"linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.2) 45%, transparent 70%)"}}/>
     <div style={{position:"absolute",bottom:48,left:52,zIndex:1}}>
@@ -683,7 +695,7 @@ function VoiceAssistant({events,todos,geminiKey,geminiModel,onClose,onSaveEvent,
 }
 
 // ═════════════════ SETTINGS ═════════════════════════════════════════
-function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart,photos,setPhotos,ssCollections,setSsCollections,reminderMins,setReminderMins,onClearEvents,onClearLists,onClearMeals,deferredPrompt,onInstallPrompt,installStatus,geminiKey,setGeminiKey,geminiModel,setGeminiModel,onClose}){
+function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart,photos,setPhotos,ssCollections,setSsCollections,ssSleepEnabled,setSsSleepEnabled,ssSleepTime,setSsSleepTime,ssWakeTime,setSsWakeTime,reminderMins,setReminderMins,onClearEvents,onClearLists,onClearMeals,deferredPrompt,onInstallPrompt,installStatus,geminiKey,setGeminiKey,geminiModel,setGeminiModel,onClose}){
   const t=useT(),s=useS(),fileRef=useRef(null);
   const[notifPerm,setNotifPerm]=useState(typeof Notification!=="undefined"?Notification.permission:"unsupported");
   const requestNotif=async()=>{if(typeof Notification==="undefined")return;const p=await Notification.requestPermission();setNotifPerm(p);};
@@ -712,6 +724,17 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart
     </select>
     <label style={s.lbl}>Auto-Screensaver</label>
     <select style={s.sel} value={ssDelay} onChange={e=>setSsDelay(parseInt(e.target.value))}><option value={0}>Off</option><option value={2}>2 min</option><option value={5}>5 min</option><option value={10}>10 min</option><option value={15}>15 min</option><option value={30}>30 min</option></select>
+    <label style={s.lbl}>Sleep Schedule</label>
+    <div style={{fontSize:11,color:t.sub,marginBottom:10}}>Screen goes black at sleep time and wakes at the set time. Tap to temporarily wake during sleep.</div>
+    <div onClick={()=>setSsSleepEnabled(!ssSleepEnabled)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:10,border:`1px solid ${ssSleepEnabled?t.accent:t.bdr}`,background:ssSleepEnabled?t.acDim:"transparent",cursor:"pointer",marginBottom:10,userSelect:"none"}}>
+      <span style={{fontSize:20}}>🌙</span>
+      <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:ssSleepEnabled?t.accent:t.text}}>Enable Sleep Schedule</div></div>
+      <div style={{width:36,height:20,borderRadius:10,background:ssSleepEnabled?t.accent:t.bdr,position:"relative",flexShrink:0,transition:"background 0.2s"}}><div style={{position:"absolute",top:2,left:ssSleepEnabled?18:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.3)"}}/></div>
+    </div>
+    {ssSleepEnabled&&<div style={{display:"flex",gap:10,marginBottom:12}}>
+      <div style={{flex:1}}><label style={s.lbl}>Sleep Time</label><input type="time" style={{...s.inp,marginBottom:0}} value={ssSleepTime} onChange={e=>setSsSleepTime(e.target.value)}/></div>
+      <div style={{flex:1}}><label style={s.lbl}>Wake Time</label><input type="time" style={{...s.inp,marginBottom:0}} value={ssWakeTime} onChange={e=>setSsWakeTime(e.target.value)}/></div>
+    </div>}
     <label style={s.lbl}>Built-in Collections</label>
     <div style={{fontSize:11,color:t.sub,marginBottom:10}}>Turn on to automatically include curated photos in your screensaver. Mixed in with any photos you upload.</div>
     {[
@@ -860,6 +883,10 @@ function Homelight(){
   const[geminiKey,setGeminiKey]=useP("geminiKey","");
   const[geminiModel,setGeminiModel]=useP("geminiModel","gemini-2.5-flash-lite");
   const[ssCollections,setSsCollections]=useP("ssCollections",{nature:false,art:false,space:false});
+  const[ssSleepEnabled,setSsSleepEnabled]=useP("ssSleepEnabled",false);
+  const[ssSleepTime,setSsSleepTime]=useP("ssSleepTime","22:00");
+  const[ssWakeTime,setSsWakeTime]=useP("ssWakeTime","07:00");
+  useEffect(()=>{if(!ssSleepEnabled)return;const ck=setInterval(()=>{if(inSleepWindow(new Date(),ssSleepTime,ssWakeTime))setShowSS(true);},10000);if(inSleepWindow(new Date(),ssSleepTime,ssWakeTime))setShowSS(true);return()=>clearInterval(ck);},[ssSleepEnabled,ssSleepTime,ssWakeTime]);
   const[showVoice,setShowVoice]=useState(false);
   const[recurChoice,setRecurChoice]=useState(null);
   const lastAct=useRef(Date.now());
@@ -910,7 +937,7 @@ function Homelight(){
     return()=>clearInterval(i);
   },[reminderMins,visibleEvents]);
 
-  if(showSS)return<Screensaver onTap={()=>{setShowSS(false);lastAct.current=Date.now();}} wx={wx} loc={loc} customPhotos={photos} ssCollections={ssCollections} events={visibleEvents}/>;
+  if(showSS)return<Screensaver onTap={()=>{setShowSS(false);lastAct.current=Date.now();}} wx={wx} loc={loc} customPhotos={photos} ssCollections={ssCollections} ssSleepEnabled={ssSleepEnabled} ssSleepTime={ssSleepTime} ssWakeTime={ssWakeTime} events={visibleEvents}/>;
 
   return<ThemeCtx.Provider value={t}>
     <div style={{fontFamily:FF,height:"100vh",width:"100vw",background:t.grad,color:t.text,display:"flex",flexDirection:"column",overflow:"hidden",userSelect:"none"}}>
@@ -940,7 +967,7 @@ function Homelight(){
         </div>
         <div style={{width:sidebarOpen?347:0,borderLeft:sidebarOpen?`1px solid ${t.bdr}`:"none",background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0,transition:"width 0.25s ease"}}>
           {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
-          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} ssCollections={ssCollections} setSsCollections={setSsCollections} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt} geminiKey={geminiKey} setGeminiKey={setGeminiKey} geminiModel={geminiModel} setGeminiModel={setGeminiModel} onClose={()=>setPanel("main")}/>
+          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} ssCollections={ssCollections} setSsCollections={setSsCollections} ssSleepEnabled={ssSleepEnabled} setSsSleepEnabled={setSsSleepEnabled} ssSleepTime={ssSleepTime} setSsSleepTime={setSsSleepTime} ssWakeTime={ssWakeTime} setSsWakeTime={setSsWakeTime} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt} geminiKey={geminiKey} setGeminiKey={setGeminiKey} geminiModel={geminiModel} setGeminiModel={setGeminiModel} onClose={()=>setPanel("main")}/>
           :<>
             <div style={{padding:20,borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc} onWx={setWx}/></div>
             <div style={{padding:16,borderBottom:`1px solid ${t.bdr}`}}>
