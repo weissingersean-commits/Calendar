@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#06080D">
+<meta name="color-scheme" content="light dark">
 <title>Homelight — Personal Calendar</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☀</text></svg>">
@@ -16,6 +17,7 @@
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body,#root{height:100%;width:100%;overflow:hidden;background:#06080D;}
   body{font-family:'Outfit',system-ui,sans-serif;-webkit-font-smoothing:antialiased;background:#06080D;}
+  :root{color-scheme:light dark;forced-color-adjust:none;}
   ::-webkit-scrollbar{width:6px;}
   ::-webkit-scrollbar-track{background:transparent;}
   ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px;}
@@ -837,7 +839,7 @@ function SearchModal({events,onSelect,onClose}){
 // ═════════════════ MAIN APP ═════════════════════════════════════════
 function Homelight(){
   const[theme,setTheme]=useP("theme","dark");const t=THEMES[theme]||THEMES.dark;
-  useEffect(()=>{document.body.style.background=t.bg;document.documentElement.style.background=t.bg;},[theme]);
+  useEffect(()=>{document.body.style.background=t.bg;document.documentElement.style.background=t.bg;const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=t.bg;},[theme]);
   const[view,setView]=useP("view","month"),[sel,setSel]=useState(new Date());
   const[events,setEvents]=useP("events",[]);
   const[todos,setTodos]=useP("todos",[]);
