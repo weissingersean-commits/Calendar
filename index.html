@@ -544,7 +544,7 @@ function Screensaver({onTap,wx,loc,customPhotos,ssCollections,events}){
       setPhotos(shuffle([...base,...extra]));
     })();
   },[ssCollections?.nature,ssCollections?.art,ssCollections?.space]);
-  useEffect(()=>{const t1=setInterval(()=>{setFade(false);setTimeout(()=>{setIdx(i=>(i+1)%photos.length);setFade(true);},700);},10000);const t2=setInterval(()=>setTime(new Date()),1000);return()=>{clearInterval(t1);clearInterval(t2);};},[photos.length]);
+  useEffect(()=>{const t1=setInterval(()=>{setFade(false);setTimeout(()=>{setIdx(i=>(i+1)%photos.length);setFade(true);},700);},15000);const t2=setInterval(()=>setTime(new Date()),1000);return()=>{clearInterval(t1);clearInterval(t2);};},[photos.length]);
   const info=wx?wmo(wx.code):null;
   const todayKey=dkey(time),nowMins=time.getHours()*60+time.getMinutes();
   const upcoming=(events||[]).filter(e=>e.date>todayKey||(e.date===todayKey&&(e.hour*60+(e.minute||0))>=nowMins)).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date)).slice(0,3);
