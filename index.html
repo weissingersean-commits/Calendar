@@ -259,12 +259,12 @@ function Weather({loc,setLoc,onWx}){
     {ld?<div style={{textAlign:"center",padding:16,color:t.sub,fontSize:12}}>Loading...</div>
     :wx&&info?<div>
       <div style={{textAlign:"center",paddingBottom:8}}>
-        <div style={{fontSize:44,lineHeight:1,marginBottom:4}}>{info.i}</div>
-        <div style={{fontSize:50,fontWeight:200,fontFamily:FM,color:t.text,lineHeight:1}}>{wx.temp}<span style={{fontSize:18,color:t.sub}}>{unit}</span></div>
-        <div style={{fontSize:11,color:t.sub,marginTop:4,fontWeight:500}}>{info.l}</div>
-        {(wx.hi!=null&&wx.lo!=null)&&<div style={{display:"flex",justifyContent:"center",gap:14,marginTop:5}}><span style={{fontSize:11,color:t.text,fontWeight:600}}>↑{wx.hi}{unit}</span><span style={{fontSize:11,color:t.dim}}>↓{wx.lo}{unit}</span></div>}
-        <div style={{display:"flex",justifyContent:"center",gap:10,marginTop:5,fontSize:10,color:t.dim}}><span>Feels {wx.feels}{unit}</span><span>💧{wx.hum}%</span><span>💨{wx.wind}mph</span></div>
-        <div style={{fontSize:9,color:t.dim,marginTop:3}}>{loc?.name}</div>
+        <div style={{fontSize:40,lineHeight:1,marginBottom:4}}>{info.i}</div>
+        <div style={{fontSize:45,fontWeight:200,fontFamily:FM,color:t.text,lineHeight:1}}>{wx.temp}<span style={{fontSize:16,color:t.sub}}>{unit}</span></div>
+        <div style={{fontSize:10,color:t.sub,marginTop:4,fontWeight:500}}>{info.l}</div>
+        {(wx.hi!=null&&wx.lo!=null)&&<div style={{display:"flex",justifyContent:"center",gap:12,marginTop:4}}><span style={{fontSize:10,color:t.text,fontWeight:600}}>↑{wx.hi}{unit}</span><span style={{fontSize:10,color:t.dim}}>↓{wx.lo}{unit}</span></div>}
+        <div style={{display:"flex",justifyContent:"center",gap:8,marginTop:4,fontSize:9,color:t.dim}}><span>Feels {wx.feels}{unit}</span><span>💧{wx.hum}%</span><span>💨{wx.wind}mph</span></div>
+        <div style={{fontSize:9,color:t.dim,marginTop:2}}>{loc?.name}</div>
       </div>
       {fc.length>0&&<div style={{display:"flex",gap:3,marginTop:12}}>{fc.map((f,i)=>{const d=new Date(f.date+"T12:00:00");return<div key={i} style={{flex:1,textAlign:"center",padding:"16px 4px",borderRadius:10,background:t.card}}><div style={{fontSize:12,color:t.dim,fontWeight:600,marginBottom:6}}>{DAYS[d.getDay()]}</div><div style={{fontSize:26,margin:"8px 0",lineHeight:1}}>{wmo(f.code).i}</div><div style={{fontSize:13,color:t.text,fontWeight:700}}>{f.hi}°</div><div style={{fontSize:13,color:t.dim,marginTop:3}}>{f.lo}°</div>{f.prec>20&&<div style={{fontSize:11,color:"#60A5FA",marginTop:5}}>💧{f.prec}%</div>}</div>;})}</div>}
     </div>:<div style={{textAlign:"center",padding:16}}><div style={{color:t.sub,fontSize:13,marginBottom:8}}>No location set</div><button onClick={()=>setOpen(true)} style={{padding:"8px 20px",borderRadius:10,border:"none",background:t.accent,color:t.acText,fontSize:12,fontWeight:600,cursor:"pointer"}}>Set Location</button></div>}
@@ -965,7 +965,7 @@ function Homelight(){
           {view==="week"&&<WeekView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv} onAdd={(d,h)=>onAddEvent(dkey(d),h)} weekStart={weekStart}/>}
           {view==="day"&&<DayView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv} onAdd={h=>onAddEvent(dkey(sel),h)}/>}
         </div>
-        <div style={{width:sidebarOpen?347:0,borderLeft:sidebarOpen?`1px solid ${t.bdr}`:"none",background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0,transition:"width 0.25s ease"}}>
+        <div style={{width:sidebarOpen?312:0,borderLeft:sidebarOpen?`1px solid ${t.bdr}`:"none",background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0,transition:"width 0.25s ease"}}>
           {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
           :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} ssCollections={ssCollections} setSsCollections={setSsCollections} ssSleepEnabled={ssSleepEnabled} setSsSleepEnabled={setSsSleepEnabled} ssSleepTime={ssSleepTime} setSsSleepTime={setSsSleepTime} ssWakeTime={ssWakeTime} setSsWakeTime={setSsWakeTime} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt} geminiKey={geminiKey} setGeminiKey={setGeminiKey} geminiModel={geminiModel} setGeminiModel={setGeminiModel} onClose={()=>setPanel("main")}/>
           :<>
