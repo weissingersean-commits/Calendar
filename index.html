@@ -383,14 +383,21 @@ function DayView({sel,setSel,events,onEv,onAdd}){
 // ═════════════════ EVENT MODAL ═══════════════════════════════════════
 function EventModal({event,sel,defaultHour=9,onClose,onSave,onDelete}){
   const t=useT(),s=useS(),isEdit=!!event;
-  const[title,setTitle]=useState(event?.title||""),[hour,setHour]=useState(String(event?.hour??defaultHour)),[minute,setMinute]=useState(String(event?.minute||0)),[duration,setDur]=useState(String(event?.duration||1)),[category,setCat]=useState(event?.category||"personal"),[location,setLoc]=useState(event?.location||"");
+  const[title,setTitle]=useState(event?.title||""),[hour,setHour]=useState(String(event?.hour??defaultHour)),[minute,setMinute]=useState(String(event?.minute||0)),[category,setCat]=useState(event?.category||"personal"),[location,setLoc]=useState(event?.location||"");
   const[allDay,setAllDay]=useState(event?.hour===0&&(event?.minute||0)===0&&(event?.duration||0)>=24);
+  const initEh=()=>{const sm=(event?.hour??defaultHour)*60+(event?.minute||0);const em=sm+Math.round((event?.duration||1)*60);return String(Math.floor(em/60)%24);};
+  const initEm=()=>{const sm=(event?.hour??defaultHour)*60+(event?.minute||0);const em=sm+Math.round((event?.duration||1)*60);return String(em%60);};
+  const[endHour,setEndHour]=useState(initEh());
+  const[endMinute,setEndMinute]=useState(initEm());
+  const chHour=h=>{const dur=((parseInt(endHour)*60+parseInt(endMinute))-(parseInt(hour)*60+parseInt(minute))+1440)%1440||60;const ns=(parseInt(h)*60+parseInt(minute)+dur)%1440;setHour(h);setEndHour(String(Math.floor(ns/60)));setEndMinute(String(ns%60));};
+  const chMin=m=>{const dur=((parseInt(endHour)*60+parseInt(endMinute))-(parseInt(hour)*60+parseInt(minute))+1440)%1440||60;const ns=(parseInt(hour)*60+parseInt(m)+dur)%1440;setMinute(m);setEndHour(String(Math.floor(ns/60)));setEndMinute(String(ns%60));};
   const[color,setColor]=useState(event?.color||"");
   const[repeat,setRepeat]=useState(event?.repeat?.freq||"none");
   const[repeatUntil,setRepeatUntil]=useState(event?.repeat?.until||"");
   const initEndDate=()=>{if(!event||event.duration<=24)return dkey(sel);const p=event.date.split('-');return dkey(addD(new Date(+p[0],+p[1]-1,+p[2]),Math.round(event.duration/24)-1));};
   const[endDate,setEndDate]=useState(initEndDate());
-  const exportICS=()=>{const ev=event||{id:mkId(),title,date:dkey(sel),hour:allDay?0:parseInt(hour),minute:allDay?0:parseInt(minute),duration:allDay?24:parseFloat(duration),category,location};const blob=new Blob([eventToICS(ev)],{type:"text/calendar"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`${(ev.title||"event").replace(/[^a-z0-9]/gi,"_")}.ics`;a.click();URL.revokeObjectURL(url);};
+  const calcDur=()=>{const sm=parseInt(hour)*60+parseInt(minute);const em=parseInt(endHour)*60+parseInt(endMinute);return Math.max(0.25,((em-sm+1440)%1440)/60);};
+  const exportICS=()=>{const ev=event||{id:mkId(),title,date:dkey(sel),hour:allDay?0:parseInt(hour),minute:allDay?0:parseInt(minute),duration:allDay?24:calcDur(),category,location};const blob=new Blob([eventToICS(ev)],{type:"text/calendar"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`${(ev.title||"event").replace(/[^a-z0-9]/gi,"_")}.ics`;a.click();URL.revokeObjectURL(url);};
   return<div style={s.overlay} onClick={onClose}><div style={s.modal} onClick={e=>e.stopPropagation()}>
     <div style={{fontSize:20,fontWeight:800,marginBottom:6,color:t.text}}>{isEdit?event.synced?"Event Details":"Edit Event":"New Event"}</div>
     <div style={{fontSize:12,color:t.sub,marginBottom:20}}>{DAYS_F[sel.getDay()]}, {MO[sel.getMonth()]} {sel.getDate()}</div>
@@ -404,7 +411,7 @@ function EventModal({event,sel,defaultHour=9,onClose,onSave,onDelete}){
       <input style={s.inp} placeholder="What's happening?" value={title} onChange={e=>setTitle(e.target.value)} autoFocus/>
       <input style={s.inp} placeholder="Location (optional)" value={location} onChange={e=>setLoc(e.target.value)}/>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-        <input id="all-day-toggle" type="checkbox" checked={allDay} onChange={e=>{const v=e.target.checked;setAllDay(v);if(v){setHour("0");setMinute("0");setDur("24");setEndDate(dkey(sel));}}} style={{width:16,height:16,cursor:"pointer"}}/>
+        <input id="all-day-toggle" type="checkbox" checked={allDay} onChange={e=>{const v=e.target.checked;setAllDay(v);if(v){setHour("0");setMinute("0");setEndHour("0");setEndMinute("0");setEndDate(dkey(sel));}}} style={{width:16,height:16,cursor:"pointer"}}/>
         <label htmlFor="all-day-toggle" style={{fontSize:12,color:t.text,cursor:"pointer"}}>All-day block</label>
       </div>
       {allDay&&<div style={{marginBottom:12}}><label style={s.lbl}>End Date</label><input type="date" style={{...s.inp,marginBottom:0}} value={endDate} onChange={e=>setEndDate(e.target.value)} min={dkey(sel)}/></div>}
@@ -419,8 +426,8 @@ function EventModal({event,sel,defaultHour=9,onClose,onSave,onDelete}){
       {repeat!=="none"&&<div style={{marginBottom:12}}><label style={s.lbl}>End Date (optional)</label><input type="date" style={{...s.inp,marginBottom:0}} value={repeatUntil} onChange={e=>setRepeatUntil(e.target.value)} min={dkey(sel)}/></div>}
       {isEdit&&event?.repeat&&<div style={{fontSize:11,color:t.accent,marginBottom:12}}>↻ Recurring — changes apply to all instances</div>}
       <div style={{display:"flex",gap:8,marginBottom:4}}>
-        <div style={{flex:1}}><label style={s.lbl}>Start</label><div style={{display:"flex",gap:4}}><select style={{...s.sel,flex:1}} value={hour} onChange={e=>setHour(e.target.value)} disabled={allDay}>{Array.from({length:24},(_,i)=>i).map(h=><option key={h} value={h}>{fmtT(h)}</option>)}</select><select style={{...s.sel,width:60}} value={minute} onChange={e=>setMinute(e.target.value)} disabled={allDay}><option value="0">:00</option><option value="15">:15</option><option value="30">:30</option><option value="45">:45</option></select></div></div>
-        <div style={{flex:1}}><label style={s.lbl}>Duration</label><select style={s.sel} value={duration} onChange={e=>setDur(e.target.value)} disabled={allDay}>{["0.25","0.5","0.75","1","1.5","2","3","4","6","8","12","24"].map(d=><option key={d} value={d}>{d==="24"?"24h":d<1?`${d*60}min`:`${d}h`}</option>)}</select></div>
+        <div style={{flex:1}}><label style={s.lbl}>Start</label><div style={{display:"flex",gap:4}}><select style={{...s.sel,flex:1}} value={hour} onChange={e=>chHour(e.target.value)} disabled={allDay}>{Array.from({length:24},(_,i)=>i).map(h=><option key={h} value={h}>{fmtT(h)}</option>)}</select><select style={{...s.sel,width:60}} value={minute} onChange={e=>chMin(e.target.value)} disabled={allDay}><option value="0">:00</option><option value="15">:15</option><option value="30">:30</option><option value="45">:45</option></select></div></div>
+        <div style={{flex:1}}><label style={s.lbl}>End</label><div style={{display:"flex",gap:4}}><select style={{...s.sel,flex:1}} value={endHour} onChange={e=>setEndHour(e.target.value)} disabled={allDay}>{Array.from({length:24},(_,i)=>i).map(h=><option key={h} value={h}>{fmtT(h)}</option>)}</select><select style={{...s.sel,width:60}} value={endMinute} onChange={e=>setEndMinute(e.target.value)} disabled={allDay}><option value="0">:00</option><option value="15">:15</option><option value="30">:30</option><option value="45">:45</option></select></div></div>
       </div>
       <label style={s.lbl}>Category</label>
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>{Object.entries(CATS).map(([cat,col])=><button key={cat} onClick={()=>setCat(cat)} style={{padding:"6px 14px",borderRadius:20,border:category===cat?`2px solid ${col.bg}`:`1px solid ${t.bdr}`,background:category===cat?col.lt(0.15):"transparent",color:category===cat?col.tx:t.sub,fontSize:12,fontWeight:500,cursor:"pointer",textTransform:"capitalize",fontFamily:FF}}>{cat}</button>)}</div>
@@ -432,7 +439,7 @@ function EventModal({event,sel,defaultHour=9,onClose,onSave,onDelete}){
       <div style={{display:"flex",gap:8}}>
         {isEdit&&<button style={s.btnD} onClick={()=>{onDelete(event.id);onClose();}}>Delete</button>}
         <button style={s.btnS} onClick={onClose}>Cancel</button>
-        <button style={s.btnP} onClick={()=>{if(!title.trim())return;let dur;if(allDay){const sp=(event?.date||dkey(sel)).split('-'),ep=endDate.split('-');const days=Math.max(1,Math.round((new Date(+ep[0],+ep[1]-1,+ep[2])-new Date(+sp[0],+sp[1]-1,+sp[2]))/86400000)+1);dur=days*24;}else{dur=parseFloat(duration);}onSave({id:event?.id||mkId(),title:title.trim(),date:dkey(sel),hour:allDay?0:parseInt(hour),minute:allDay?0:parseInt(minute),duration:dur,category,location,synced:false,color:color||null,repeat:repeat!=="none"?{freq:repeat,until:repeatUntil||null}:null});onClose();}}>
+        <button style={s.btnP} onClick={()=>{if(!title.trim())return;let dur;if(allDay){const sp=(event?.date||dkey(sel)).split('-'),ep=endDate.split('-');const days=Math.max(1,Math.round((new Date(+ep[0],+ep[1]-1,+ep[2])-new Date(+sp[0],+sp[1]-1,+sp[2]))/86400000)+1);dur=days*24;}else{dur=calcDur();}onSave({id:event?.id||mkId(),title:title.trim(),date:dkey(sel),hour:allDay?0:parseInt(hour),minute:allDay?0:parseInt(minute),duration:dur,category,location,synced:false,color:color||null,repeat:repeat!=="none"?{freq:repeat,until:repeatUntil||null}:null});onClose();}}>
           {isEdit?"Save":"Add Event"}</button>
       </div>
       {isEdit&&<button onClick={exportICS} style={{marginTop:10,background:"none",border:"none",color:t.accent,fontSize:12,cursor:"pointer",padding:0,fontFamily:FF}}>📥 Download .ics (add to phone)</button>}
