@@ -14,8 +14,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body,#root{height:100%;width:100%;overflow:hidden;}
-  body{font-family:'Outfit',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+  html,body,#root{height:100%;width:100%;overflow:hidden;background:#06080D;}
+  body{font-family:'Outfit',system-ui,sans-serif;-webkit-font-smoothing:antialiased;background:#06080D;}
   ::-webkit-scrollbar{width:6px;}
   ::-webkit-scrollbar-track{background:transparent;}
   ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px;}
@@ -837,6 +837,7 @@ function SearchModal({events,onSelect,onClose}){
 // ═════════════════ MAIN APP ═════════════════════════════════════════
 function Homelight(){
   const[theme,setTheme]=useP("theme","dark");const t=THEMES[theme]||THEMES.dark;
+  useEffect(()=>{document.body.style.background=t.bg;document.documentElement.style.background=t.bg;},[theme]);
   const[view,setView]=useP("view","month"),[sel,setSel]=useState(new Date());
   const[events,setEvents]=useP("events",[]);
   const[todos,setTodos]=useP("todos",[]);
