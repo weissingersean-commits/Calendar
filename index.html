@@ -69,6 +69,7 @@ const WMO={0:{l:"Clear",i:"☀️"},1:{l:"Mostly Clear",i:"🌤️"},2:{l:"Partl
 const wmo=c=>WMO[c]||{l:"Unknown",i:"🌡️"};
 
 // ─── Utils ───────────────────────────────────────────────────────────
+const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;};
 const dkey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const sameD=(a,b)=>dkey(a)===dkey(b);
 const addD=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r;};
@@ -515,9 +516,34 @@ function CalSyncPanel({feeds,setFeeds,syncAll,syncStatus}){
 
 // ═════════════════ SCREENSAVER ═══════════════════════════════════════
 const DEFAULT_PHOTOS=["https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1501854140801-50d01698950b?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1400&h=900&fit=crop"];
-function Screensaver({onTap,wx,loc,customPhotos,events}){
-  const photos=customPhotos?.length>0?customPhotos:DEFAULT_PHOTOS;
+const NATURE_PHOTOS=shuffle([10,11,12,13,14,15,16,17,18,19,20,23,24,25,26,28,29,36,37,39,40,41,42,43,44,45,46,47,48,49,50,51,53,54,56,57,58,59,60,63,64,65,66,67,69,70,72,73,74,75,76,77,78,79,80,83,84,85,86,87,88,90,91,92,93,94,95,96,97,98,99,100,110,112,113,114,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130].map(id=>`https://picsum.photos/id/${id}/1920/1080`));
+function Screensaver({onTap,wx,loc,customPhotos,ssCollections,events}){
+  const base=useMemo(()=>customPhotos?.length>0?customPhotos:DEFAULT_PHOTOS,[]);
+  const[photos,setPhotos]=useState(base);
   const[idx,setIdx]=useState(0),[time,setTime]=useState(new Date()),[fade,setFade]=useState(true);
+  useEffect(()=>{
+    (async()=>{
+      let extra=[];
+      if(ssCollections?.nature)extra=[...extra,...NATURE_PHOTOS];
+      if(ssCollections?.art){
+        try{
+          const r=await fetch('https://collectionapi.metmuseum.org/public/collection/v1/search?q=landscape+painting&hasImages=true&medium=Paintings');
+          const d=await r.json();
+          const ids=shuffle(d.objectIDs||[]).slice(0,20);
+          const imgs=await Promise.all(ids.map(async id=>{try{const r2=await fetch(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${id}`);const o=await r2.json();return o.primaryImage||null;}catch{return null;}}));
+          extra=[...extra,...imgs.filter(Boolean)];
+        }catch(e){}
+      }
+      if(ssCollections?.space){
+        try{
+          const r=await fetch('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&count=20');
+          const d=await r.json();
+          extra=[...extra,...d.filter(x=>x.media_type==='image').map(x=>x.hdurl||x.url)];
+        }catch(e){}
+      }
+      setPhotos(shuffle([...base,...extra]));
+    })();
+  },[ssCollections?.nature,ssCollections?.art,ssCollections?.space]);
   useEffect(()=>{const t1=setInterval(()=>{setFade(false);setTimeout(()=>{setIdx(i=>(i+1)%photos.length);setFade(true);},700);},10000);const t2=setInterval(()=>setTime(new Date()),1000);return()=>{clearInterval(t1);clearInterval(t2);};},[photos.length]);
   const info=wx?wmo(wx.code):null;
   const todayKey=dkey(time),nowMins=time.getHours()*60+time.getMinutes();
@@ -655,7 +681,7 @@ function VoiceAssistant({events,todos,geminiKey,geminiModel,onClose,onSaveEvent,
 }
 
 // ═════════════════ SETTINGS ═════════════════════════════════════════
-function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart,photos,setPhotos,reminderMins,setReminderMins,onClearEvents,onClearLists,onClearMeals,deferredPrompt,onInstallPrompt,installStatus,geminiKey,setGeminiKey,geminiModel,setGeminiModel,onClose}){
+function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart,photos,setPhotos,ssCollections,setSsCollections,reminderMins,setReminderMins,onClearEvents,onClearLists,onClearMeals,deferredPrompt,onInstallPrompt,installStatus,geminiKey,setGeminiKey,geminiModel,setGeminiModel,onClose}){
   const t=useT(),s=useS(),fileRef=useRef(null);
   const[notifPerm,setNotifPerm]=useState(typeof Notification!=="undefined"?Notification.permission:"unsupported");
   const requestNotif=async()=>{if(typeof Notification==="undefined")return;const p=await Notification.requestPermission();setNotifPerm(p);};
@@ -684,8 +710,26 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart
     </select>
     <label style={s.lbl}>Auto-Screensaver</label>
     <select style={s.sel} value={ssDelay} onChange={e=>setSsDelay(parseInt(e.target.value))}><option value={0}>Off</option><option value={2}>2 min</option><option value={5}>5 min</option><option value={10}>10 min</option><option value={15}>15 min</option><option value={30}>30 min</option></select>
-    <label style={s.lbl}>Screensaver Photos</label>
-    <div style={{fontSize:11,color:t.sub,marginBottom:8}}>Add family photos by uploading from your device or pasting image URLs. They replace the default landscapes and prevent screen burn-in.</div>
+    <label style={s.lbl}>Built-in Collections</label>
+    <div style={{fontSize:11,color:t.sub,marginBottom:10}}>Turn on to automatically include curated photos in your screensaver. Mixed in with any photos you upload.</div>
+    {[
+      {key:"nature",icon:"🌿",label:"Nature & Landscapes",desc:"Mountains, forests, oceans — curated landscape photos"},
+      {key:"art",icon:"🎨",label:"Classic Art",desc:"Metropolitan Museum of Art — 470,000+ public domain paintings"},
+      {key:"space",icon:"🌌",label:"Space",desc:"NASA Astronomy Picture of the Day"},
+    ].map(({key,icon,label,desc})=>(
+      <div key={key} onClick={()=>setSsCollections(c=>({...c,[key]:!c[key]}))} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:10,border:`1px solid ${ssCollections?.[key]?t.accent:t.bdr}`,background:ssCollections?.[key]?t.acDim:"transparent",cursor:"pointer",marginBottom:8,userSelect:"none"}}>
+        <span style={{fontSize:22}}>{icon}</span>
+        <div style={{flex:1}}>
+          <div style={{fontSize:13,fontWeight:600,color:ssCollections?.[key]?t.accent:t.text}}>{label}</div>
+          <div style={{fontSize:10,color:t.dim,marginTop:2}}>{desc}</div>
+        </div>
+        <div style={{width:36,height:20,borderRadius:10,background:ssCollections?.[key]?t.accent:t.bdr,position:"relative",flexShrink:0,transition:"background 0.2s"}}>
+          <div style={{position:"absolute",top:2,left:ssCollections?.[key]?18:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.3)"}}/>
+        </div>
+      </div>
+    ))}
+    <label style={s.lbl}>Your Photos</label>
+    <div style={{fontSize:11,color:t.sub,marginBottom:8}}>Upload your own photos to include in the screensaver alongside any enabled collections above.</div>
     <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFiles} style={{display:"none"}}/>
     <button onClick={()=>fileRef.current?.click()} style={{width:"100%",padding:"10px 0",borderRadius:10,border:`1px dashed ${t.bdr}`,background:"transparent",color:t.accent,fontSize:12,fontWeight:600,cursor:"pointer",marginBottom:8}}>📷 Upload from Device</button>
     <textarea style={{...s.inp,height:70,resize:"none",fontSize:11,marginBottom:4}} placeholder={"Paste image URLs — one per line\nhttps://example.com/photo1.jpg"} value={urlInput} onChange={e=>setUrlInput(e.target.value)}/>
@@ -812,6 +856,7 @@ function Homelight(){
   const[weekStart,setWeekStart]=useP("weekStart",0);
   const[geminiKey,setGeminiKey]=useP("geminiKey","");
   const[geminiModel,setGeminiModel]=useP("geminiModel","gemini-2.5-flash-lite");
+  const[ssCollections,setSsCollections]=useP("ssCollections",{nature:false,art:false,space:false});
   const[showVoice,setShowVoice]=useState(false);
   const[recurChoice,setRecurChoice]=useState(null);
   const lastAct=useRef(Date.now());
@@ -862,7 +907,7 @@ function Homelight(){
     return()=>clearInterval(i);
   },[reminderMins,visibleEvents]);
 
-  if(showSS)return<Screensaver onTap={()=>{setShowSS(false);lastAct.current=Date.now();}} wx={wx} loc={loc} customPhotos={photos} events={visibleEvents}/>;
+  if(showSS)return<Screensaver onTap={()=>{setShowSS(false);lastAct.current=Date.now();}} wx={wx} loc={loc} customPhotos={photos} ssCollections={ssCollections} events={visibleEvents}/>;
 
   return<ThemeCtx.Provider value={t}>
     <div style={{fontFamily:FF,height:"100vh",width:"100vw",background:t.grad,color:t.text,display:"flex",flexDirection:"column",overflow:"hidden",userSelect:"none"}}>
@@ -892,7 +937,7 @@ function Homelight(){
         </div>
         <div style={{width:sidebarOpen?480:0,borderLeft:sidebarOpen?`1px solid ${t.bdr}`:"none",background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0,transition:"width 0.25s ease"}}>
           {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
-          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt} geminiKey={geminiKey} setGeminiKey={setGeminiKey} geminiModel={geminiModel} setGeminiModel={setGeminiModel} onClose={()=>setPanel("main")}/>
+          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} ssCollections={ssCollections} setSsCollections={setSsCollections} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt} geminiKey={geminiKey} setGeminiKey={setGeminiKey} geminiModel={geminiModel} setGeminiModel={setGeminiModel} onClose={()=>setPanel("main")}/>
           :<>
             <div style={{padding:20,borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc} onWx={setWx}/></div>
             <div style={{padding:16,borderBottom:`1px solid ${t.bdr}`}}>
