@@ -308,16 +308,16 @@ function MonthView({sel,setSel,events,setView,onEv,weekStart=0}){
   const hdrDays=Array.from({length:7},(_,i)=>DAYS[(weekStart+i)%7]);
   return<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><button style={s.iconBtn} onClick={()=>setSel(new Date(y,m-1,1))}>‹</button><span style={{fontSize:22,fontWeight:700,fontFamily:FF,letterSpacing:-.5}}>{MO[m]} {y}</span><button style={s.iconBtn} onClick={()=>setSel(new Date(y,m+1,1))}>›</button><div style={{flex:1}}/><button style={s.todayBtn} onClick={()=>setSel(new Date())}>Today</button></div>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:3}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:2}}>
       {hdrDays.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:600,color:t.dim,textTransform:"uppercase",letterSpacing:1,padding:"8px 0"}}>{d}</div>)}
     </div>
-    <div style={{flex:1,display:"flex",flexDirection:"column",gap:3}}>
+    <div style={{flex:1,display:"flex",flexDirection:"column",gap:2}}>
       {weekData.map(({week,laned,laneCount},wi)=>{
         const spanH=laneCount*20;
-        return<div key={wi} style={{flex:1,display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,position:"relative",minHeight:80}}>
+        return<div key={wi} style={{flex:1,display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,position:"relative",minHeight:80}}>
           {laned.map(({ev,sc,ec,lane,continuesLeft,continuesRight})=>{const lm=continuesLeft?0:2,rm=continuesRight?0:2;return<div key={ev.id} onClick={e=>{e.stopPropagation();onEv(ev);}} style={{position:"absolute",left:`calc(${sc*(100/7)}% + ${lm}px)`,width:`calc(${(ec-sc)*(100/7)}% - ${lm+rm}px)`,top:28+lane*20,height:18,background:evColor(ev),color:"#fff",borderRadius:`${continuesLeft?0:4}px ${continuesRight?0:4}px ${continuesRight?0:4}px ${continuesLeft?0:4}px`,fontSize:10,fontWeight:600,padding:`2px ${rm?6:3}px 2px ${lm?6:4}px`,cursor:"pointer",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",zIndex:2,boxSizing:"border-box"}}>{continuesLeft?"‹ ":""}{ev.title}{continuesRight?" ›":""}</div>;})}
           {week.map((c,ci)=>{const key=dkey(c.d),isT=sameD(c.d,today),evs=events.filter(e=>e.date===key&&!isAllDay(e));
-            return<div key={ci} onClick={()=>{setSel(c.d);setView("day");}} style={{padding:6,paddingTop:28+spanH+4,borderRadius:10,cursor:"pointer",background:isT?t.acDim:c.c?t.card:"rgba(128,128,128,0.05)",border:isT?`1px solid ${t.acGlow}`:"1px solid transparent",transition:"all 0.15s",overflow:"hidden",position:"relative",display:"flex",flexDirection:"column",justifyContent:"space-between"}} onMouseEnter={e=>{if(!isT)e.currentTarget.style.background=t.cardH;}} onMouseLeave={e=>{if(!isT)e.currentTarget.style.background=c.c?t.card:"rgba(128,128,128,0.05)";}}>
+            return<div key={ci} onClick={()=>{setSel(c.d);setView("day");}} style={{padding:3,paddingTop:26+spanH+2,borderRadius:10,cursor:"pointer",background:isT?t.acDim:c.c?t.card:"rgba(128,128,128,0.05)",border:isT?`1px solid ${t.acGlow}`:"1px solid transparent",transition:"all 0.15s",overflow:"hidden",position:"relative",display:"flex",flexDirection:"column",justifyContent:"space-between"}} onMouseEnter={e=>{if(!isT)e.currentTarget.style.background=t.cardH;}} onMouseLeave={e=>{if(!isT)e.currentTarget.style.background=c.c?t.card:"rgba(128,128,128,0.05)";}}>
               <div style={{position:"absolute",top:6,left:8,fontSize:13,fontWeight:isT?800:400,color:isT?t.accent:c.c?t.sub:t.dim}}>{c.d.getDate()}</div>
               <div>{evs.slice(0,2).map(ev=><div key={ev.id} style={{background:evColor(ev),color:"#fff",padding:"1px 6px",borderRadius:4,fontSize:10,fontWeight:500,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div>)}</div>
               {evs.length>2&&<div style={{fontSize:9,color:t.dim}}>+{evs.length-2}</div>}
@@ -960,7 +960,7 @@ function Homelight(){
         </div>
       </div>
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
-        <div style={{flex:1,overflow:"auto",padding:20}} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        <div style={{flex:1,overflow:"auto",padding:"6px 4px"}} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
           {view==="month"&&<MonthView sel={sel} setSel={setSel} events={visibleEvents} setView={setView} onEv={onEv} weekStart={weekStart}/>}
           {view==="week"&&<WeekView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv} onAdd={(d,h)=>onAddEvent(dkey(d),h)} weekStart={weekStart}/>}
           {view==="day"&&<DayView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv} onAdd={h=>onAddEvent(dkey(sel),h)}/>}
@@ -969,15 +969,15 @@ function Homelight(){
           {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
           :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} ssCollections={ssCollections} setSsCollections={setSsCollections} ssSleepEnabled={ssSleepEnabled} setSsSleepEnabled={setSsSleepEnabled} ssSleepTime={ssSleepTime} setSsSleepTime={setSsSleepTime} ssWakeTime={ssWakeTime} setSsWakeTime={setSsWakeTime} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt} geminiKey={geminiKey} setGeminiKey={setGeminiKey} geminiModel={geminiModel} setGeminiModel={setGeminiModel} onClose={()=>setPanel("main")}/>
           :<>
-            <div style={{padding:20,borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc} onWx={setWx}/></div>
-            <div style={{padding:16,borderBottom:`1px solid ${t.bdr}`}}>
+            <div style={{padding:"10px 10px",borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc} onWx={setWx}/></div>
+            <div style={{padding:"8px 10px",borderBottom:`1px solid ${t.bdr}`}}>
               <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:2,color:t.accent,marginBottom:10}}>Coming Up</div>
               {upcoming.length===0&&<div style={{fontSize:12,color:t.dim}}>Nothing scheduled</div>}
               {upcoming.map(ev=><div key={ev.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,cursor:"pointer"}} onClick={()=>{setSel(new Date(ev.date+"T12:00:00"));setView("day");}}>
                 <div style={{width:3,height:30,borderRadius:2,background:evColor(ev),flexShrink:0}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:t.dim,fontFamily:FM}}>{ev.date} · {fmtT(ev.hour,ev.minute)}</div></div></div>)}
             </div>
             <div style={{display:"flex",borderBottom:`1px solid ${t.bdr}`}}>{["tasks","grocery","meals"].map(tab=><button key={tab} onClick={()=>setSideTab(tab)} style={{flex:1,padding:"10px 0",textAlign:"center",fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:1.5,color:sideTab===tab?t.accent:t.dim,background:"transparent",border:"none",cursor:"pointer",fontFamily:FF,borderBottom:`2px solid ${sideTab===tab?t.accent:"transparent"}`}}>{tab}</button>)}</div>
-            <div style={{flex:1,overflow:"auto",padding:16}}>
+            <div style={{flex:1,overflow:"auto",padding:"8px 10px"}}>
               {sideTab==="tasks"&&<Checklist items={todos} setItems={setTodos} placeholder="Add task..." accentColor="#3B82F6"/>}
               {sideTab==="grocery"&&<Checklist items={grocery} setItems={setGrocery} placeholder="Add item..." accentColor="#10B981"/>}
               {sideTab==="meals"&&<Meals meals={meals} setMeals={setMeals}/>}
