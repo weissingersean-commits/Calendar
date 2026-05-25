@@ -978,11 +978,13 @@ function Homelight(){
           :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} ssCollections={ssCollections} setSsCollections={setSsCollections} ssSleepEnabled={ssSleepEnabled} setSsSleepEnabled={setSsSleepEnabled} ssSleepTime={ssSleepTime} setSsSleepTime={setSsSleepTime} ssWakeTime={ssWakeTime} setSsWakeTime={setSsWakeTime} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt} geminiKey={geminiKey} setGeminiKey={setGeminiKey} geminiModel={geminiModel} setGeminiModel={setGeminiModel} onClose={()=>setPanel("main")}/>
           :<>
             <div style={{padding:"10px 10px",borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc} onWx={setWx}/></div>
-            <div style={{padding:"8px 10px",borderBottom:`1px solid ${t.bdr}`}}>
+            <div style={{padding:"8px 10px",borderBottom:`1px solid ${t.bdr}`,flexShrink:0}}>
               <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:2,color:t.accent,marginBottom:10}}>Coming Up</div>
               {upcoming.length===0&&<div style={{fontSize:12,color:t.dim}}>Nothing scheduled</div>}
+              <div style={{maxHeight:168,overflowY:"auto"}}>
               {upcoming.map(ev=><div key={ev.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,cursor:"pointer"}} onClick={()=>{setSel(new Date(ev.date+"T12:00:00"));setView("day");}}>
                 <div style={{width:3,height:30,borderRadius:2,background:evColor(ev),flexShrink:0}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:t.dim,fontFamily:FM}}>{ev.date} · {fmtT(ev.hour,ev.minute)}</div></div></div>)}
+              </div>
             </div>
             <div style={{display:"flex",borderBottom:`1px solid ${t.bdr}`}}>{["tasks","grocery","meals"].map(tab=><button key={tab} onClick={()=>setSideTab(tab)} style={{flex:1,padding:"10px 0",textAlign:"center",fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:1.5,color:sideTab===tab?t.accent:t.dim,background:"transparent",border:"none",cursor:"pointer",fontFamily:FF,borderBottom:`2px solid ${sideTab===tab?t.accent:"transparent"}`}}>{tab}</button>)}</div>
             <div style={{flex:1,overflow:"auto",padding:"8px 10px"}}>
@@ -990,9 +992,9 @@ function Homelight(){
               {sideTab==="grocery"&&<Checklist items={grocery} setItems={setGrocery} placeholder="Add item..." accentColor="#10B981"/>}
               {sideTab==="meals"&&<Meals meals={meals} setMeals={setMeals}/>}
             </div>
-            <div style={{padding:"12px 16px",borderTop:`1px solid ${t.bdr}`,display:"flex",flexWrap:"wrap",gap:10}}>
-              {Object.entries(CATS).map(([cat,col])=><div key={cat} style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:12,height:12,borderRadius:"50%",background:col.bg,flexShrink:0}}/><span style={{fontSize:13,color:t.sub,textTransform:"capitalize"}}>{cat}</span></div>)}
-              {feeds.filter(f=>f.enabled).map(f=><div key={f.id} style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:12,height:12,borderRadius:"50%",background:f.color,flexShrink:0}}/><span style={{fontSize:13,color:t.sub}}>{f.name}</span></div>)}
+            <div style={{padding:"8px 12px",borderTop:`1px solid ${t.bdr}`,display:"flex",flexWrap:"wrap",gap:"5px 10px",flexShrink:0}}>
+              {Object.entries(CATS).map(([cat,col])=><div key={cat} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:10,height:10,borderRadius:"50%",background:col.bg,flexShrink:0}}/><span style={{fontSize:11,color:t.sub,textTransform:"capitalize"}}>{cat}</span></div>)}
+              {feeds.filter(f=>f.enabled).map(f=><div key={f.id} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:10,height:10,borderRadius:"50%",background:f.color,flexShrink:0}}/><span style={{fontSize:11,color:t.sub}}>{f.name}</span></div>)}
             </div>
           </>}
         </div>
