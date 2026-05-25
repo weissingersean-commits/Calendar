@@ -886,10 +886,11 @@ function Homelight(){
   const[ssSleepEnabled,setSsSleepEnabled]=useP("ssSleepEnabled",false);
   const[ssSleepTime,setSsSleepTime]=useP("ssSleepTime","22:00");
   const[ssWakeTime,setSsWakeTime]=useP("ssWakeTime","07:00");
-  useEffect(()=>{if(!ssSleepEnabled)return;const ck=setInterval(()=>{if(inSleepWindow(new Date(),ssSleepTime,ssWakeTime))setShowSS(true);},10000);if(inSleepWindow(new Date(),ssSleepTime,ssWakeTime))setShowSS(true);return()=>clearInterval(ck);},[ssSleepEnabled,ssSleepTime,ssWakeTime]);
+  useEffect(()=>{if(!ssSleepEnabled)return;const ck=setInterval(()=>{if(inSleepWindow(new Date(),ssSleepTime,ssWakeTime)&&Date.now()>sleepDismissedUntil.current)setShowSS(true);},10000);if(inSleepWindow(new Date(),ssSleepTime,ssWakeTime)&&Date.now()>sleepDismissedUntil.current)setShowSS(true);return()=>clearInterval(ck);},[ssSleepEnabled,ssSleepTime,ssWakeTime]);
   const[showVoice,setShowVoice]=useState(false);
   const[recurChoice,setRecurChoice]=useState(null);
   const lastAct=useRef(Date.now());
+  const sleepDismissedUntil=useRef(0);
   const notifiedRef=useRef(new Set());
   const swipeRef=useRef({});
   const editOneRef=useRef(null);
@@ -937,7 +938,7 @@ function Homelight(){
     return()=>clearInterval(i);
   },[reminderMins,visibleEvents]);
 
-  if(showSS)return<Screensaver onTap={()=>{setShowSS(false);lastAct.current=Date.now();}} wx={wx} loc={loc} customPhotos={photos} ssCollections={ssCollections} ssSleepEnabled={ssSleepEnabled} ssSleepTime={ssSleepTime} ssWakeTime={ssWakeTime} events={visibleEvents}/>;
+  if(showSS)return<Screensaver onTap={()=>{setShowSS(false);lastAct.current=Date.now();sleepDismissedUntil.current=Date.now()+5*60*1000;}} wx={wx} loc={loc} customPhotos={photos} ssCollections={ssCollections} ssSleepEnabled={ssSleepEnabled} ssSleepTime={ssSleepTime} ssWakeTime={ssWakeTime} events={visibleEvents}/>;
 
   return<ThemeCtx.Provider value={t}>
     <div style={{fontFamily:FF,height:"100vh",width:"100vw",background:t.grad,color:t.text,display:"flex",flexDirection:"column",overflow:"hidden",userSelect:"none"}}>
