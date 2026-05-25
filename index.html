@@ -383,7 +383,7 @@ function DayView({sel,setSel,events,onEv,onAdd}){
   useEffect(()=>{if(scrollSentinel.current)scrollSentinel.current.scrollIntoView({block:'start',behavior:'instant'});},[key]);
   return<div>
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><button style={s.iconBtn} onClick={()=>setSel(addD(sel,-1))}>‹</button><span style={{fontSize:18,fontWeight:600,fontFamily:FF}}>{DAYS_F[sel.getDay()]}, {MO[sel.getMonth()]} {sel.getDate()}, {sel.getFullYear()}</span><button style={s.iconBtn} onClick={()=>setSel(addD(sel,1))}>›</button>{!sameD(sel,today)&&<button style={s.todayBtn} onClick={()=>setSel(new Date())}>Today</button>}</div>
-    {allDayEvs.length>0&&<div style={{marginBottom:14,padding:12,borderRadius:14,background:t.card,border:`1px solid ${t.bdr}`,position:"sticky",top:0,zIndex:10}}>
+    {allDayEvs.length>0&&<div style={{marginBottom:14,marginLeft:56,padding:12,borderRadius:14,background:t.card,border:`1px solid ${t.bdr}`,position:"sticky",top:0,zIndex:10}}>
       <div style={{fontSize:11,fontWeight:700,color:t.accent,textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>All-day events</div>
       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{allDayEvs.map(ev=><div key={ev.id} onClick={()=>onEv(ev)} style={{background:evColor(ev),color:"#fff",padding:"8px 12px",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div>)}</div>
     </div>}
