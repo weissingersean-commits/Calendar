@@ -42,6 +42,7 @@ const {useState,useEffect,useCallback,useRef,useMemo,createContext,useContext}=R
  *  Live Weather · Full CRUD · PWA-Ready
  * ═══════════════════════════════════════════════════════════════════ */
 
+const GEMINI_PROXY="https://homelight-gemini.weissinger-sean.workers.dev";
 const FF="'Outfit',system-ui,sans-serif";
 const FM="'JetBrains Mono',monospace";
 
@@ -625,7 +626,9 @@ function VoiceAssistant({events,todos,geminiKey,geminiModel,onClose,onSaveEvent,
     const apiContents=rawHist.map((m,i)=>i===0&&m.role==="user"?{role:"user",parts:[{text:buildSysPrompt()+"\n\n---\n\n"+m.parts[0].text}]}:m);
     try{
       const model=geminiModel||"gemini-2.5-flash-lite";
-      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:apiContents,generationConfig:{temperature:0.7,maxOutputTokens:400}})});
+      const res=GEMINI_PROXY
+        ?await fetch(GEMINI_PROXY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model,contents:apiContents,generationConfig:{temperature:0.7,maxOutputTokens:400}})})
+        :await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:apiContents,generationConfig:{temperature:0.7,maxOutputTokens:400}})});
       const data=await res.json();
       if(data.error){setResponse(`Server busy — tap Try Again.`);setHasError(true);setPhase("idle");return;}
       if(data.promptFeedback?.blockReason){setResponse(`Blocked: ${data.promptFeedback.blockReason}`);setPhase("idle");return;}
@@ -678,17 +681,17 @@ function VoiceAssistant({events,todos,geminiKey,geminiModel,onClose,onSaveEvent,
       <div style={{fontSize:18,fontWeight:800,color:t.text}}>✨ Ask Homelight</div>
       <button onClick={onClose} style={{background:"none",border:"none",color:t.dim,fontSize:22,cursor:"pointer",lineHeight:1}}>×</button>
     </div>
-    {!geminiKey&&<div style={{padding:"12px 16px",borderRadius:10,background:t.dangerDim,color:t.danger,fontSize:12,marginBottom:16,lineHeight:1.6}}>No Gemini API key set. Add yours in <b>Settings ⚙ → AI Assistant</b>. Get a free key at <b>aistudio.google.com</b>.</div>}
+    {!geminiKey&&!GEMINI_PROXY&&<div style={{padding:"12px 16px",borderRadius:10,background:t.dangerDim,color:t.danger,fontSize:12,marginBottom:16,lineHeight:1.6}}>No Gemini API key set. Add yours in <b>Settings ⚙ → AI Assistant</b>. Get a free key at <b>aistudio.google.com</b>.</div>}
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12,marginBottom:20,paddingTop:8}}>
-      <button onClick={phase==="listening"?stopListening:startListening} disabled={phase==="processing"||phase==="speaking"||!geminiKey} style={{width:80,height:80,borderRadius:"50%",border:"none",background:phase==="listening"?"rgba(239,68,68,0.15)":t.acDim,color:phaseColor,fontSize:32,cursor:(phase==="processing"||phase==="speaking"||!geminiKey)?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:phase==="listening"?"0 0 0 8px rgba(239,68,68,0.15),0 0 0 18px rgba(239,68,68,0.07)":"none",transition:"all 0.3s"}}>🎤</button>
+      <button onClick={phase==="listening"?stopListening:startListening} disabled={phase==="processing"||phase==="speaking"||(!geminiKey&&!GEMINI_PROXY)} style={{width:80,height:80,borderRadius:"50%",border:"none",background:phase==="listening"?"rgba(239,68,68,0.15)":t.acDim,color:phaseColor,fontSize:32,cursor:(phase==="processing"||phase==="speaking"||(!geminiKey&&!GEMINI_PROXY))?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:phase==="listening"?"0 0 0 8px rgba(239,68,68,0.15),0 0 0 18px rgba(239,68,68,0.07)":"none",transition:"all 0.3s"}}>🎤</button>
       <div style={{fontSize:13,color:phaseColor,fontWeight:600}}>{phaseLabel}</div>
     </div>
     {transcript&&<div style={{...s.crd,marginBottom:12}}><div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.dim,marginBottom:6}}>You said</div><div style={{fontSize:13,color:t.text}}>{transcript}</div></div>}
     {response&&<div style={{...s.crd,marginBottom:8,background:hasError?t.dangerDim:t.acDim,border:`1px solid ${hasError?t.danger:t.acGlow}`}}><div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:hasError?t.danger:t.accent,marginBottom:6}}>Homelight</div><div style={{fontSize:13,color:t.text,lineHeight:1.6}}>{response}</div></div>}
     {hasError&&<button onClick={()=>callGemini(lastMsgRef.current)} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"none",background:t.accent,color:t.acText,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FF,marginBottom:8}}>↺ Try Again</button>}
     <div style={{display:"flex",gap:8,marginTop:4}}>
-      <input style={{...s.inp,marginBottom:0,flex:1}} placeholder="Or type a message..." value={textInput} onChange={e=>setTextInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendText()} disabled={phase==="processing"||!geminiKey}/>
-      <button onClick={sendText} disabled={!textInput.trim()||phase==="processing"||!geminiKey} style={{padding:"10px 16px",borderRadius:10,border:"none",background:t.accent,color:t.acText,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FF}}>Send</button>
+      <input style={{...s.inp,marginBottom:0,flex:1}} placeholder="Or type a message..." value={textInput} onChange={e=>setTextInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendText()} disabled={phase==="processing"||(!geminiKey&&!GEMINI_PROXY)}/>
+      <button onClick={sendText} disabled={!textInput.trim()||phase==="processing"||(!geminiKey&&!GEMINI_PROXY)} style={{padding:"10px 16px",borderRadius:10,border:"none",background:t.accent,color:t.acText,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FF}}>Send</button>
     </div>
     {history.length>0&&<button onClick={()=>{setHistory([]);setTranscript("");setResponse("");}} style={{marginTop:10,background:"none",border:"none",color:t.dim,fontSize:11,cursor:"pointer",padding:0,fontFamily:FF}}>Clear conversation</button>}
   </div></div>;
@@ -955,7 +958,7 @@ function Homelight(){
           {deferredPrompt && <button onClick={async()=>{deferredPrompt.prompt();const choice=await deferredPrompt.userChoice;setInstallStatus(choice.outcome);setDeferredPrompt(null);}} style={{padding:"6px 14px",borderRadius:22,border:"none",background:t.success,color:t.acText,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>Install</button>}
           {installStatus && <span style={{fontSize:12,color:t.success,whiteSpace:"nowrap"}}>{installStatus==="installed"?"App installed!":"Install prompt shown"}</span>}
           <button onClick={()=>setShowSearch(true)} style={{padding:"6px 14px",borderRadius:22,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>🔍 Search</button>
-          <button onClick={()=>setShowVoice(true)} title="AI Assistant" style={{padding:"6px 14px",borderRadius:22,border:`1px solid ${t.bdr}`,background:geminiKey?t.acDim:"transparent",color:geminiKey?t.accent:t.dim,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>🎤 Ask</button>
+          <button onClick={()=>setShowVoice(true)} title="AI Assistant" style={{padding:"6px 14px",borderRadius:22,border:`1px solid ${t.bdr}`,background:(geminiKey||GEMINI_PROXY)?t.acDim:"transparent",color:(geminiKey||GEMINI_PROXY)?t.accent:t.dim,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>🎤 Ask</button>
           <button onClick={()=>setModal("add")} style={{padding:"6px 18px",borderRadius:22,border:"none",background:t.accent,color:t.acText,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+ Event</button>
           <button onClick={()=>setSidebarOpen(o=>!o)} title={sidebarOpen?"Hide sidebar":"Show sidebar"} style={{background:"none",border:`1px solid ${t.bdr}`,color:t.dim,cursor:"pointer",fontSize:13,padding:"6px 10px",borderRadius:8,fontFamily:FM,minHeight:44}}>{sidebarOpen?"▶":"◀"}</button>
         </div>
