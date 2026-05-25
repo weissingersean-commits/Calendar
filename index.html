@@ -528,11 +528,11 @@ function Screensaver({onTap,wx,loc,customPhotos,ssCollections,ssSleepEnabled,ssS
   const tempWakeRef=useRef(null);
   const sleeping=ssSleepEnabled&&inSleepWindow(time,ssSleepTime,ssWakeTime)&&!tempWake;
   const handleTap=()=>{
-    if(ssSleepEnabled&&inSleepWindow(time,ssSleepTime,ssWakeTime)){
+    if(ssSleepEnabled&&inSleepWindow(time,ssSleepTime,ssWakeTime)&&!tempWake){
       setTempWake(true);
       clearTimeout(tempWakeRef.current);
       tempWakeRef.current=setTimeout(()=>setTempWake(false),30000);
-    }else{onTap();}
+    }else{clearTimeout(tempWakeRef.current);onTap();}
   };
   useEffect(()=>{
     (async()=>{
