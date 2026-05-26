@@ -984,7 +984,7 @@ function Homelight(){
             <div style={{padding:"8px 10px",borderBottom:`1px solid ${t.bdr}`,flexShrink:0}}>
               <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:2,color:t.accent,marginBottom:10}}>Coming Up</div>
               {upcoming.length===0&&<div style={{fontSize:12,color:t.dim}}>Nothing scheduled</div>}
-              <div style={{maxHeight:168,overflowY:"auto"}}>
+              <div style={{maxHeight:130,overflowY:"auto"}}>
               {upcoming.map(ev=><div key={ev.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,cursor:"pointer"}} onClick={()=>{setSel(new Date(ev.date+"T12:00:00"));setView("day");}}>
                 <div style={{width:3,height:30,borderRadius:2,background:evColor(ev),flexShrink:0}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:t.dim,fontFamily:FM}}>{ev.date} · {fmtT(ev.hour,ev.minute)}</div></div></div>)}
               </div>
