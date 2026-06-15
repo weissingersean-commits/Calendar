@@ -1258,6 +1258,7 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards}){
   const dueChores=useMemo(()=>todos.filter(it=>{if(!it.repeat||it.repeat==="none")return false;if(it.repeat==="daily")return it.lastCompleted!==today;if(it.repeat==="weekly")return!it.lastCompleted||it.lastCompleted<wkStart;return false;}),[todos,today,wkStart]);
   const dueTasks=useMemo(()=>todos.filter(it=>(!it.repeat||it.repeat==="none")&&!it.done&&it.dueDate&&it.dueDate<=today),[todos,today]);
   const upcoming7=useMemo(()=>{const limit=dkey(new Date(new Date().getTime()+7*86400000));return events.filter(ev=>isBday(ev)&&ev.date>today&&ev.date<=limit).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);},[events,today]);
+  const weekAhead=useMemo(()=>{const days=[];for(let i=1;i<=6;i++){const d=new Date();d.setDate(d.getDate()+i);const dk=dkey(d);const evs=events.filter(ev=>ev.date===dk).sort((a,b)=>(a.hour*60+(a.minute||0))-(b.hour*60+(b.minute||0)));if(evs.length>0)days.push({date:dk,d,evs});}return days;},[events,today]);
   function checkChore(it){
     setTodos(ts=>ts.map(x=>x.id!==it.id?x:{...x,lastCompleted:today}));
     playDing();
@@ -1311,7 +1312,20 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards}){
         </div>)}
       </div>}
     </>}
-    {todayEvs.length===0&&dueChores.length===0&&<div style={{fontSize:12,color:t.dim,fontStyle:"italic",textAlign:"center",marginTop:24}}>A peaceful day 🌟</div>}
+    {todayEvs.length===0&&dueChores.length===0&&dueTasks.length===0&&<div style={{fontSize:12,color:t.dim,fontStyle:"italic",textAlign:"center",marginTop:16,marginBottom:16}}>A peaceful day 🌟</div>}
+    {weekAhead.length>0&&<div style={{marginTop:16,borderTop:`1px solid ${t.bdr}`,paddingTop:12}}>
+      <div style={{fontSize:11,fontWeight:700,color:t.accent,textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>Coming Up This Week</div>
+      {weekAhead.map(({date,d,evs})=><div key={date} style={{marginBottom:10}}>
+        <div style={{fontSize:10,fontWeight:700,color:t.sub,marginBottom:4}}>{DAYS_F[d.getDay()]}, {MO[d.getMonth()]} {d.getDate()}</div>
+        {evs.slice(0,3).map(ev=>{const pm=members.find(m=>m.id===ev.assignedTo);return<div key={ev.id} style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,paddingLeft:6}}>
+          <div style={{width:3,height:3,borderRadius:"50%",background:evColor(ev,members),flexShrink:0}}/>
+          <span style={{fontSize:11,color:t.text,flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{evPrefix(ev)}{ev.title}</span>
+          {pm&&<span style={{fontSize:9,fontWeight:700,color:pm.color}}>{pm.name}</span>}
+          <span style={{fontSize:9,color:t.dim,flexShrink:0}}>{isAllDay(ev)?"All day":fmtT(ev.hour,ev.minute)}</span>
+        </div>;})}
+        {evs.length>3&&<div style={{fontSize:9,color:t.dim,paddingLeft:15}}>+{evs.length-3} more</div>}
+      </div>)}
+    </div>}
   </div>;
 }
 
