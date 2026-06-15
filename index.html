@@ -1254,6 +1254,8 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards}){
   const wkStart=dkey(wkSt(new Date()));
   const todayEvs=useMemo(()=>events.filter(ev=>ev.date===today).sort((a,b)=>{if(!a.hour&&a.hour!==0)return-1;if(!b.hour&&b.hour!==0)return 1;return(a.hour*60+(a.minute||0))-(b.hour*60+(b.minute||0));}),[events,today]);
   const dueChores=useMemo(()=>todos.filter(it=>{if(!it.repeat||it.repeat==="none")return false;if(it.repeat==="daily")return it.lastCompleted!==today;if(it.repeat==="weekly")return!it.lastCompleted||it.lastCompleted<wkStart;return false;}),[todos,today,wkStart]);
+  const dueTasks=useMemo(()=>todos.filter(it=>(!it.repeat||it.repeat==="none")&&!it.done&&it.dueDate&&it.dueDate<=today),[todos,today]);
+  const upcoming7=useMemo(()=>{const limit=dkey(new Date(new Date().getTime()+7*86400000));return events.filter(ev=>isBday(ev)&&ev.date>today&&ev.date<=limit).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);},[events,today]);
   function checkChore(it){
     setTodos(ts=>ts.map(x=>x.id!==it.id?x:{...x,lastCompleted:today}));
     playDing();
@@ -1262,6 +1264,18 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards}){
   const assignedChores=members.map(m=>({m,chores:dueChores.filter(c=>c.assignedTo===m.id)})).filter(({chores})=>chores.length>0);
   const unassigned=dueChores.filter(c=>!c.assignedTo);
   return<div>
+    {upcoming7.length>0&&<div style={{marginBottom:14}}>
+      {upcoming7.map(ev=>{const d=Math.round((new Date(ev.date+"T12:00:00")-new Date())/86400000);return<div key={ev.id} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:8,background:"rgba(252,211,77,0.08)",border:"1px solid rgba(252,211,77,0.2)",marginBottom:4}}><span style={{fontSize:14}}>🎂</span><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:"#F59E0B",fontWeight:700}}>in {d} day{d!==1?"s":""}</div></div></div>;})}
+    </div>}
+    {dueTasks.length>0&&<div style={{marginBottom:14}}>
+      <div style={{fontSize:11,fontWeight:700,color:"#EF4444",textTransform:"uppercase",letterSpacing:1.5,marginBottom:6}}>Due / Overdue</div>
+      {dueTasks.map(it=>{const pm=members.find(m=>m.id===it.assignedTo);const overdue=it.dueDate<today;return<div key={it.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,padding:"4px 8px",borderRadius:8,background:"rgba(239,68,68,0.06)",border:`1px solid ${overdue?"rgba(239,68,68,0.25)":"rgba(245,158,11,0.25)"}`}}>
+        <button onClick={()=>{setTodos(ts=>ts.map(x=>x.id===it.id?{...x,done:true}:x));playDing();}} style={{width:16,height:16,borderRadius:4,border:`2px solid ${overdue?"#EF4444":"#F59E0B"}`,background:"transparent",cursor:"pointer",padding:0,flexShrink:0}}/>
+        <span style={{fontSize:12,color:t.text,flex:1}}>{it.text}</span>
+        {pm&&<span style={{fontSize:9,fontWeight:700,color:pm.color}}>{pm.name}</span>}
+        <span style={{fontSize:9,color:overdue?"#EF4444":"#F59E0B",fontWeight:700}}>{overdue?"Overdue":"Today"}</span>
+      </div>;})}
+    </div>}
     <div style={{fontSize:11,fontWeight:700,color:t.accent,textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>Today's Schedule</div>
     {todayEvs.length===0?<div style={{fontSize:12,color:t.dim,marginBottom:16,fontStyle:"italic"}}>Nothing scheduled today</div>:todayEvs.map(ev=>{
       const pm=members.find(m=>m.id===ev.assignedTo);
