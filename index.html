@@ -24,14 +24,14 @@
   ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.2);}
   input,select,button{font-family:inherit;}
   input:focus,select:focus{border-color:rgba(56,189,248,0.4)!important;}
-  @keyframes confettiFall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
+  @keyframes confettiFall{0%{transform:translateY(0) rotate(0deg);opacity:1;}100%{transform:translateY(100vh) rotate(720deg);opacity:0;}}
+  @keyframes confettiPop{0%{transform:translate(-50%,-50%) scale(0.5);opacity:0;}15%{transform:translate(-50%,-50%) scale(1.08);opacity:1;}85%{opacity:1;}100%{transform:translate(-50%,-50%) scale(1);opacity:0;}}
+  @keyframes glowPulse{0%,100%{box-shadow:0 0 0 0 rgba(251,191,36,0.5);}50%{box-shadow:0 0 0 6px rgba(251,191,36,0);}}
   @media print{
     html,body,#root{overflow:visible!important;height:auto!important;}
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
     [data-no-print]{display:none!important;}
   }
-  @keyframes confettiFall{0%{transform:translateY(0) rotate(0deg);opacity:1;}100%{transform:translateY(100vh) rotate(720deg);opacity:0;}}
-  @keyframes confettiPop{0%{transform:translate(-50%,-50%) scale(0.5);opacity:0;}15%{transform:translate(-50%,-50%) scale(1.08);opacity:1;}85%{opacity:1;}100%{transform:translate(-50%,-50%) scale(1);opacity:0;}}
 </style>
 </head>
 <body>
@@ -420,6 +420,7 @@ function DayView({sel,setSel,events,onEv,onAdd}){
   const hrs=Array.from({length:24},(_,i)=>i);
   const rowH=56;const gridHeight=rowH*24;
   const isToday=sameD(sel,today);const nowTop=(today.getHours()+today.getMinutes()/60)*rowH;
+  const nowMins=today.getHours()*60+today.getMinutes();
   const scrollSentinel=useRef(null);
   const firstEvTop=timedEvents.length>0?Math.min(...timedEvents.map(e=>(e.hour+(e.minute||0)/60)*rowH)):null;
   const scrollTarget=firstEvTop!==null?Math.max(0,firstEvTop-80):isToday?Math.max(0,nowTop-100):7*rowH;
@@ -432,7 +433,7 @@ function DayView({sel,setSel,events,onEv,onAdd}){
     </div>}
     <div style={{display:"grid",gridTemplateColumns:"56px 1fr",minHeight:gridHeight,position:"relative"}}>
       <div style={{display:"grid",gridTemplateRows:`repeat(24, ${rowH}px)`}}>{hrs.map(h=><div key={h} style={{height:rowH,paddingRight:8,paddingTop:4,fontSize:10,color:t.dim,fontFamily:FM,textAlign:"right",borderBottom:`1px solid ${t.bdr}`}}>{fmtT(h)}</div>)}</div>
-      <div style={{position:"relative",minHeight:gridHeight,background:t.card,borderLeft:`1px solid ${t.bdr}`}}><div ref={scrollSentinel} style={{position:"absolute",top:scrollTarget,height:1,width:"100%",pointerEvents:"none"}}/>{Array.from({length:24},(_,h)=><div key={h} onClick={()=>onAdd(h)} style={{height:rowH,borderBottom:`1px solid ${t.bdr}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=t.acDim} onMouseLeave={e=>e.currentTarget.style.background="transparent"}/>)}{timedEvents.map(ev=>{const top=(ev.hour+(ev.minute||0)/60)*rowH;const height=Math.max(38,ev.duration*rowH-4);const {col,total}=buildEventColumns(timedEvents).get(ev.id)||{col:0,total:1};const pm=members.find(m=>m.id===ev.assignedTo);return<div key={ev.id} onClick={()=>onEv(ev)} style={{position:"absolute",top,left:`calc(${col*(100/total)}% + 6px)`,width:`calc(${100/total}% - 12px)`,height,background:evColor(ev,members),borderRadius:10,color:"#fff",padding:"10px 12px",fontSize:12,fontWeight:600,overflow:"hidden",cursor:"pointer",boxShadow:"0 4px 14px rgba(0,0,0,0.25)"}}><div style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{evPrefix(ev)}{ev.title}</div>{pm&&<div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.72)",marginTop:1}}>{pm.name}</div>}<div style={{fontSize:10,color:"rgba(255,255,255,0.75)",marginTop:2}}>{fmtT(ev.hour,ev.minute)} – {fmtT(Math.floor(ev.hour+ev.duration),Math.round(((ev.hour+ev.duration)%1)*60))}</div>{ev.notes&&<div style={{fontSize:9,color:"rgba(255,255,255,0.55)",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📝 {ev.notes}</div>}</div>;})}{isToday&&<div style={{position:"absolute",top:nowTop,left:0,right:0,height:2,background:"#EF4444",zIndex:5,pointerEvents:"none"}}><div style={{position:"absolute",left:-5,top:-4,width:10,height:10,borderRadius:"50%",background:"#EF4444"}}/></div>}</div>
+      <div style={{position:"relative",minHeight:gridHeight,background:t.card,borderLeft:`1px solid ${t.bdr}`}}><div ref={scrollSentinel} style={{position:"absolute",top:scrollTarget,height:1,width:"100%",pointerEvents:"none"}}/>{Array.from({length:24},(_,h)=><div key={h} onClick={()=>onAdd(h)} style={{height:rowH,borderBottom:`1px solid ${t.bdr}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=t.acDim} onMouseLeave={e=>e.currentTarget.style.background="transparent"}/>)}{timedEvents.map(ev=>{const top=(ev.hour+(ev.minute||0)/60)*rowH;const height=Math.max(38,ev.duration*rowH-4);const {col,total}=buildEventColumns(timedEvents).get(ev.id)||{col:0,total:1};const pm=members.find(m=>m.id===ev.assignedTo);const evStartMins=ev.hour*60+(ev.minute||0);const minsUntil=evStartMins-nowMins;const soon=isToday&&minsUntil>=0&&minsUntil<=30;return<div key={ev.id} onClick={()=>onEv(ev)} style={{position:"absolute",top,left:`calc(${col*(100/total)}% + 6px)`,width:`calc(${100/total}% - 12px)`,height,background:evColor(ev,members),borderRadius:10,color:"#fff",padding:"10px 12px",fontSize:12,fontWeight:600,overflow:"hidden",cursor:"pointer",boxShadow:soon?"0 0 0 2px #FBBF24":"0 4px 14px rgba(0,0,0,0.25)",animation:soon?"glowPulse 2s ease-in-out infinite":undefined}}>{soon&&<div style={{fontSize:9,fontWeight:800,color:"#FEF3C7",background:"rgba(0,0,0,0.25)",borderRadius:4,padding:"1px 5px",display:"inline-block",marginBottom:3}}>⚡ {minsUntil===0?"now":`in ${minsUntil}m`}</div>}<div style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{evPrefix(ev)}{ev.title}</div>{pm&&<div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.72)",marginTop:1}}>{pm.name}</div>}<div style={{fontSize:10,color:"rgba(255,255,255,0.75)",marginTop:2}}>{fmtT(ev.hour,ev.minute)} – {fmtT(Math.floor(ev.hour+ev.duration),Math.round(((ev.hour+ev.duration)%1)*60))}</div>{ev.notes&&<div style={{fontSize:9,color:"rgba(255,255,255,0.55)",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📝 {ev.notes}</div>}</div>;})}{isToday&&<div style={{position:"absolute",top:nowTop,left:0,right:0,height:2,background:"#EF4444",zIndex:5,pointerEvents:"none"}}><div style={{position:"absolute",left:-5,top:-4,width:10,height:10,borderRadius:"50%",background:"#EF4444"}}/></div>}</div>
     </div>
   </div>;
 }
@@ -1553,10 +1554,16 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,o
     <div style={{fontSize:11,fontWeight:700,color:t.accent,textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>Today's Schedule</div>
     {todayEvs.length===0?<div style={{fontSize:12,color:t.dim,marginBottom:16,fontStyle:"italic"}}>Nothing scheduled today</div>:todayEvs.map(ev=>{
       const pm=members.find(m=>m.id===ev.assignedTo);
-      return<div key={ev.id} style={{display:"flex",alignItems:"stretch",gap:8,marginBottom:6}}>
+      const nowM=new Date().getHours()*60+new Date().getMinutes();
+      const evM=ev.hour*60+(ev.minute||0);const minsUntil=evM-nowM;
+      const soon=!isAllDay(ev)&&minsUntil>=0&&minsUntil<=30;
+      return<div key={ev.id} style={{display:"flex",alignItems:"stretch",gap:8,marginBottom:6,borderRadius:8,background:soon?"rgba(251,191,36,0.07)":"transparent",padding:soon?"4px 6px":"0"}}>
         <div style={{width:3,borderRadius:2,background:evColor(ev,members),flexShrink:0}}/>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{evPrefix(ev)}{ev.title}</div>
+          <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
+            <span style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{evPrefix(ev)}{ev.title}</span>
+            {soon&&<span style={{fontSize:9,fontWeight:800,color:"#FBBF24",background:"rgba(251,191,36,0.15)",borderRadius:4,padding:"1px 5px",flexShrink:0}}>{minsUntil===0?"now":"in "+minsUntil+"m"}</span>}
+          </div>
           {pm&&<div style={{fontSize:9,fontWeight:700,color:pm.color}}>{pm.name}</div>}
           <div style={{fontSize:10,color:t.dim}}>{isAllDay(ev)?"All day":fmtT(ev.hour,ev.minute||0)}{ev.location?" · 📍"+ev.location:""}</div>
         </div>
