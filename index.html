@@ -935,7 +935,7 @@ function CalSyncPanel({feeds,setFeeds,syncAll,syncStatus}){
 // ═════════════════ SCREENSAVER ═══════════════════════════════════════
 const DEFAULT_PHOTOS=["https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1501854140801-50d01698950b?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1400&h=900&fit=crop"];
 const NATURE_PHOTOS=shuffle([10,11,12,13,14,15,16,17,18,19,20,23,24,25,26,28,29,36,37,39,40,41,42,43,44,45,46,47,48,49,50,51,53,54,56,57,58,59,60,63,64,65,66,67,69,70,72,73,74,75,76,77,78,79,80,83,84,85,86,87,88,90,91,92,93,94,95,96,97,98,99,100,110,112,113,114,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130].map(id=>`https://picsum.photos/id/${id}/1920/1080`));
-function Screensaver({onTap,wx,loc,forecast,customPhotos,ssCollections,ssSleepEnabled,ssSleepTime,ssWakeTime,events,announcement,todos=[],setTodos,rewards,setRewards}){
+function Screensaver({onTap,wx,loc,forecast,customPhotos,ssCollections,ssSleepEnabled,ssSleepTime,ssWakeTime,events,announcement,todos=[],setTodos,rewards,setRewards,wallMode=false}){
   const base=useMemo(()=>customPhotos?.length>0?customPhotos:DEFAULT_PHOTOS,[]);
   const[photos,setPhotos]=useState(base);
   const[idx,setIdx]=useState(0),[time,setTime]=useState(new Date()),[fade,setFade]=useState(true);
@@ -1054,7 +1054,7 @@ function Screensaver({onTap,wx,loc,forecast,customPhotos,ssCollections,ssSleepEn
         {evs.length>4&&<div style={{fontSize:10,color:"rgba(255,255,255,0.25)",textAlign:"right",marginTop:2}}>+{evs.length-4} more</div>}
       </div>)}
     </div>}
-    <div style={{position:"absolute",bottom:22,right:32,fontSize:11,color:"rgba(255,255,255,0.2)",fontFamily:FF}}>Tap anywhere to return</div>
+    <div style={{position:"absolute",bottom:22,right:32,fontSize:11,color:"rgba(255,255,255,0.2)",fontFamily:FF}}>{wallMode?"Tap to use calendar":"Tap anywhere to return"}</div>
   </div>;
 }
 
@@ -1197,7 +1197,7 @@ function ContactsWidget({contacts}){
 }
 
 // ═════════════════ SETTINGS ═════════════════════════════════════════
-function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart,photos,setPhotos,ssCollections,setSsCollections,ssSleepEnabled,setSsSleepEnabled,ssSleepTime,setSsSleepTime,ssWakeTime,setSsWakeTime,reminderMins,setReminderMins,onClearEvents,onClearLists,onClearMeals,deferredPrompt,onInstallPrompt,installStatus,geminiKey,setGeminiKey,geminiModel,setGeminiModel,members,setMembers,contacts,setContacts,onClose}){
+function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart,photos,setPhotos,ssCollections,setSsCollections,ssSleepEnabled,setSsSleepEnabled,ssSleepTime,setSsSleepTime,ssWakeTime,setSsWakeTime,reminderMins,setReminderMins,onClearEvents,onClearLists,onClearMeals,deferredPrompt,onInstallPrompt,installStatus,geminiKey,setGeminiKey,geminiModel,setGeminiModel,members,setMembers,contacts,setContacts,wallMode,setWallMode,wallReturnMins,setWallReturnMins,onClose}){
   const t=useT(),s=useS(),fileRef=useRef(null);
   const[memberName,setMemberName]=useState("");
   const[memberColor,setMemberColor]=useState(PALETTE[3]);
@@ -1275,6 +1275,15 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart
       <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite</option>
       <option value="gemini-2.0-flash">gemini-2.0-flash</option>
     </select>
+    <label style={s.lbl}>Wall Display Mode</label>
+    <div style={{fontSize:11,color:t.sub,marginBottom:10}}>Start up in always-on photo display. Tap anywhere to use the full calendar — it returns automatically after idle time.</div>
+    <div onClick={()=>setWallMode(!wallMode)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:10,border:`1px solid ${wallMode?t.accent:t.bdr}`,background:wallMode?t.acDim:"transparent",cursor:"pointer",marginBottom:10,userSelect:"none"}}>
+      <span style={{fontSize:20}}>🖼</span>
+      <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:wallMode?t.accent:t.text}}>Enable Wall Display Mode</div><div style={{fontSize:11,color:t.sub,marginTop:2}}>Shows photo display on load — tap to use full calendar</div></div>
+      <div style={{width:36,height:20,borderRadius:10,background:wallMode?t.accent:t.bdr,position:"relative",flexShrink:0,transition:"background 0.2s"}}><div style={{position:"absolute",top:2,left:wallMode?18:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.3)"}}/></div>
+    </div>
+    {wallMode&&<><label style={s.lbl}>Return to Display After</label>
+    <select style={s.sel} value={wallReturnMins} onChange={e=>setWallReturnMins(parseInt(e.target.value))}><option value={1}>1 minute</option><option value={2}>2 minutes</option><option value={5}>5 minutes</option><option value={10}>10 minutes</option></select></>}
     <label style={s.lbl}>Auto-Screensaver</label>
     <select style={s.sel} value={ssDelay} onChange={e=>setSsDelay(parseInt(e.target.value))}><option value={0}>Off</option><option value={2}>2 min</option><option value={5}>5 min</option><option value={10}>10 min</option><option value={15}>15 min</option><option value={30}>30 min</option></select>
     <label style={s.lbl}>Sleep Schedule</label>
@@ -1556,7 +1565,24 @@ function Homelight(){
   const[ssSleepEnabled,setSsSleepEnabled]=useP("ssSleepEnabled",false);
   const[ssSleepTime,setSsSleepTime]=useP("ssSleepTime","22:00");
   const[ssWakeTime,setSsWakeTime]=useP("ssWakeTime","07:00");
+  const[wallMode,setWallMode]=useP("wallMode",false);
+  const[wallReturnMins,setWallReturnMins]=useP("wallReturnMins",2);
+  const[wallCountdown,setWallCountdown]=useState(null);
   useEffect(()=>{if(!ssSleepEnabled)return;const ck=setInterval(()=>{if(inSleepWindow(new Date(),ssSleepTime,ssWakeTime)&&Date.now()>sleepDismissedUntil.current)setShowSS(true);},10000);if(inSleepWindow(new Date(),ssSleepTime,ssWakeTime)&&Date.now()>sleepDismissedUntil.current)setShowSS(true);return()=>clearInterval(ck);},[ssSleepEnabled,ssSleepTime,ssWakeTime]);
+  useEffect(()=>{if(wallMode)setShowSS(true);},[]);
+  useEffect(()=>{
+    if(!wallMode||showSS){setWallCountdown(null);return;}
+    lastAct.current=Date.now();
+    const h=()=>{lastAct.current=Date.now();};
+    window.addEventListener("mousemove",h);window.addEventListener("touchstart",h);window.addEventListener("keydown",h);
+    const ck=setInterval(()=>{
+      const elapsed=Date.now()-lastAct.current;
+      const remaining=Math.max(0,wallReturnMins*60000-elapsed);
+      setWallCountdown(Math.ceil(remaining/1000));
+      if(elapsed>wallReturnMins*60000)setShowSS(true);
+    },1000);
+    return()=>{window.removeEventListener("mousemove",h);window.removeEventListener("touchstart",h);window.removeEventListener("keydown",h);clearInterval(ck);};
+  },[wallMode,showSS,wallReturnMins]);
   const[showVoice,setShowVoice]=useState(false);
   const[recurChoice,setRecurChoice]=useState(null);
   const lastAct=useRef(Date.now());
@@ -1609,7 +1635,7 @@ function Homelight(){
     return()=>clearInterval(i);
   },[reminderMins,visibleEvents]);
 
-  if(showSS)return<Screensaver onTap={()=>{setShowSS(false);lastAct.current=Date.now();sleepDismissedUntil.current=Date.now()+5*60*1000;}} wx={wx} loc={loc} forecast={forecast} customPhotos={photos} ssCollections={ssCollections} ssSleepEnabled={ssSleepEnabled} ssSleepTime={ssSleepTime} ssWakeTime={ssWakeTime} events={visibleEvents} announcement={announcement} todos={todos} setTodos={setTodos} rewards={rewards} setRewards={setRewards}/>;
+  if(showSS)return<Screensaver onTap={()=>{setShowSS(false);lastAct.current=Date.now();sleepDismissedUntil.current=Date.now()+5*60*1000;}} wallMode={wallMode} wx={wx} loc={loc} forecast={forecast} customPhotos={photos} ssCollections={ssCollections} ssSleepEnabled={ssSleepEnabled} ssSleepTime={ssSleepTime} ssWakeTime={ssWakeTime} events={visibleEvents} announcement={announcement} todos={todos} setTodos={setTodos} rewards={rewards} setRewards={setRewards}/>;
 
   return<MembersCtx.Provider value={members}><ThemeCtx.Provider value={t}>
     <div style={{fontFamily:FF,height:"100vh",width:"100vw",background:t.grad,color:t.text,display:"flex",flexDirection:"column",overflow:"hidden",userSelect:"none"}}>
@@ -1620,6 +1646,7 @@ function Homelight(){
           <input type="date" value={dkey(sel)} onChange={e=>{const d=new Date(e.target.value+"T12:00:00");if(!isNaN(d))setSel(d);}} style={{padding:"5px 10px",borderRadius:22,border:`1px solid ${t.bdr}`,background:t.card,color:t.sub,fontSize:11,fontFamily:FF,cursor:"pointer",colorScheme:theme==="dark"?"dark":"light"}} title="Jump to date"/>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
+          {wallMode&&<div style={{padding:"3px 10px",borderRadius:12,background:t.acDim,border:`1px solid ${t.accent}`,fontSize:10,fontWeight:700,color:t.accent,whiteSpace:"nowrap"}}>🖼 Wall{wallCountdown!==null&&wallCountdown>0?(wallCountdown>60?` · ${Math.ceil(wallCountdown/60)}m`:` · ${wallCountdown}s`):""}</div>}
           <span style={{fontSize:14,fontWeight:400,color:t.sub,fontFamily:FM}}>{time.getHours()%12||12}:{String(time.getMinutes()).padStart(2,"0")} {time.getHours()>=12?"PM":"AM"}</span>
           <span style={{fontSize:12,color:t.dim}}>{DAYS_F[time.getDay()]}, {MO[time.getMonth()]} {time.getDate()}</span>
           <div style={{width:1,height:20,background:t.bdr}}/>
@@ -1645,7 +1672,7 @@ function Homelight(){
         </div>
         <div data-no-print="" style={{width:sidebarOpen?312:0,borderLeft:sidebarOpen?`1px solid ${t.bdr}`:"none",background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0,transition:"width 0.25s ease"}}>
           {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
-          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} ssCollections={ssCollections} setSsCollections={setSsCollections} ssSleepEnabled={ssSleepEnabled} setSsSleepEnabled={setSsSleepEnabled} ssSleepTime={ssSleepTime} setSsSleepTime={setSsSleepTime} ssWakeTime={ssWakeTime} setSsWakeTime={setSsWakeTime} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt} geminiKey={geminiKey} setGeminiKey={setGeminiKey} geminiModel={geminiModel} setGeminiModel={setGeminiModel} members={members} setMembers={setMembers} contacts={contacts} setContacts={setContacts} onClose={()=>setPanel("main")}/>
+          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} ssCollections={ssCollections} setSsCollections={setSsCollections} ssSleepEnabled={ssSleepEnabled} setSsSleepEnabled={setSsSleepEnabled} ssSleepTime={ssSleepTime} setSsSleepTime={setSsSleepTime} ssWakeTime={ssWakeTime} setSsWakeTime={setSsWakeTime} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt} geminiKey={geminiKey} setGeminiKey={setGeminiKey} geminiModel={geminiModel} setGeminiModel={setGeminiModel} members={members} setMembers={setMembers} contacts={contacts} setContacts={setContacts} wallMode={wallMode} setWallMode={setWallMode} wallReturnMins={wallReturnMins} setWallReturnMins={setWallReturnMins} onClose={()=>setPanel("main")}/>
           :<>
             <div style={{padding:"10px 10px",borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc} onWx={setWx} onFc={setForecast}/></div>
             <div style={{padding:"6px 10px",borderBottom:`1px solid ${t.bdr}`,flexShrink:0}}>
