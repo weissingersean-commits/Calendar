@@ -810,21 +810,32 @@ function RewardsPanel({members,rewards,setRewards}){
     setRewards(r=>({...r,stars:{...(r.stars||{}),[memberId]:cur-prize.cost}}));
   };
 
+  const[awardTarget,setAwardTarget]=useState(null);
   if(members.length===0)return<div style={{textAlign:"center",padding:"28px 8px",color:t.sub,fontSize:12,lineHeight:1.8}}>Add family members in<br/>Settings ⚙ to track rewards.</div>;
 
+  const ranked=[...members].sort((a,b)=>((rewards.stars||{})[b.id]||0)-((rewards.stars||{})[a.id]||0));
+
   return<div>
-    {members.map(m=>{
+    {ranked.map((m,rank)=>{
       const stars=(rewards.stars||{})[m.id]||0;
       const prizes=rewards.prizes||[];
+      const isAward=awardTarget===m.id;
       return<div key={m.id} style={{...s.crd,marginBottom:10}}>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:prizes.length?10:0}}>
-          <div style={{width:34,height:34,borderRadius:"50%",background:m.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,color:"#fff",fontWeight:800,flexShrink:0}}>{m.name[0].toUpperCase()}</div>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:prizes.length||isAward?10:0}}>
+          <div style={{width:34,height:34,borderRadius:"50%",background:m.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,color:"#fff",fontWeight:800,flexShrink:0,position:"relative"}}>
+            {m.name[0].toUpperCase()}
+            {rank===0&&stars>0&&<span style={{position:"absolute",top:-8,right:-8,fontSize:14,lineHeight:1}}>👑</span>}
+          </div>
           <div style={{flex:1}}><div style={{fontSize:14,fontWeight:700,color:t.text}}>{m.name}</div></div>
+          <button onClick={()=>setAwardTarget(isAward?null:m.id)} style={{background:isAward?t.acDim:"transparent",border:`1px solid ${isAward?t.accent:t.bdr}`,borderRadius:8,color:isAward?t.accent:t.dim,fontSize:10,fontWeight:700,cursor:"pointer",padding:"4px 8px",fontFamily:FF}}>Award ⭐</button>
           <div style={{display:"flex",alignItems:"center",gap:3}}>
             <span style={{fontSize:18}}>⭐</span>
             <span style={{fontSize:26,fontWeight:900,fontFamily:FM,color:"#FCD34D"}}>{stars}</span>
           </div>
         </div>
+        {isAward&&<div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+          {[1,2,3,5,10].map(n=><button key={n} onClick={()=>{setRewards(r=>({...r,stars:{...(r.stars||{}),[m.id]:((r.stars||{})[m.id]||0)+n}}));playDing();setAwardTarget(null);}} style={{flex:1,padding:"6px 0",borderRadius:8,border:`1px solid ${m.color}`,background:m.color+"22",color:m.color,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+{n}⭐</button>)}
+        </div>}
         {prizes.map(prize=>{const pct=Math.min(100,(stars/prize.cost)*100);return<div key={prize.id} style={{marginTop:8,padding:"6px 8px",borderRadius:8,background:t.bg,border:`1px solid ${t.bdr}`}}>
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
             <span style={{flex:1,fontSize:11,color:t.text,fontWeight:500}}>{prize.name}</span>
