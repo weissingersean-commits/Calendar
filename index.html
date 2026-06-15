@@ -896,7 +896,7 @@ function CalSyncPanel({feeds,setFeeds,syncAll,syncStatus}){
 // ═════════════════ SCREENSAVER ═══════════════════════════════════════
 const DEFAULT_PHOTOS=["https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1501854140801-50d01698950b?w=1400&h=900&fit=crop","https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1400&h=900&fit=crop"];
 const NATURE_PHOTOS=shuffle([10,11,12,13,14,15,16,17,18,19,20,23,24,25,26,28,29,36,37,39,40,41,42,43,44,45,46,47,48,49,50,51,53,54,56,57,58,59,60,63,64,65,66,67,69,70,72,73,74,75,76,77,78,79,80,83,84,85,86,87,88,90,91,92,93,94,95,96,97,98,99,100,110,112,113,114,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130].map(id=>`https://picsum.photos/id/${id}/1920/1080`));
-function Screensaver({onTap,wx,loc,forecast,customPhotos,ssCollections,ssSleepEnabled,ssSleepTime,ssWakeTime,events,announcement,todos=[]}){
+function Screensaver({onTap,wx,loc,forecast,customPhotos,ssCollections,ssSleepEnabled,ssSleepTime,ssWakeTime,events,announcement,todos=[],setTodos,rewards,setRewards}){
   const base=useMemo(()=>customPhotos?.length>0?customPhotos:DEFAULT_PHOTOS,[]);
   const[photos,setPhotos]=useState(base);
   const[idx,setIdx]=useState(0),[time,setTime]=useState(new Date()),[fade,setFade]=useState(true);
@@ -941,6 +941,7 @@ function Screensaver({onTap,wx,loc,forecast,customPhotos,ssCollections,ssSleepEn
   const wkStartKey=dkey(wkSt(time));
   const dueChoresSS=useMemo(()=>(todos||[]).filter(it=>{if(!it.repeat||it.repeat==="none")return false;if(it.repeat==="daily")return it.lastCompleted!==todayKey;if(it.repeat==="weekly")return!it.lastCompleted||it.lastCompleted<wkStartKey;return false;}),[todos,todayKey,wkStartKey]);
   const choresByMember=members.map(m=>({m,chores:dueChoresSS.filter(c=>c.assignedTo===m.id)})).filter(({chores})=>chores.length>0);
+  const checkChoreSS=(it,m)=>{if(!setTodos)return;setTodos(ts=>ts.map(x=>x.id!==it.id?x:{...x,lastCompleted:todayKey}));playDing();if(it.stars&&it.assignedTo&&setRewards)setRewards(r=>{const st={...r.stars};st[it.assignedTo]=(st[it.assignedTo]||0)+it.stars;return{...r,stars:st};});};
   const nextSpecial=useMemo(()=>{const limit=dkey(new Date(new Date(todayKey).getTime()+8*86400000));const cat=["sports","school"];return(events||[]).filter(ev=>cat.includes(ev.category)&&ev.date>=todayKey&&ev.date<limit).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date))[0]||null;},[events,todayKey]);
   if(sleeping)return<div style={{position:"fixed",inset:0,zIndex:100,background:"#000",cursor:"pointer"}} onClick={handleTap}/>;
   return<div style={{position:"fixed",inset:0,zIndex:100,background:"#000",cursor:"pointer"}} onClick={handleTap}>
@@ -953,7 +954,10 @@ function Screensaver({onTap,wx,loc,forecast,customPhotos,ssCollections,ssSleepEn
           <div style={{width:22,height:22,borderRadius:"50%",background:m.color,color:"#fff",fontSize:12,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{m.name[0]}</div>
           <span style={{fontSize:13,fontWeight:700,color:m.color}}>{m.name}</span>
         </div>
-        {chores.slice(0,3).map(c=><div key={c.id} style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginBottom:2,paddingLeft:28}}>· {c.text}</div>)}
+        {chores.slice(0,3).map(c=><div key={c.id} onClick={e=>{e.stopPropagation();checkChoreSS(c,m);}} style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:"rgba(255,255,255,0.7)",marginBottom:4,paddingLeft:4,cursor:setTodos?"pointer":"default",borderRadius:8,padding:"3px 8px",background:"rgba(255,255,255,0.04)",userSelect:"none"}}>
+          <div style={{width:14,height:14,borderRadius:"50%",border:`1.5px solid ${m.color}88`,background:"transparent",flexShrink:0}}/>
+          {c.text}
+        </div>)}
         {chores.length>3&&<div style={{fontSize:11,color:"rgba(255,255,255,0.4)",paddingLeft:28}}>+{chores.length-3} more</div>}
       </div>)}
     </div>}
@@ -1356,7 +1360,7 @@ function SearchModal({events,onSelect,onClose}){
 }
 
 // ═════════════════ TODAY PANEL ══════════════════════════════════════
-function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,forecast,wx}){
+function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,forecast,wx,onAddToday}){
   const t=useT();
   const today=dkey(new Date());
   const wkStart=dkey(wkSt(new Date()));
@@ -1457,6 +1461,7 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,f
         {evs.length>3&&<div style={{fontSize:9,color:t.dim,paddingLeft:15}}>+{evs.length-3} more</div>}
       </div>)}
     </div>}
+    {onAddToday&&<button onClick={onAddToday} style={{width:"100%",marginTop:16,padding:"9px 0",borderRadius:10,border:`1px dashed ${t.accent}`,background:t.acDim,color:t.accent,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+ Add Event Today</button>}
   </div>;
 }
 
@@ -1550,7 +1555,7 @@ function Homelight(){
     return()=>clearInterval(i);
   },[reminderMins,visibleEvents]);
 
-  if(showSS)return<Screensaver onTap={()=>{setShowSS(false);lastAct.current=Date.now();sleepDismissedUntil.current=Date.now()+5*60*1000;}} wx={wx} loc={loc} forecast={forecast} customPhotos={photos} ssCollections={ssCollections} ssSleepEnabled={ssSleepEnabled} ssSleepTime={ssSleepTime} ssWakeTime={ssWakeTime} events={visibleEvents} announcement={announcement} todos={todos}/>;
+  if(showSS)return<Screensaver onTap={()=>{setShowSS(false);lastAct.current=Date.now();sleepDismissedUntil.current=Date.now()+5*60*1000;}} wx={wx} loc={loc} forecast={forecast} customPhotos={photos} ssCollections={ssCollections} ssSleepEnabled={ssSleepEnabled} ssSleepTime={ssSleepTime} ssWakeTime={ssWakeTime} events={visibleEvents} announcement={announcement} todos={todos} setTodos={setTodos} rewards={rewards} setRewards={setRewards}/>;
 
   return<MembersCtx.Provider value={members}><ThemeCtx.Provider value={t}>
     <div style={{fontFamily:FF,height:"100vh",width:"100vw",background:t.grad,color:t.text,display:"flex",flexDirection:"column",overflow:"hidden",userSelect:"none"}}>
@@ -1607,7 +1612,7 @@ function Homelight(){
             </div>
             <div style={{display:"flex",borderBottom:`1px solid ${t.bdr}`}}>{[["today","📅","Today"],["tasks","✅","Tasks"],["grocery","🛒","Shop"],["meals","🍽️","Meals"],["rewards","⭐","Stars"]].map(([k,em,lbl])=><button key={k} onClick={()=>setSideTab(k)} style={{flex:1,padding:"8px 0",textAlign:"center",color:sideTab===k?t.accent:t.dim,background:"transparent",border:"none",cursor:"pointer",fontFamily:FF,borderBottom:`2px solid ${sideTab===k?t.accent:"transparent"}`}}><div style={{fontSize:18,lineHeight:1,marginBottom:2}}>{em}</div><div style={{fontSize:8,fontWeight:600,textTransform:"uppercase",letterSpacing:0.8}}>{lbl}</div></button>)}</div>
             <div style={{flex:1,overflow:"auto",padding:"8px 10px"}}>
-              {sideTab==="today"&&<TodayPanel events={visibleEvents} todos={todos} setTodos={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework} forecast={forecast} wx={wx}/>}
+              {sideTab==="today"&&<TodayPanel events={visibleEvents} todos={todos} setTodos={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework} forecast={forecast} wx={wx} onAddToday={()=>{setSel(new Date());setModal("add");setPanel("main");}}/>}
               {sideTab==="tasks"&&<FamilyTasks items={todos} setItems={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework} setHomework={setHomework}/>}
               {sideTab==="grocery"&&<GroceryList items={grocery} setItems={setGrocery}/>}
               {sideTab==="meals"&&<Meals meals={meals} setMeals={setMeals} recipes={recipes} setRecipes={setRecipes} grocery={grocery} setGrocery={setGrocery}/>}
