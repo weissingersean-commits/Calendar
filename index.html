@@ -642,8 +642,9 @@ function Confetti({data,onDone}){
 }
 
 // ─── Family Tasks ─────────────────────────────────────────────────────
-function FamilyTasks({items,setItems,members,rewards,setRewards}){
+function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHomework}){
   const t=useT();
+  const[subTab,setSubTab]=useState("tasks");
   const[val,setVal]=useState("");
   const[assignTo,setAssignTo]=useState("");
   const[taskStars,setTaskStars]=useState(1);
@@ -718,33 +719,74 @@ function FamilyTasks({items,setItems,members,rewards,setRewards}){
 
   return<div style={{position:"relative"}}>
     {confettiData&&<Confetti data={confettiData} onDone={()=>setConfettiData(null)}/>}
-    {items.length>0&&<div style={{fontSize:10,color:t.dim,marginBottom:8}}>{doneCount}/{items.length} completed</div>}
-    {recurring.length>0&&<div style={{marginBottom:4}}>
-      <div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.dim,marginBottom:4}}>Recurring</div>
-      {recurring.map(it=><TaskRow key={it.id} it={it}/>)}
-    </div>}
-    {oneTime.length>0&&<div>
-      {recurring.length>0&&<div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.dim,marginBottom:4,marginTop:8}}>One-time</div>}
-      {oneTime.map(it=><TaskRow key={it.id} it={it}/>)}
-    </div>}
-    <div style={{borderTop:`1px solid ${t.bdr}`,marginTop:8,paddingTop:8}}>
-      <input style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:12,fontFamily:FF,outline:"none",marginBottom:6,boxSizing:"border-box"}} placeholder="Add chore or task..." value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask();}}/>
-      {members.length>0&&<div style={{display:"flex",gap:4,marginBottom:6,flexWrap:"wrap"}}>
-        {members.map(m=><button key={m.id} onClick={()=>setAssignTo(assignTo===m.id?"":m.id)} style={{padding:"3px 8px",borderRadius:10,border:`1px solid ${assignTo===m.id?m.color:t.bdr}`,background:assignTo===m.id?m.color+"22":"transparent",color:assignTo===m.id?m.color:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:assignTo===m.id?700:400,display:"flex",alignItems:"center",gap:3}}><div style={{width:7,height:7,borderRadius:"50%",background:m.color}}/>{m.name}</button>)}
-      </div>}
-      <div style={{display:"flex",gap:4,marginBottom:6}}>
-        {["none","daily","weekly"].map(r=><button key={r} onClick={()=>setTaskRepeat(r)} style={{flex:1,padding:"4px 0",borderRadius:8,border:`1px solid ${taskRepeat===r?t.accent:t.bdr}`,background:taskRepeat===r?t.acDim:"transparent",color:taskRepeat===r?t.accent:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:taskRepeat===r?700:400}}>{r==="none"?"Once":r==="daily"?"↻ Daily":"↻ Weekly"}</button>)}
-      </div>
-      {taskRepeat==="none"&&<input type="date" style={{width:"100%",padding:"6px 10px",borderRadius:8,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:11,fontFamily:FF,outline:"none",marginBottom:6,boxSizing:"border-box"}} value={taskDue} onChange={e=>setTaskDue(e.target.value)} min={today}/>}
-      <div style={{display:"flex",gap:6,alignItems:"center"}}>
-        <div style={{display:"flex",gap:1}}>
-          {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setTaskStars(n)} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,opacity:taskStars>=n?1:0.22,padding:"0 1px",lineHeight:1}}>⭐</button>)}
-        </div>
-        <button onClick={addTask} style={{flex:1,padding:"7px 0",borderRadius:10,border:`1px solid ${val.trim()?t.accent:t.bdr}`,background:val.trim()?t.accent:"transparent",color:val.trim()?t.acText:t.dim,fontSize:12,fontWeight:700,cursor:val.trim()?"pointer":"default",fontFamily:FF}}>+ Add</button>
-      </div>
+    <div style={{display:"flex",gap:0,marginBottom:10,borderRadius:10,overflow:"hidden",border:`1px solid ${t.bdr}`}}>
+      {[["tasks","✅ Tasks"],["homework","📚 Homework"]].map(([k,l])=><button key={k} onClick={()=>setSubTab(k)} style={{flex:1,padding:"6px 0",border:"none",background:subTab===k?t.accent:"transparent",color:subTab===k?t.acText:t.sub,fontSize:11,fontWeight:subTab===k?700:500,cursor:"pointer",fontFamily:FF}}>{l}</button>)}
     </div>
-    {members.length===0&&<div style={{fontSize:10,color:t.dim,marginTop:8,lineHeight:1.7}}>Add family members in Settings ⚙ to assign tasks and track stars.</div>}
-    {oneTime.filter(i=>isDone(i)).length>0&&<button onClick={()=>setItems(items.filter(i=>i.repeat||!i.done))} style={{marginTop:8,background:"none",border:"none",color:t.dim,fontSize:11,cursor:"pointer",padding:0}}>Clear completed</button>}
+    {subTab==="homework"&&<HomeworkPanel items={homework||[]} setItems={setHomework} members={members}/>}
+    {subTab==="tasks"&&<>
+      {items.length>0&&<div style={{fontSize:10,color:t.dim,marginBottom:8}}>{doneCount}/{items.length} completed</div>}
+      {recurring.length>0&&<div style={{marginBottom:4}}><div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.dim,marginBottom:4}}>Recurring</div>{recurring.map(it=><TaskRow key={it.id} it={it}/>)}</div>}
+      {oneTime.length>0&&<div>{recurring.length>0&&<div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.dim,marginBottom:4,marginTop:8}}>One-time</div>}{oneTime.map(it=><TaskRow key={it.id} it={it}/>)}</div>}
+      <div style={{borderTop:`1px solid ${t.bdr}`,marginTop:8,paddingTop:8}}>
+        <input style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:12,fontFamily:FF,outline:"none",marginBottom:6,boxSizing:"border-box"}} placeholder="Add chore or task..." value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask();}}/>
+        {members.length>0&&<div style={{display:"flex",gap:4,marginBottom:6,flexWrap:"wrap"}}>{members.map(m=><button key={m.id} onClick={()=>setAssignTo(assignTo===m.id?"":m.id)} style={{padding:"3px 8px",borderRadius:10,border:`1px solid ${assignTo===m.id?m.color:t.bdr}`,background:assignTo===m.id?m.color+"22":"transparent",color:assignTo===m.id?m.color:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:assignTo===m.id?700:400,display:"flex",alignItems:"center",gap:3}}><div style={{width:7,height:7,borderRadius:"50%",background:m.color}}/>{m.name}</button>)}</div>}
+        <div style={{display:"flex",gap:4,marginBottom:6}}>{["none","daily","weekly"].map(r=><button key={r} onClick={()=>setTaskRepeat(r)} style={{flex:1,padding:"4px 0",borderRadius:8,border:`1px solid ${taskRepeat===r?t.accent:t.bdr}`,background:taskRepeat===r?t.acDim:"transparent",color:taskRepeat===r?t.accent:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:taskRepeat===r?700:400}}>{r==="none"?"Once":r==="daily"?"↻ Daily":"↻ Weekly"}</button>)}</div>
+        {taskRepeat==="none"&&<input type="date" style={{width:"100%",padding:"6px 10px",borderRadius:8,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:11,fontFamily:FF,outline:"none",marginBottom:6,boxSizing:"border-box"}} value={taskDue} onChange={e=>setTaskDue(e.target.value)} min={today}/>}
+        <div style={{display:"flex",gap:6,alignItems:"center"}}><div style={{display:"flex",gap:1}}>{[1,2,3,4,5].map(n=><button key={n} onClick={()=>setTaskStars(n)} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,opacity:taskStars>=n?1:0.22,padding:"0 1px",lineHeight:1}}>⭐</button>)}</div><button onClick={addTask} style={{flex:1,padding:"7px 0",borderRadius:10,border:`1px solid ${val.trim()?t.accent:t.bdr}`,background:val.trim()?t.accent:"transparent",color:val.trim()?t.acText:t.dim,fontSize:12,fontWeight:700,cursor:val.trim()?"pointer":"default",fontFamily:FF}}>+ Add</button></div>
+      </div>
+      {members.length===0&&<div style={{fontSize:10,color:t.dim,marginTop:8,lineHeight:1.7}}>Add family members in Settings ⚙ to assign tasks and track stars.</div>}
+      {oneTime.filter(i=>isDone(i)).length>0&&<button onClick={()=>setItems(items.filter(i=>i.repeat||!i.done))} style={{marginTop:8,background:"none",border:"none",color:t.dim,fontSize:11,cursor:"pointer",padding:0}}>Clear completed</button>}
+    </>}
+  </div>;
+}
+
+// ─── Homework Panel ────────────────────────────────────────────────────
+const SUBJECTS={math:{l:"Math",i:"📐",c:"#3B82F6"},science:{l:"Science",i:"🔬",c:"#10B981"},english:{l:"English",i:"📝",c:"#8B5CF6"},reading:{l:"Reading",i:"📚",c:"#F59E0B"},history:{l:"History",i:"🏛️",c:"#F97316"},art:{l:"Art",i:"🎨",c:"#EC4899"},other:{l:"Other",i:"📋",c:"#6B7280"}};
+function HomeworkPanel({items,setItems,members}){
+  const t=useT();
+  const today=dkey(new Date());
+  const[text,setText]=useState("");
+  const[subject,setSubject]=useState("math");
+  const[dueDate,setDueDate]=useState("");
+  const[assignTo,setAssignTo]=useState("");
+  const add=()=>{if(!text.trim()||!dueDate)return;setItems(prev=>[...prev,{id:mkId(),text:text.trim(),subject,dueDate,assignedTo:assignTo||null,done:false}]);setText("");setDueDate("");};
+  const overdue=(items||[]).filter(i=>!i.done&&i.dueDate<today).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  const dueToday=(items||[]).filter(i=>!i.done&&i.dueDate===today);
+  const upcoming=(items||[]).filter(i=>!i.done&&i.dueDate>today).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  const donelist=(items||[]).filter(i=>i.done);
+  const HwRow=({hw})=>{
+    const m=members.find(m=>m.id===hw.assignedTo);
+    const sub=SUBJECTS[hw.subject]||SUBJECTS.other;
+    const od=!hw.done&&hw.dueDate<today;
+    const dt=!hw.done&&hw.dueDate===today;
+    return<div style={{display:"flex",alignItems:"flex-start",gap:8,padding:"7px 0",borderBottom:`1px solid ${t.bdr}33`}}>
+      <div onClick={()=>setItems(prev=>prev.map(i=>i.id===hw.id?{...i,done:!i.done}:i))} style={{width:18,height:18,borderRadius:5,border:`2px solid ${hw.done?"#10B981":od?"#EF4444":dt?"#F59E0B":t.dim}`,background:hw.done?"#10B981":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:10,color:"#fff",cursor:"pointer",marginTop:1}}>{hw.done&&"✓"}</div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:2,flexWrap:"wrap"}}>
+          <span style={{fontSize:10,padding:"1px 7px",borderRadius:10,background:sub.c+"22",color:sub.c,fontWeight:700,border:`1px solid ${sub.c}44`}}>{sub.i} {sub.l}</span>
+          {m&&<span style={{fontSize:9,padding:"1px 6px",borderRadius:10,background:m.color+"22",color:m.color,fontWeight:700}}>{m.name}</span>}
+        </div>
+        <div style={{fontSize:12,color:hw.done?t.dim:od?"#EF4444":t.text,textDecoration:hw.done?"line-through":"none",lineHeight:1.4}}>{hw.text}</div>
+        <div style={{fontSize:9,color:od?"#EF4444":dt?"#F59E0B":t.dim,fontWeight:od||dt?700:400,marginTop:2}}>{od?"⚠ Overdue · "+hw.dueDate:dt?"Due today":hw.dueDate}</div>
+      </div>
+      <button onClick={()=>setItems(prev=>prev.filter(i=>i.id!==hw.id))} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:14,opacity:.4,padding:"0 4px",lineHeight:1,flexShrink:0}}>×</button>
+    </div>;
+  };
+  return<div>
+    {overdue.length>0&&<div style={{marginBottom:8}}><div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:"#EF4444",marginBottom:4}}>Overdue</div>{overdue.map(hw=><HwRow key={hw.id} hw={hw}/>)}</div>}
+    {dueToday.length>0&&<div style={{marginBottom:8}}><div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:"#F59E0B",marginBottom:4}}>Due Today</div>{dueToday.map(hw=><HwRow key={hw.id} hw={hw}/>)}</div>}
+    {upcoming.length>0&&<div style={{marginBottom:8}}><div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.dim,marginBottom:4}}>Upcoming</div>{upcoming.map(hw=><HwRow key={hw.id} hw={hw}/>)}</div>}
+    {donelist.length>0&&<div style={{marginBottom:8}}><div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.dim,marginBottom:4,opacity:.5}}>Done</div>{donelist.map(hw=><HwRow key={hw.id} hw={hw}/>)}<button onClick={()=>setItems(prev=>prev.filter(i=>!i.done))} style={{background:"none",border:"none",color:t.dim,fontSize:11,cursor:"pointer",padding:"4px 0"}}>Clear done</button></div>}
+    {overdue.length===0&&dueToday.length===0&&upcoming.length===0&&donelist.length===0&&<div style={{fontSize:12,color:t.dim,padding:"20px 0",textAlign:"center"}}>No assignments yet</div>}
+    <div style={{borderTop:`1px solid ${t.bdr}`,marginTop:8,paddingTop:10}}>
+      <input style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:12,fontFamily:FF,outline:"none",marginBottom:6,boxSizing:"border-box"}} placeholder="Assignment description..." value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")add();}}/>
+      <div style={{display:"flex",gap:4,marginBottom:6,flexWrap:"wrap"}}>
+        {Object.entries(SUBJECTS).map(([k,s])=><button key={k} onClick={()=>setSubject(k)} style={{padding:"3px 8px",borderRadius:10,border:`1px solid ${subject===k?s.c:t.bdr}`,background:subject===k?s.c+"22":"transparent",color:subject===k?s.c:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:subject===k?700:400}}>{s.i} {s.l}</button>)}
+      </div>
+      {members.length>0&&<div style={{display:"flex",gap:4,marginBottom:6,flexWrap:"wrap"}}>{members.map(m=><button key={m.id} onClick={()=>setAssignTo(assignTo===m.id?"":m.id)} style={{padding:"3px 8px",borderRadius:10,border:`1px solid ${assignTo===m.id?m.color:t.bdr}`,background:assignTo===m.id?m.color+"22":"transparent",color:assignTo===m.id?m.color:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:assignTo===m.id?700:400,display:"flex",alignItems:"center",gap:3}}><div style={{width:7,height:7,borderRadius:"50%",background:m.color}}/>{m.name}</button>)}</div>}
+      <input type="date" style={{width:"100%",padding:"6px 10px",borderRadius:8,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:11,fontFamily:FF,outline:"none",marginBottom:6,boxSizing:"border-box"}} value={dueDate} onChange={e=>setDueDate(e.target.value)} min={today}/>
+      <button onClick={add} style={{width:"100%",padding:"7px 0",borderRadius:10,border:`1px solid ${text.trim()&&dueDate?t.accent:t.bdr}`,background:text.trim()&&dueDate?t.accent:"transparent",color:text.trim()&&dueDate?t.acText:t.dim,fontSize:12,fontWeight:700,cursor:text.trim()&&dueDate?"pointer":"default",fontFamily:FF}}>+ Add Assignment</button>
+    </div>
   </div>;
 }
 
@@ -1306,13 +1348,14 @@ function SearchModal({events,onSelect,onClose}){
 }
 
 // ═════════════════ TODAY PANEL ══════════════════════════════════════
-function TodayPanel({events,todos,setTodos,members,rewards,setRewards}){
+function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework}){
   const t=useT();
   const today=dkey(new Date());
   const wkStart=dkey(wkSt(new Date()));
   const todayEvs=useMemo(()=>events.filter(ev=>ev.date===today).sort((a,b)=>{if(!a.hour&&a.hour!==0)return-1;if(!b.hour&&b.hour!==0)return 1;return(a.hour*60+(a.minute||0))-(b.hour*60+(b.minute||0));}),[events,today]);
   const dueChores=useMemo(()=>todos.filter(it=>{if(!it.repeat||it.repeat==="none")return false;if(it.repeat==="daily")return it.lastCompleted!==today;if(it.repeat==="weekly")return!it.lastCompleted||it.lastCompleted<wkStart;return false;}),[todos,today,wkStart]);
   const dueTasks=useMemo(()=>todos.filter(it=>(!it.repeat||it.repeat==="none")&&!it.done&&it.dueDate&&it.dueDate<=today),[todos,today]);
+  const hwDue=useMemo(()=>(homework||[]).filter(h=>!h.done&&h.dueDate<=today).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)),[homework,today]);
   const upcoming7=useMemo(()=>{const limit=dkey(new Date(new Date().getTime()+7*86400000));return events.filter(ev=>isBday(ev)&&ev.date>today&&ev.date<=limit).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);},[events,today]);
   const weekAhead=useMemo(()=>{const days=[];for(let i=1;i<=6;i++){const d=new Date();d.setDate(d.getDate()+i);const dk=dkey(d);const evs=events.filter(ev=>ev.date===dk).sort((a,b)=>(a.hour*60+(a.minute||0))-(b.hour*60+(b.minute||0)));if(evs.length>0)days.push({date:dk,d,evs});}return days;},[events,today]);
   function checkChore(it){
@@ -1333,6 +1376,14 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards}){
         <span style={{fontSize:12,color:t.text,flex:1}}>{it.text}</span>
         {pm&&<span style={{fontSize:9,fontWeight:700,color:pm.color}}>{pm.name}</span>}
         <span style={{fontSize:9,color:overdue?"#EF4444":"#F59E0B",fontWeight:700}}>{overdue?"Overdue":"Today"}</span>
+      </div>;})}
+    </div>}
+    {hwDue.length>0&&<div style={{marginBottom:14}}>
+      <div style={{fontSize:11,fontWeight:700,color:"#8B5CF6",textTransform:"uppercase",letterSpacing:1.5,marginBottom:6}}>📚 Homework Due</div>
+      {hwDue.map(h=>{const m=members.find(x=>x.id===h.assignedTo);const sub=SUBJECTS[h.subject]||SUBJECTS.other;const od=h.dueDate<today;return<div key={h.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,padding:"5px 8px",borderRadius:8,background:"rgba(139,92,246,0.06)",border:`1px solid rgba(139,92,246,0.2)`}}>
+        <span style={{fontSize:13}}>{sub.i}</span>
+        <div style={{flex:1,minWidth:0}}><div style={{fontSize:12,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{h.text}</div><div style={{fontSize:9,color:sub.c,fontWeight:700}}>{sub.l}{m?` · ${m.name}`:""}</div></div>
+        <span style={{fontSize:9,color:od?"#EF4444":"#F59E0B",fontWeight:700,flexShrink:0}}>{od?"Overdue":"Today"}</span>
       </div>;})}
     </div>}
     <div style={{fontSize:11,fontWeight:700,color:t.accent,textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>Today's Schedule</div>
@@ -1416,6 +1467,7 @@ function Homelight(){
   const[rewards,setRewards]=useP("rewards",{stars:{},prizes:[]});
   const[recipes,setRecipes]=useP("recipes",[]);
   const[contacts,setContacts]=useP("contacts",[]);
+  const[homework,setHomework]=useP("homework",[]);
   const[ssCollections,setSsCollections]=useP("ssCollections",{nature:false,art:false,space:false});
   const[ssSleepEnabled,setSsSleepEnabled]=useP("ssSleepEnabled",false);
   const[ssSleepTime,setSsSleepTime]=useP("ssSleepTime","22:00");
@@ -1530,8 +1582,8 @@ function Homelight(){
             </div>
             <div style={{display:"flex",borderBottom:`1px solid ${t.bdr}`}}>{["today","tasks","grocery","meals","rewards"].map(tab=><button key={tab} onClick={()=>setSideTab(tab)} style={{flex:1,padding:"10px 0",textAlign:"center",fontSize:9,fontWeight:600,textTransform:"uppercase",letterSpacing:1,color:sideTab===tab?t.accent:t.dim,background:"transparent",border:"none",cursor:"pointer",fontFamily:FF,borderBottom:`2px solid ${sideTab===tab?t.accent:"transparent"}`}}>{tab==="rewards"?"⭐":tab==="today"?"📅":tab}</button>)}</div>
             <div style={{flex:1,overflow:"auto",padding:"8px 10px"}}>
-              {sideTab==="today"&&<TodayPanel events={visibleEvents} todos={todos} setTodos={setTodos} members={members} rewards={rewards} setRewards={setRewards}/>}
-              {sideTab==="tasks"&&<FamilyTasks items={todos} setItems={setTodos} members={members} rewards={rewards} setRewards={setRewards}/>}
+              {sideTab==="today"&&<TodayPanel events={visibleEvents} todos={todos} setTodos={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework}/>}
+              {sideTab==="tasks"&&<FamilyTasks items={todos} setItems={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework} setHomework={setHomework}/>}
               {sideTab==="grocery"&&<GroceryList items={grocery} setItems={setGrocery}/>}
               {sideTab==="meals"&&<Meals meals={meals} setMeals={setMeals} recipes={recipes} setRecipes={setRecipes} grocery={grocery} setGrocery={setGrocery}/>}
               {sideTab==="rewards"&&<RewardsPanel members={members} rewards={rewards} setRewards={setRewards}/>}
