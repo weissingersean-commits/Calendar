@@ -1173,6 +1173,7 @@ function Homelight(){
   const[geminiKey,setGeminiKey]=useP("geminiKey","");
   const[geminiModel,setGeminiModel]=useP("geminiModel","gemini-2.5-flash-lite");
   const[members,setMembers]=useP("members",[]);
+  const[memberFilter,setMemberFilter]=useState(null);
   const[rewards,setRewards]=useP("rewards",{stars:{},prizes:[]});
   const[recipes,setRecipes]=useP("recipes",[]);
   const[ssCollections,setSsCollections]=useP("ssCollections",{nature:false,art:false,space:false});
@@ -1210,6 +1211,7 @@ function Homelight(){
   const onAddEvent=useCallback((date,hour)=>{setSel(new Date(date+"T12:00:00"));setAddHour(hour);setModal("add");},[setSel]);
   const upcoming=useMemo(()=>events.filter(e=>e.date>=dkey(new Date())).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date)).slice(0,6),[events]);
   const visibleEvents=useMemo(()=>{const dis=new Set(feeds.filter(f=>!f.enabled).map(f=>f.id));const filtered=events.filter(e=>!e.feedId||!dis.has(e.feedId));return expandManualRecurrences(filtered);},[events,feeds]);
+  const displayEvents=useMemo(()=>memberFilter?visibleEvents.filter(ev=>ev.assignedTo===memberFilter):visibleEvents,[visibleEvents,memberFilter]);
 
   useEffect(()=>{
     if(!reminderMins||typeof Notification==="undefined"||Notification.permission!=="granted")return;
@@ -1253,11 +1255,15 @@ function Homelight(){
           <button onClick={()=>setSidebarOpen(o=>!o)} title={sidebarOpen?"Hide sidebar":"Show sidebar"} style={{background:"none",border:`1px solid ${t.bdr}`,color:t.dim,cursor:"pointer",fontSize:13,padding:"6px 10px",borderRadius:8,fontFamily:FM,minHeight:44}}>{sidebarOpen?"▶":"◀"}</button>
         </div>
       </div>
+      {members.length>0&&<div style={{display:"flex",alignItems:"center",gap:6,padding:"5px 20px",borderBottom:`1px solid ${t.bdr}`,background:t.headerBg,flexShrink:0,flexWrap:"wrap"}}>
+        <button onClick={()=>setMemberFilter(null)} style={{padding:"3px 12px",borderRadius:16,border:`1px solid ${memberFilter===null?t.accent:t.bdr}`,background:memberFilter===null?t.accent:"transparent",color:memberFilter===null?t.acText:t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF,transition:"all 0.15s"}}>All</button>
+        {members.map(m=><button key={m.id} onClick={()=>setMemberFilter(memberFilter===m.id?null:m.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"3px 10px 3px 6px",borderRadius:16,border:`1px solid ${m.color}`,background:memberFilter===m.id?m.color:"transparent",color:memberFilter===m.id?"#fff":t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF,transition:"all 0.15s"}}><div style={{width:16,height:16,borderRadius:"50%",background:m.color,color:"#fff",fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{m.name[0]}</div>{m.name}</button>)}
+      </div>}
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
         <div style={{flex:1,overflow:"auto",padding:"6px 4px"}} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-          {view==="month"&&<MonthView sel={sel} setSel={setSel} events={visibleEvents} setView={setView} onEv={onEv} weekStart={weekStart}/>}
-          {view==="week"&&<WeekView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv} onAdd={(d,h)=>onAddEvent(dkey(d),h)} weekStart={weekStart}/>}
-          {view==="day"&&<DayView sel={sel} setSel={setSel} events={visibleEvents} onEv={onEv} onAdd={h=>onAddEvent(dkey(sel),h)}/>}
+          {view==="month"&&<MonthView sel={sel} setSel={setSel} events={displayEvents} setView={setView} onEv={onEv} weekStart={weekStart}/>}
+          {view==="week"&&<WeekView sel={sel} setSel={setSel} events={displayEvents} onEv={onEv} onAdd={(d,h)=>onAddEvent(dkey(d),h)} weekStart={weekStart}/>}
+          {view==="day"&&<DayView sel={sel} setSel={setSel} events={displayEvents} onEv={onEv} onAdd={h=>onAddEvent(dkey(sel),h)}/>}
         </div>
         <div style={{width:sidebarOpen?312:0,borderLeft:sidebarOpen?`1px solid ${t.bdr}`:"none",background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0,transition:"width 0.25s ease"}}>
           {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
