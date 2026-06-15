@@ -1645,7 +1645,18 @@ function Homelight(){
                 <div style={{width:3,borderRadius:2,background:evColor(ev,members),flexShrink:0,alignSelf:"stretch"}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{evPrefix(ev)}{ev.title}</div>{pm&&<div style={{fontSize:9,fontWeight:700,color:pm.color,marginTop:1}}>{pm.name}</div>}<div style={{fontSize:10,color:t.dim,fontFamily:FM,marginTop:1}}>{fmtT(ev.hour,ev.minute)}{rel&&<span style={{marginLeft:6,color:t.accent,fontWeight:700}}>{rel}</span>}</div>{ev.location&&<div style={{fontSize:9,color:t.dim,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📍 {ev.location}</div>}{ev.notes&&<div style={{fontSize:9,color:t.dim,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📝 {ev.notes}</div>}</div></div>;}))}
               </div>
             </div>
-            <div style={{display:"flex",borderBottom:`1px solid ${t.bdr}`}}>{[["today","📅","Today"],["tasks","✅","Tasks"],["grocery","🛒","Shop"],["meals","🍽️","Meals"],["rewards","⭐","Stars"]].map(([k,em,lbl])=><button key={k} onClick={()=>setSideTab(k)} style={{flex:1,padding:"8px 0",textAlign:"center",color:sideTab===k?t.accent:t.dim,background:"transparent",border:"none",cursor:"pointer",fontFamily:FF,borderBottom:`2px solid ${sideTab===k?t.accent:"transparent"}`}}><div style={{fontSize:18,lineHeight:1,marginBottom:2}}>{em}</div><div style={{fontSize:8,fontWeight:600,textTransform:"uppercase",letterSpacing:0.8}}>{lbl}</div></button>)}</div>
+            {(()=>{
+              const todayKey2=dkey(new Date()),wkS=dkey(wkSt(new Date()));
+              const taskBadge=todos.filter(it=>{if(it.repeat&&it.repeat!=="none")return(it.repeat==="daily"?it.lastCompleted!==todayKey2:!it.lastCompleted||it.lastCompleted<wkS);return!it.done&&it.dueDate&&it.dueDate<=todayKey2;}).length;
+              const grocBadge=grocery.filter(i=>!i.done).length;
+              const hwBadge=(homework||[]).filter(h=>!h.done&&h.dueDate<=todayKey2).length;
+              const badges={tasks:(taskBadge+hwBadge)||0,grocery:grocBadge};
+              return<div style={{display:"flex",borderBottom:`1px solid ${t.bdr}`}}>{[["today","📅","Today"],["tasks","✅","Tasks"],["grocery","🛒","Shop"],["meals","🍽️","Meals"],["rewards","⭐","Stars"]].map(([k,em,lbl])=><button key={k} onClick={()=>setSideTab(k)} style={{flex:1,padding:"8px 0",textAlign:"center",color:sideTab===k?t.accent:t.dim,background:"transparent",border:"none",cursor:"pointer",fontFamily:FF,borderBottom:`2px solid ${sideTab===k?t.accent:"transparent"}`,position:"relative"}}>
+                <div style={{fontSize:18,lineHeight:1,marginBottom:2}}>{em}</div>
+                <div style={{fontSize:8,fontWeight:600,textTransform:"uppercase",letterSpacing:0.8}}>{lbl}</div>
+                {badges[k]>0&&<div style={{position:"absolute",top:4,right:"50%",transform:"translateX(10px)",background:"#EF4444",color:"#fff",borderRadius:8,fontSize:8,fontWeight:800,padding:"1px 4px",lineHeight:1.4,minWidth:14,textAlign:"center"}}>{badges[k]>9?"9+":badges[k]}</div>}
+              </button>)}</div>;
+            })()}
             <div style={{flex:1,overflow:"auto",padding:"8px 10px"}}>
               {sideTab==="today"&&<TodayPanel events={visibleEvents} todos={todos} setTodos={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework} forecast={forecast} wx={wx} onAddToday={()=>{setSel(new Date());setModal("add");setPanel("main");}}/>}
               {sideTab==="tasks"&&<FamilyTasks items={todos} setItems={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework} setHomework={setHomework}/>}
