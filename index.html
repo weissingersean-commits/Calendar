@@ -287,6 +287,7 @@ function MonthView({sel,setSel,events,setView,onEv,weekStart=0}){
   const t=useT(),s=useS();const members=useM();const y=sel.getFullYear(),m=sel.getMonth(),dinm=dInM(y,m),pd=dInM(y,m-1);
   const fd=(new Date(y,m,1).getDay()-weekStart+7)%7;
   const today=new Date();
+  const[dayPopup,setDayPopup]=useState(null);
   const isAllDay=ev=>ev.hour===0&&(ev.minute||0)===0&&ev.duration>=24;
   const cells=[];
   for(let i=0;i<fd;i++)cells.push({d:new Date(y,m-1,pd-fd+1+i),c:false});
@@ -331,11 +332,25 @@ function MonthView({sel,setSel,events,setView,onEv,weekStart=0}){
             return<div key={ci} onClick={()=>{setSel(c.d);setView("day");}} style={{padding:3,paddingTop:26+spanH+2,borderRadius:10,cursor:"pointer",background:isT?t.acDim:c.c?t.card:"rgba(128,128,128,0.05)",border:isT?`1px solid ${t.acGlow}`:"1px solid transparent",transition:"all 0.15s",overflow:"hidden",position:"relative",display:"flex",flexDirection:"column",justifyContent:"space-between"}} onMouseEnter={e=>{if(!isT)e.currentTarget.style.background=t.cardH;}} onMouseLeave={e=>{if(!isT)e.currentTarget.style.background=c.c?t.card:"rgba(128,128,128,0.05)";}}>
               <div style={{position:"absolute",top:6,left:8,fontSize:13,fontWeight:isT?800:400,color:isT?t.accent:c.c?t.sub:t.dim}}>{c.d.getDate()}</div>
               <div>{evs.slice(0,2).map(ev=><div key={ev.id} onClick={e=>{e.stopPropagation();onEv(ev);}} style={{background:evColor(ev,members),color:"#fff",padding:"1px 6px",borderRadius:4,fontSize:10,fontWeight:500,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer",outline:isBday(ev)?"2px solid #F59E0B":undefined,outlineOffset:1}}>{evPrefix(ev)}{ev.title}</div>)}</div>
-              {evs.length>2&&<div style={{fontSize:9,color:t.dim}}>+{evs.length-2}</div>}
+              {evs.length>2&&<div onClick={e=>{e.stopPropagation();setDayPopup({date:key,d:c.d,evs});}} style={{fontSize:9,color:t.accent,fontWeight:700,cursor:"pointer",marginTop:1}}>+{evs.length-2} more</div>}
             </div>;})}
         </div>;
       })}
     </div>
+    {dayPopup&&<div style={{position:"fixed",inset:0,zIndex:60,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.45)"}} onClick={()=>setDayPopup(null)}>
+      <div style={{background:t.bg,borderRadius:16,padding:"16px 18px",minWidth:240,maxWidth:320,maxHeight:"70vh",overflowY:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.4)"}} onClick={e=>e.stopPropagation()}>
+        <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:12}}>{DAYS_F[dayPopup.d.getDay()]}, {MO[dayPopup.d.getMonth()]} {dayPopup.d.getDate()}</div>
+        {dayPopup.evs.map(ev=>{const pm=members.find(x=>x.id===ev.assignedTo);return<div key={ev.id} onClick={()=>{onEv(ev);setDayPopup(null);}} style={{display:"flex",alignItems:"stretch",gap:8,marginBottom:8,cursor:"pointer",padding:"6px 8px",borderRadius:8,background:t.card}}>
+          <div style={{width:3,borderRadius:2,background:evColor(ev,members),flexShrink:0}}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{evPrefix(ev)}{ev.title}</div>
+            {pm&&<div style={{fontSize:9,fontWeight:700,color:pm.color}}>{pm.name}</div>}
+            <div style={{fontSize:10,color:t.dim}}>{fmtT(ev.hour,ev.minute)}</div>
+          </div>
+        </div>;})}
+        <button onClick={()=>{setSel(dayPopup.d);setView("day");setDayPopup(null);}} style={{width:"100%",marginTop:4,padding:"8px",borderRadius:8,border:`1px solid ${t.accent}`,background:"transparent",color:t.accent,fontSize:12,fontWeight:600,cursor:"pointer"}}>Open Day View</button>
+      </div>
+    </div>}
   </div>;
 }
 function WeekView({sel,setSel,events,onEv,onAdd,weekStart=0}){
