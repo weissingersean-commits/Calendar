@@ -225,6 +225,7 @@ function evColor(ev,members=[]){if(ev.assignedTo){const m=(members||[]).find(m=>
 function evLt(ev,members=[]){if(ev.assignedTo){const m=(members||[]).find(m=>m.id===ev.assignedTo);if(m)return m.color+"22";}const c=ev.color||ev.feedColor;if(c)return c+"22";return CATS[ev.category]?.lt?.(0.1)||"rgba(56,189,248,0.1)";}
 const isBday=ev=>/birthday/i.test(ev.title);
 const evPrefix=ev=>ev.reaction?ev.reaction+" ":isBday(ev)?"🎂 ":"";
+const isAllDay=ev=>ev.hour===0&&(ev.minute||0)===0&&(ev.duration||0)>=24;
 function relTime(dateStr,hour,minute){const now=new Date();const ev=new Date(dateStr+"T"+String(hour??0).padStart(2,"0")+":"+String(minute||0).padStart(2,"0")+":00");const diff=ev-now;if(diff<=0)return null;const h=diff/3600000;const d=Math.floor(diff/86400000);if(h<1)return"< 1 hr";if(h<2)return"1 hr";if(h<24)return`${Math.floor(h)} hrs`;if(d===1)return"Tomorrow";if(d<7)return`${d} days`;return null;}
 function playDing(){try{const a=new(window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;o.type="sine";g.gain.setValueAtTime(0.25,a.currentTime);g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.55);o.start();o.stop(a.currentTime+0.55);}catch(e){}}
 
@@ -645,6 +646,7 @@ function FamilyTasks({items,setItems,members,rewards,setRewards}){
   const[assignTo,setAssignTo]=useState("");
   const[taskStars,setTaskStars]=useState(1);
   const[taskRepeat,setTaskRepeat]=useState("none");
+  const[taskDue,setTaskDue]=useState("");
   const[confettiData,setConfettiData]=useState(null);
   const today=dkey(new Date());
   const wkStart=dkey(wkSt(new Date()));
@@ -685,8 +687,8 @@ function FamilyTasks({items,setItems,members,rewards,setRewards}){
 
   const addTask=()=>{
     if(!val.trim())return;
-    setItems([...items,{id:mkId(),text:val.trim(),done:false,assignedTo:assignTo||null,stars:taskStars,repeat:taskRepeat==="none"?null:taskRepeat,lastCompleted:null}]);
-    setVal("");
+    setItems([...items,{id:mkId(),text:val.trim(),done:false,assignedTo:assignTo||null,stars:taskStars,repeat:taskRepeat==="none"?null:taskRepeat,lastCompleted:null,dueDate:taskRepeat==="none"&&taskDue?taskDue:null}]);
+    setVal("");setTaskDue("");
   };
 
   const oneTime=items.filter(it=>!it.repeat||it.repeat==="none");
@@ -697,9 +699,14 @@ function FamilyTasks({items,setItems,members,rewards,setRewards}){
     const m=members.find(m=>m.id===it.assignedTo);
     const done=isDone(it);
     const isRecurring=it.repeat&&it.repeat!=="none";
+    const overdue=!done&&it.dueDate&&it.dueDate<today;
+    const dueToday=!done&&it.dueDate===today;
     return<div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",cursor:"pointer"}} onClick={()=>complete(it)}>
-      <div style={{width:18,height:18,borderRadius:isRecurring?9:5,border:`2px solid ${done?m?.color||"#3B82F6":t.dim}`,background:done?m?.color||"#3B82F6":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,color:"#fff",transition:"all 0.15s"}}>{done&&"✓"}</div>
-      <span style={{fontSize:13,color:done?t.dim:t.text,textDecoration:done?"line-through":"none",flex:1}}>{it.text}</span>
+      <div style={{width:18,height:18,borderRadius:isRecurring?9:5,border:`2px solid ${done?m?.color||"#3B82F6":overdue?"#EF4444":dueToday?"#F59E0B":t.dim}`,background:done?m?.color||"#3B82F6":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,color:"#fff",transition:"all 0.15s"}}>{done&&"✓"}</div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:13,color:done?t.dim:overdue?"#EF4444":t.text,textDecoration:done?"line-through":"none",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{it.text}</div>
+        {it.dueDate&&!done&&<div style={{fontSize:9,color:overdue?"#EF4444":dueToday?"#F59E0B":t.dim,fontWeight:overdue||dueToday?700:400}}>{overdue?"Overdue":dueToday?"Due today":"Due "+it.dueDate}</div>}
+      </div>
       {isRecurring&&<span style={{fontSize:9,color:t.dim,flexShrink:0,opacity:0.6}}>{it.repeat==="daily"?"↻daily":"↻weekly"}</span>}
       {m&&<div style={{display:"flex",alignItems:"center",gap:3,padding:"2px 6px",borderRadius:10,background:m.color+"22",border:`1px solid ${m.color}44`,flexShrink:0}}><div style={{width:7,height:7,borderRadius:"50%",background:m.color}}/><span style={{fontSize:9,color:m.color,fontWeight:700}}>{m.name}</span></div>}
       {(it.stars||0)>0&&<span style={{fontSize:10,flexShrink:0,opacity:done?0.35:1}}>{"⭐".repeat(Math.min(it.stars,5))}</span>}
@@ -726,6 +733,7 @@ function FamilyTasks({items,setItems,members,rewards,setRewards}){
       <div style={{display:"flex",gap:4,marginBottom:6}}>
         {["none","daily","weekly"].map(r=><button key={r} onClick={()=>setTaskRepeat(r)} style={{flex:1,padding:"4px 0",borderRadius:8,border:`1px solid ${taskRepeat===r?t.accent:t.bdr}`,background:taskRepeat===r?t.acDim:"transparent",color:taskRepeat===r?t.accent:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:taskRepeat===r?700:400}}>{r==="none"?"Once":r==="daily"?"↻ Daily":"↻ Weekly"}</button>)}
       </div>
+      {taskRepeat==="none"&&<input type="date" style={{width:"100%",padding:"6px 10px",borderRadius:8,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:11,fontFamily:FF,outline:"none",marginBottom:6,boxSizing:"border-box"}} value={taskDue} onChange={e=>setTaskDue(e.target.value)} min={today}/>}
       <div style={{display:"flex",gap:6,alignItems:"center"}}>
         <div style={{display:"flex",gap:1}}>
           {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setTaskStars(n)} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,opacity:taskStars>=n?1:0.22,padding:"0 1px",lineHeight:1}}>⭐</button>)}
@@ -1262,7 +1270,7 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards}){
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{evPrefix(ev)}{ev.title}</div>
           {pm&&<div style={{fontSize:9,fontWeight:700,color:pm.color}}>{pm.name}</div>}
-          <div style={{fontSize:10,color:t.dim}}>{ev.hour!=null?fmtT(ev.hour,ev.minute||0):"All day"}{ev.location?" · 📍"+ev.location:""}</div>
+          <div style={{fontSize:10,color:t.dim}}>{isAllDay(ev)?"All day":fmtT(ev.hour,ev.minute||0)}{ev.location?" · 📍"+ev.location:""}</div>
         </div>
       </div>;
     })}
