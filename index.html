@@ -572,6 +572,15 @@ function Meals({meals,setMeals,recipes,setRecipes,grocery,setGrocery}){
     setRecipes(prev=>[...prev,{id:mkId(),name:rName.trim(),ingredients}]);
     setRName("");setRIngreds("");setShowAddRecipe(false);
   };
+  const suggestDinners=()=>{
+    if(!recipes.length)return;
+    const shuffled=shuffle([...recipes]);
+    const newMeals={...meals};
+    const days=Array.from({length:7},(_,i)=>addD(wkSt(today),i).getDay());
+    let idx=0;
+    days.forEach(dayK=>{if(!(newMeals[dayK]?.dinner)){newMeals[dayK]={...(newMeals[dayK]||{}),dinner:shuffled[idx++%shuffled.length].name};} });
+    setMeals(newMeals);
+  };
 
   return<div>
     {Array.from({length:7},(_,i)=>{
@@ -593,6 +602,7 @@ function Meals({meals,setMeals,recipes,setRecipes,grocery,setGrocery}){
       <div style={{display:"flex",gap:8}}><button style={s.btnS} onClick={()=>setEditDay(null)}>Cancel</button><button style={s.btnP} onClick={()=>{setMeals({...meals,[editDay]:editMeal});setEditDay(null);}}>Save</button></div>
     </div></div>}
     <div style={{borderTop:`1px solid ${t.bdr}`,marginTop:10,paddingTop:10}}>
+      {recipes.length>0&&<button onClick={suggestDinners} style={{width:"100%",padding:"8px 0",borderRadius:10,border:`1px dashed ${t.accent}`,background:t.acDim,color:t.accent,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FF,marginBottom:8}}>🎲 Suggest Dinners</button>}
       <button onClick={()=>setShowRecipes(!showRecipes)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"none",border:"none",cursor:"pointer",padding:"4px 0",marginBottom:showRecipes?10:0}}>
         <span style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:2,color:t.accent}}>Recipes{recipes.length>0?` (${recipes.length})`:""}</span>
         <span style={{color:t.dim,fontSize:10}}>{showRecipes?"▲":"▼"}</span>
