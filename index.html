@@ -1334,36 +1334,46 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart
 function SearchModal({events,onSelect,onClose}){
   const t=useT(),s=useS(),inputRef=useRef(null);const members=useM();
   const[q,setQ]=useState("");
+  const[catFilter,setCatFilter]=useState(null);
   useEffect(()=>{inputRef.current?.focus();},[]);
   const results=useMemo(()=>{
-    if(!q.trim())return[];
-    const lq=q.toLowerCase();
+    const lq=q.toLowerCase().trim();
     return events
-      .filter(ev=>ev.title.toLowerCase().includes(lq)||(ev.location||"").toLowerCase().includes(lq))
+      .filter(ev=>{
+        if(catFilter&&ev.category!==catFilter)return false;
+        if(!lq)return!!catFilter;
+        return ev.title.toLowerCase().includes(lq)||(ev.location||"").toLowerCase().includes(lq)||(ev.notes||"").toLowerCase().includes(lq);
+      })
       .sort((a,b)=>a.date.localeCompare(b.date)||a.hour-b.hour)
-      .slice(0,25);
-  },[q,events]);
+      .slice(0,30);
+  },[q,catFilter,events]);
+  const empty=!q.trim()&&!catFilter;
   return<div style={s.overlay} onClick={onClose}><div style={{...s.modal,width:500}} onClick={e=>e.stopPropagation()}>
-    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
       <span style={{fontSize:16,color:t.dim}}>🔍</span>
-      <input ref={inputRef} style={{...s.inp,marginBottom:0,flex:1,fontSize:15}} placeholder="Search events and locations..." value={q} onChange={e=>setQ(e.target.value)}/>
+      <input ref={inputRef} style={{...s.inp,marginBottom:0,flex:1,fontSize:15}} placeholder="Search title, location, notes..." value={q} onChange={e=>setQ(e.target.value)}/>
       <button onClick={onClose} style={{background:"none",border:"none",color:t.dim,fontSize:22,cursor:"pointer",padding:"0 4px",lineHeight:1}}>×</button>
     </div>
-    {!q.trim()&&<div style={{textAlign:"center",padding:"24px 0",color:t.dim,fontSize:13}}>Start typing to search all events</div>}
-    {q.trim()&&results.length===0&&<div style={{textAlign:"center",padding:"24px 0",color:t.dim,fontSize:13}}>No events found for "{q}"</div>}
-    <div style={{maxHeight:380,overflow:"auto"}}>
+    <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:12}}>
+      {Object.entries(CATS).map(([cat,col])=><button key={cat} onClick={()=>setCatFilter(catFilter===cat?null:cat)} style={{padding:"3px 10px",borderRadius:12,border:`1px solid ${catFilter===cat?col.bg:t.bdr}`,background:catFilter===cat?col.bg+"33":"transparent",color:catFilter===cat?col.bg:t.sub,fontSize:10,fontWeight:catFilter===cat?700:400,cursor:"pointer",fontFamily:FF,textTransform:"capitalize"}}>{cat}</button>)}
+    </div>
+    {empty&&<div style={{textAlign:"center",padding:"24px 0",color:t.dim,fontSize:13}}>Type to search, or tap a category above</div>}
+    {!empty&&results.length===0&&<div style={{textAlign:"center",padding:"24px 0",color:t.dim,fontSize:13}}>No events found</div>}
+    <div style={{maxHeight:360,overflow:"auto"}}>
       {results.map(ev=>{
         const d=new Date(ev.date+"T12:00:00");
+        const col=CATS[ev.category];
         return<div key={ev.id} onClick={()=>onSelect(ev)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 8px",borderRadius:10,cursor:"pointer",marginBottom:2,transition:"background 0.1s"}} onMouseEnter={e=>e.currentTarget.style.background=t.cardH} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
           <div style={{width:4,height:38,borderRadius:2,background:evColor(ev,members),flexShrink:0}}/>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:13,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div>
             <div style={{fontSize:11,color:t.dim,fontFamily:FM,marginTop:2}}>
               {DAYS[d.getDay()]} {MO[d.getMonth()]} {d.getDate()}, {d.getFullYear()} · {ev.duration===24&&ev.hour===0?"All day":fmtT(ev.hour,ev.minute||0)}
-              {ev.location&&` · ${ev.location}`}
+              {ev.location&&` · 📍${ev.location}`}
             </div>
+            {ev.notes&&<div style={{fontSize:10,color:t.dim,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📝 {ev.notes}</div>}
           </div>
-          <div style={{fontSize:10,color:t.dim,textTransform:"capitalize",flexShrink:0,padding:"3px 8px",borderRadius:10,background:t.card}}>{ev.category}</div>
+          <div style={{fontSize:10,textTransform:"capitalize",flexShrink:0,padding:"3px 8px",borderRadius:10,background:col?col.bg+"22":t.card,color:col?col.bg:t.dim}}>{ev.category}</div>
         </div>;
       })}
     </div>
@@ -1442,7 +1452,8 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,f
       {assignedChores.map(({m,chores})=><div key={m.id} style={{marginBottom:10}}>
         <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:5}}>
           <div style={{width:18,height:18,borderRadius:"50%",background:m.color,color:"#fff",fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{m.name[0]}</div>
-          <span style={{fontSize:11,fontWeight:700,color:m.color}}>{m.name}</span>
+          <span style={{fontSize:11,fontWeight:700,color:m.color,flex:1}}>{m.name}</span>
+          {chores.length>1&&<button onClick={()=>chores.forEach(c=>checkChore(c))} style={{padding:"2px 8px",borderRadius:8,border:`1px solid ${m.color}`,background:m.color+"22",color:m.color,fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:FF}}>All done ✓</button>}
         </div>
         {chores.map(c=><div key={c.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,paddingLeft:4}}>
           <button onClick={()=>checkChore(c)} style={{width:16,height:16,borderRadius:"50%",border:`2px solid ${m.color}`,background:"transparent",cursor:"pointer",padding:0,flexShrink:0}}/>
