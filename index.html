@@ -225,6 +225,8 @@ function evColor(ev,members=[]){if(ev.assignedTo){const m=(members||[]).find(m=>
 function evLt(ev,members=[]){if(ev.assignedTo){const m=(members||[]).find(m=>m.id===ev.assignedTo);if(m)return m.color+"22";}const c=ev.color||ev.feedColor;if(c)return c+"22";return CATS[ev.category]?.lt?.(0.1)||"rgba(56,189,248,0.1)";}
 const isBday=ev=>/birthday/i.test(ev.title);
 const evPrefix=ev=>ev.reaction?ev.reaction+" ":isBday(ev)?"🎂 ":"";
+function relTime(dateStr,hour,minute){const now=new Date();const ev=new Date(dateStr+"T"+String(hour??0).padStart(2,"0")+":"+String(minute||0).padStart(2,"0")+":00");const diff=ev-now;if(diff<=0)return null;const h=diff/3600000;const d=Math.floor(diff/86400000);if(h<1)return"< 1 hr";if(h<2)return"1 hr";if(h<24)return`${Math.floor(h)} hrs`;if(d===1)return"Tomorrow";if(d<7)return`${d} days`;return null;}
+function playDing(){try{const a=new(window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;o.type="sine";g.gain.setValueAtTime(0.25,a.currentTime);g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.55);o.start();o.stop(a.currentTime+0.55);}catch(e){}}
 
 function useS(){const t=useT();return useMemo(()=>({
   iconBtn:{background:"none",border:"none",color:t.accent,fontSize:22,cursor:"pointer",padding:"8px 14px",borderRadius:10,fontWeight:300,minHeight:44,minWidth:44},
@@ -633,13 +635,17 @@ function FamilyTasks({items,setItems,members,rewards,setRewards}){
     }
     if(!it.repeat||it.repeat==="none"){
       setItems(items.map(i=>i.id===it.id?{...i,done:!i.done}:i));
-      if(!wasDone&&it.assignedTo&&(it.stars||0)>0){
-        setRewards(r=>({...r,stars:{...(r.stars||{}),[it.assignedTo]:((r.stars||{})[it.assignedTo]||0)+(it.stars||0)}}));
-        const m=members.find(m=>m.id===it.assignedTo);
-        setConfettiData({name:m?.name||"",stars:it.stars||0});
+      if(!wasDone){
+        playDing();
+        if(it.assignedTo&&(it.stars||0)>0){
+          setRewards(r=>({...r,stars:{...(r.stars||{}),[it.assignedTo]:((r.stars||{})[it.assignedTo]||0)+(it.stars||0)}}));
+          const m=members.find(m=>m.id===it.assignedTo);
+          setConfettiData({name:m?.name||"",stars:it.stars||0});
+        }
       }
     } else {
       setItems(items.map(i=>i.id===it.id?{...i,lastCompleted:today}:i));
+      playDing();
       if(it.assignedTo&&(it.stars||0)>0){
         setRewards(r=>({...r,stars:{...(r.stars||{}),[it.assignedTo]:((r.stars||{})[it.assignedTo]||0)+(it.stars||0)}}));
         const m=members.find(m=>m.id===it.assignedTo);
@@ -861,8 +867,8 @@ function Screensaver({onTap,wx,loc,customPhotos,ssCollections,ssSleepEnabled,ssS
     </div>}
     {upcoming.length>0&&<div style={{position:"absolute",bottom:52,right:52,zIndex:1,textAlign:"right",maxWidth:340}}>
       <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.3)",textTransform:"uppercase",letterSpacing:2,marginBottom:16}}>Coming Up</div>
-      {upcoming.map(ev=>{const pm=members.find(m=>m.id===ev.assignedTo);return<div key={ev.id} style={{marginBottom:14,display:"flex",alignItems:"center",gap:12,justifyContent:"flex-end"}}>
-        <div style={{textAlign:"right"}}><div style={{fontSize:16,fontWeight:600,color:"rgba(255,255,255,0.85)",marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:300}}>{evPrefix(ev)}{ev.title}</div>{pm&&<div style={{fontSize:11,fontWeight:700,color:pm.color,marginBottom:3,opacity:0.9}}>{pm.name}</div>}<div style={{fontSize:12,color:"rgba(255,255,255,0.38)"}}>{ev.date===todayKey?"Today":ev.date} · {fmtT(ev.hour,ev.minute||0)}</div></div>
+      {upcoming.map(ev=>{const pm=members.find(m=>m.id===ev.assignedTo);const rel=relTime(ev.date,ev.hour,ev.minute||0);return<div key={ev.id} style={{marginBottom:14,display:"flex",alignItems:"center",gap:12,justifyContent:"flex-end"}}>
+        <div style={{textAlign:"right"}}><div style={{fontSize:16,fontWeight:600,color:"rgba(255,255,255,0.85)",marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:300}}>{evPrefix(ev)}{ev.title}</div>{pm&&<div style={{fontSize:11,fontWeight:700,color:pm.color,marginBottom:3,opacity:0.9}}>{pm.name}</div>}<div style={{fontSize:12,color:"rgba(255,255,255,0.38)"}}>{fmtT(ev.hour,ev.minute||0)}{rel&&<span style={{marginLeft:8,color:"rgba(255,255,255,0.6)",fontWeight:700}}>{rel}</span>}</div></div>
         <div style={{width:3,height:38,borderRadius:2,background:evColor(ev,members),flexShrink:0}}/>
       </div>;}))}
     </div>}
@@ -1184,6 +1190,7 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards}){
   const dueChores=useMemo(()=>todos.filter(it=>{if(!it.repeat||it.repeat==="none")return false;if(it.repeat==="daily")return it.lastCompleted!==today;if(it.repeat==="weekly")return!it.lastCompleted||it.lastCompleted<wkStart;return false;}),[todos,today,wkStart]);
   function checkChore(it){
     setTodos(ts=>ts.map(x=>x.id!==it.id?x:{...x,lastCompleted:today}));
+    playDing();
     if(it.stars&&it.assignedTo)setRewards(r=>{const st={...r.stars};st[it.assignedTo]=(st[it.assignedTo]||0)+it.stars;return{...r,stars:st};});
   }
   const assignedChores=members.map(m=>({m,chores:dueChores.filter(c=>c.assignedTo===m.id)})).filter(({chores})=>chores.length>0);
@@ -1364,8 +1371,8 @@ function Homelight(){
               <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:2,color:t.accent,marginBottom:10}}>Coming Up</div>
               {upcoming.length===0&&<div style={{fontSize:12,color:t.dim}}>Nothing scheduled</div>}
               <div style={{maxHeight:130,overflowY:"auto"}}>
-              {upcoming.map(ev=>{const pm=members.find(m=>m.id===ev.assignedTo);return<div key={ev.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,cursor:"pointer"}} onClick={()=>{setSel(new Date(ev.date+"T12:00:00"));setView("day");}}>
-                <div style={{width:3,borderRadius:2,background:evColor(ev,members),flexShrink:0,alignSelf:"stretch"}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{evPrefix(ev)}{ev.title}</div>{pm&&<div style={{fontSize:9,fontWeight:700,color:pm.color,marginTop:1}}>{pm.name}</div>}<div style={{fontSize:10,color:t.dim,fontFamily:FM,marginTop:1}}>{ev.date} · {fmtT(ev.hour,ev.minute)}</div>{ev.location&&<div style={{fontSize:9,color:t.dim,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📍 {ev.location}</div>}</div></div>;}))}
+              {upcoming.map(ev=>{const pm=members.find(m=>m.id===ev.assignedTo);const rel=relTime(ev.date,ev.hour,ev.minute);return<div key={ev.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,cursor:"pointer"}} onClick={()=>{setSel(new Date(ev.date+"T12:00:00"));setView("day");}}>
+                <div style={{width:3,borderRadius:2,background:evColor(ev,members),flexShrink:0,alignSelf:"stretch"}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{evPrefix(ev)}{ev.title}</div>{pm&&<div style={{fontSize:9,fontWeight:700,color:pm.color,marginTop:1}}>{pm.name}</div>}<div style={{fontSize:10,color:t.dim,fontFamily:FM,marginTop:1}}>{fmtT(ev.hour,ev.minute)}{rel&&<span style={{marginLeft:6,color:t.accent,fontWeight:700}}>{rel}</span>}</div>{ev.location&&<div style={{fontSize:9,color:t.dim,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📍 {ev.location}</div>}</div></div>;}))}
               </div>
             </div>
             <div style={{display:"flex",borderBottom:`1px solid ${t.bdr}`}}>{["today","tasks","grocery","meals","rewards"].map(tab=><button key={tab} onClick={()=>setSideTab(tab)} style={{flex:1,padding:"10px 0",textAlign:"center",fontSize:9,fontWeight:600,textTransform:"uppercase",letterSpacing:1,color:sideTab===tab?t.accent:t.dim,background:"transparent",border:"none",cursor:"pointer",fontFamily:FF,borderBottom:`2px solid ${sideTab===tab?t.accent:"transparent"}`}}>{tab==="rewards"?"⭐":tab==="today"?"📅":tab}</button>)}</div>
