@@ -971,12 +971,14 @@ function Screensaver({onTap,wx,loc,forecast,customPhotos,ssCollections,ssSleepEn
   useEffect(()=>{const t1=setInterval(()=>{setFade(false);setTimeout(()=>{setIdx(i=>(i+1)%photos.length);setFade(true);},700);},15000);const t2=setInterval(()=>setTime(new Date()),1000);return()=>{clearInterval(t1);clearInterval(t2);};},[photos.length]);
   const info=wx?wmo(wx.code):null;
   const todayKey=dkey(time),nowMins=time.getHours()*60+time.getMinutes();
-  const upcoming=(events||[]).filter(e=>e.date>todayKey||(e.date===todayKey&&(e.hour*60+(e.minute||0))>=nowMins)).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date)).slice(0,3);
   const wkStartKey=dkey(wkSt(time));
   const dueChoresSS=useMemo(()=>(todos||[]).filter(it=>{if(!it.repeat||it.repeat==="none")return false;if(it.repeat==="daily")return it.lastCompleted!==todayKey;if(it.repeat==="weekly")return!it.lastCompleted||it.lastCompleted<wkStartKey;return false;}),[todos,todayKey,wkStartKey]);
   const choresByMember=members.map(m=>({m,chores:dueChoresSS.filter(c=>c.assignedTo===m.id)})).filter(({chores})=>chores.length>0);
   const checkChoreSS=(it,m)=>{if(!setTodos)return;setTodos(ts=>ts.map(x=>x.id!==it.id?x:{...x,lastCompleted:todayKey}));playDing();if(it.stars&&it.assignedTo&&setRewards)setRewards(r=>{const st={...r.stars};st[it.assignedTo]=(st[it.assignedTo]||0)+it.stars;return{...r,stars:st};});};
-  const nextSpecial=useMemo(()=>{const limit=dkey(new Date(new Date(todayKey).getTime()+8*86400000));const cat=["sports","school"];return(events||[]).filter(ev=>cat.includes(ev.category)&&ev.date>=todayKey&&ev.date<limit).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date))[0]||null;},[events,todayKey]);
+  const agenda=useMemo(()=>{const r=[];for(let i=0;i<21&&r.length<7;i++){const d=new Date(todayKey+"T12:00:00");d.setDate(d.getDate()+i);const dk=dkey(d);const dayEvs=(events||[]).filter(e=>e.date===dk).sort((a,b)=>a.hour-b.hour);if(dayEvs.length>0)r.push({dk,d,evs:dayEvs});}return r;},[events,todayKey]);
+  const miniCalCells=useMemo(()=>{const y=time.getFullYear(),m=time.getMonth();const fd=new Date(y,m,1).getDay();const tot=new Date(y,m+1,0).getDate();const cells=[];for(let i=0;i<fd;i++)cells.push(null);for(let i=1;i<=tot;i++)cells.push(i);return cells;},[time.getMonth(),time.getFullYear()]);
+  const evDateSet=useMemo(()=>{const y=time.getFullYear(),mth=time.getMonth();const ms=`${y}-${String(mth+1).padStart(2,"0")}`;const s=new Set();(events||[]).forEach(e=>{if(e.date.startsWith(ms))s.add(parseInt(e.date.slice(8)));});return s;},[events,time.getMonth(),time.getFullYear()]);
+  useEffect(()=>{const fk=window.fully;if(fk){try{if(sleeping)fk.turnScreenOff();else fk.turnScreenOn();}catch(e){}}},[sleeping]);
   if(sleeping)return<div style={{position:"fixed",inset:0,zIndex:100,background:"#000",cursor:"pointer"}} onClick={handleTap}/>;
   return<div style={{position:"fixed",inset:0,zIndex:100,background:"#000",cursor:"pointer"}} onClick={handleTap}>
     <img src={photos[idx]} alt="" style={{width:"100%",height:"100%",objectFit:"cover",position:"absolute",transition:"opacity 0.7s ease-in-out",opacity:fade?1:0}}/>
@@ -995,14 +997,22 @@ function Screensaver({onTap,wx,loc,forecast,customPhotos,ssCollections,ssSleepEn
         {chores.length>3&&<div style={{fontSize:11,color:"rgba(255,255,255,0.4)",paddingLeft:28}}>+{chores.length-3} more</div>}
       </div>)}
     </div>}
-    {nextSpecial&&<div style={{position:"absolute",top:52,right:52,zIndex:1,textAlign:"right"}}>
-      <div style={{background:"rgba(0,0,0,0.28)",borderRadius:14,padding:"10px 16px",backdropFilter:"blur(6px)",border:`1px solid ${nextSpecial.category==="sports"?"rgba(249,115,22,0.35)":"rgba(6,182,212,0.35)"}`}}>
-        <div style={{fontSize:11,fontWeight:700,color:nextSpecial.category==="sports"?"#F97316":"#06B6D4",textTransform:"uppercase",letterSpacing:1.5,marginBottom:4}}>{nextSpecial.category==="sports"?"⚽ Next Game":"📚 School Event"}</div>
-        <div style={{fontSize:15,fontWeight:600,color:"rgba(255,255,255,0.85)",marginBottom:3}}>{nextSpecial.title}</div>
-        <div style={{fontSize:12,color:"rgba(255,255,255,0.45)"}}>{DAYS_F[new Date(nextSpecial.date+"T12:00:00").getDay()]}{isAllDay(nextSpecial)?"":" · "+fmtT(nextSpecial.hour,nextSpecial.minute||0)}</div>
-        {(()=>{const rel=relTime(nextSpecial.date,nextSpecial.hour,nextSpecial.minute||0);return rel&&<div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.6)",marginTop:2}}>{rel}</div>;})()}
+    <div style={{position:"absolute",top:52,right:52,zIndex:1,textAlign:"center"}}>
+      <div style={{background:"rgba(0,0,0,0.32)",borderRadius:16,padding:"14px 18px",backdropFilter:"blur(8px)",border:"1px solid rgba(255,255,255,0.07)"}}>
+        <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.3)",textTransform:"uppercase",letterSpacing:2,marginBottom:10}}>{MO[time.getMonth()]} {time.getFullYear()}</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,26px)",gap:"2px 0"}}>
+          {["S","M","T","W","T","F","S"].map((d,i)=><div key={i} style={{fontSize:9,color:"rgba(255,255,255,0.22)",textAlign:"center",fontWeight:700,marginBottom:6,width:26}}>{d}</div>)}
+          {miniCalCells.map((cell,i)=>{
+            const isToday=cell===time.getDate();
+            const hasEv=cell&&evDateSet.has(cell)&&!isToday;
+            return<div key={i} style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:isToday?800:400,color:isToday?"#111":cell?"rgba(255,255,255,0.65)":"transparent",background:isToday?"rgba(255,255,255,0.92)":"transparent",position:"relative"}}>
+              {cell||""}
+              {hasEv&&<div style={{position:"absolute",bottom:2,left:"50%",transform:"translateX(-50%)",width:3,height:3,borderRadius:"50%",background:"rgba(255,255,255,0.45)"}}/>}
+            </div>;
+          })}
+        </div>
       </div>
-    </div>}
+    </div>
     <div style={{position:"absolute",bottom:48,left:52,zIndex:1}}>
       <div style={{fontSize:120,fontWeight:200,color:"#fff",lineHeight:1,fontFamily:FM,letterSpacing:-6}}>{String(time.getHours()%12||12).padStart(2,"0")}:{String(time.getMinutes()).padStart(2,"0")}<span style={{fontSize:40,fontWeight:300,marginLeft:16,opacity:.45}}>{time.getHours()>=12?"PM":"AM"}</span></div>
       <div style={{fontSize:28,fontWeight:300,color:"rgba(255,255,255,0.55)",marginTop:12,fontFamily:FF}}>{DAYS_F[time.getDay()]}, {MO[time.getMonth()]} {time.getDate()}</div>
@@ -1017,17 +1027,27 @@ function Screensaver({onTap,wx,loc,forecast,customPhotos,ssCollections,ssSleepEn
         </div>;})}
       </div>}
     </div>
-    {announcement&&<div style={{position:"absolute",bottom:upcoming.length>0?220:52,right:52,zIndex:1,maxWidth:360,textAlign:"right"}}>
+    {announcement&&<div style={{position:"absolute",bottom:agenda.length>0?320:52,right:52,zIndex:1,maxWidth:360,textAlign:"right"}}>
       <div style={{display:"inline-block",background:"rgba(251,191,36,0.15)",border:"1px solid rgba(251,191,36,0.35)",borderRadius:12,padding:"8px 16px",backdropFilter:"blur(6px)"}}>
         <span style={{fontSize:13,color:"rgba(255,255,255,0.85)",fontWeight:500}}>📌 {announcement}</span>
       </div>
     </div>}
-    {upcoming.length>0&&<div style={{position:"absolute",bottom:52,right:52,zIndex:1,textAlign:"right",maxWidth:340}}>
-      <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.3)",textTransform:"uppercase",letterSpacing:2,marginBottom:16}}>Coming Up</div>
-      {upcoming.map(ev=>{const pm=members.find(m=>m.id===ev.assignedTo);const rel=relTime(ev.date,ev.hour,ev.minute||0);return<div key={ev.id} style={{marginBottom:14,display:"flex",alignItems:"center",gap:12,justifyContent:"flex-end"}}>
-        <div style={{textAlign:"right"}}><div style={{fontSize:16,fontWeight:600,color:"rgba(255,255,255,0.85)",marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:300}}>{evPrefix(ev)}{ev.title}</div>{pm&&<div style={{fontSize:11,fontWeight:700,color:pm.color,marginBottom:3,opacity:0.9}}>{pm.name}</div>}<div style={{fontSize:12,color:"rgba(255,255,255,0.38)"}}>{fmtT(ev.hour,ev.minute||0)}{rel&&<span style={{marginLeft:8,color:"rgba(255,255,255,0.6)",fontWeight:700}}>{rel}</span>}</div></div>
-        <div style={{width:3,height:38,borderRadius:2,background:evColor(ev,members),flexShrink:0}}/>
-      </div>;}))}
+    {agenda.length>0&&<div onClick={e=>e.stopPropagation()} onTouchStart={e=>e.stopPropagation()} style={{position:"absolute",bottom:52,right:52,zIndex:1,textAlign:"right",maxWidth:360,maxHeight:"65vh",overflowY:"auto",scrollbarWidth:"none",msOverflowStyle:"none"}}>
+      {agenda.map(({dk,d,evs})=><div key={dk} style={{marginBottom:14}}>
+        <div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:2,color:"rgba(255,255,255,0.28)",marginBottom:8}}>{DAYS_F[d.getDay()]}, {MO[d.getMonth()]} {d.getDate()}</div>
+        {evs.slice(0,4).map(ev=>{const pm=members.find(m=>m.id===ev.assignedTo);const rel=relTime(ev.date,ev.hour,ev.minute||0);return<div key={ev.id} style={{marginBottom:7,display:"flex",alignItems:"center",gap:10,justifyContent:"flex-end"}}>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:14,fontWeight:600,color:"rgba(255,255,255,0.85)",marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:290}}>{evPrefix(ev)}{ev.title}</div>
+            <div style={{fontSize:11,color:"rgba(255,255,255,0.38)"}}>
+              {isAllDay(ev)?"All day":fmtT(ev.hour,ev.minute||0)}
+              {pm&&<span style={{marginLeft:6,color:pm.color,fontWeight:700}}>{pm.name}</span>}
+              {rel&&<span style={{marginLeft:6,color:"rgba(255,255,255,0.55)",fontWeight:700}}>{rel}</span>}
+            </div>
+          </div>
+          <div style={{width:3,height:32,borderRadius:2,background:evColor(ev,members),flexShrink:0}}/>
+        </div>;})}
+        {evs.length>4&&<div style={{fontSize:10,color:"rgba(255,255,255,0.25)",textAlign:"right",marginTop:2}}>+{evs.length-4} more</div>}
+      </div>)}
     </div>}
     <div style={{position:"absolute",bottom:22,right:32,fontSize:11,color:"rgba(255,255,255,0.2)",fontFamily:FF}}>Tap anywhere to return</div>
   </div>;
