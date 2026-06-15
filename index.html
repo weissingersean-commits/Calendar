@@ -574,11 +574,12 @@ function Meals({meals,setMeals,recipes,setRecipes,grocery,setGrocery,geminiKey,g
   const[rIngreds,setRIngreds]=useState("");
   const[pushed,setPushed]=useState(null);
   const[aiStatus,setAiStatus]=useState({});
+  const[servings,setServings]=useP("mealServings",4);
 
   const aiGetIngredients=async(mealName,slot)=>{
     if(!mealName.trim()||!(geminiKey||GEMINI_PROXY))return;
     setAiStatus(p=>({...p,[slot]:"loading"}));
-    const prompt=`List only the ingredients needed to make "${mealName}" for a family of 4. One ingredient per line with quantity (e.g. "2 chicken breasts", "1 can diced tomatoes"). No headers, no numbers, no bullet points — just the ingredient list, one per line.`;
+    const prompt=`List only the ingredients needed to make "${mealName}" for ${servings} ${servings===1?"person":"people"}. One ingredient per line with quantity (e.g. "2 chicken breasts", "1 can diced tomatoes"). Scale amounts for exactly ${servings} ${servings===1?"person":"people"}. No headers, no numbers, no bullet points — just the ingredient list, one per line.`;
     try{
       const model=geminiModel||"gemini-2.5-flash-lite";
       const contents=[{role:"user",parts:[{text:prompt}]}];
@@ -632,7 +633,15 @@ function Meals({meals,setMeals,recipes,setRecipes,grocery,setGrocery,geminiKey,g
       </div>;
     })}
     {editDay!==null&&<div style={s.overlay} onClick={()=>setEditDay(null)}><div style={s.modal} onClick={e=>e.stopPropagation()}>
-      <div style={{fontSize:18,fontWeight:700,marginBottom:16,color:t.text}}>Meals — {DAYS_F[editDay]}</div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+        <div style={{fontSize:18,fontWeight:700,color:t.text}}>Meals — {DAYS_F[editDay]}</div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:11,color:t.sub}}>Serves</span>
+          <select style={{...s.sel,marginBottom:0,padding:"4px 8px",fontSize:12,width:"auto"}} value={servings} onChange={e=>setServings(parseInt(e.target.value))}>
+            {[1,2,3,4,5,6,7,8].map(n=><option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+      </div>
       {["breakfast","lunch","dinner"].map(ml=><div key={ml}>
         <label style={s.lbl}>{ml}</label>
         <input style={s.inp} value={editMeal[ml]||""} onChange={e=>setEditMeal({...editMeal,[ml]:e.target.value})} placeholder={`What's for ${ml}?`}/>
