@@ -214,6 +214,7 @@ function expandManualRecurrences(events){
       const next=new Date(current);
       if(freq==="daily")next.setDate(next.getDate()+1);
       else if(freq==="weekly")next.setDate(next.getDate()+7);
+      else if(freq==="biweekly")next.setDate(next.getDate()+14);
       else if(freq==="monthly"){const d=current.getDate();next.setMonth(next.getMonth()+1);if(next.getDate()!==d)next.setDate(0);}
       else if(freq==="yearly")next.setFullYear(next.getFullYear()+1);
       else break;
@@ -472,6 +473,7 @@ function EventModal({event,sel,defaultHour=9,onClose,onSave,onDelete}){
         <option value="none">Does not repeat</option>
         <option value="daily">Daily</option>
         <option value="weekly">Weekly on {DAYS_F[sel.getDay()]}</option>
+        <option value="biweekly">Every 2 weeks on {DAYS_F[sel.getDay()]}</option>
         <option value="monthly">Monthly on the {sel.getDate()}th</option>
         <option value="yearly">Annually on {MO[sel.getMonth()]} {sel.getDate()}</option>
       </select>
