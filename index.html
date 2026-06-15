@@ -362,8 +362,9 @@ function MonthView({sel,setSel,events,setView,onEv,weekStart=0}){
     </div>}
   </div>;
 }
-function WeekView({sel,setSel,events,onEv,onAdd,weekStart=0}){
+function WeekView({sel,setSel,events,onEv,onAdd,weekStart=0,forecast=[]}){
   const t=useT(),s=useS();const members=useM();const start=wkSt(sel,weekStart),days=Array.from({length:7},(_,i)=>addD(start,i)),hrs=Array.from({length:24},(_,i)=>i),today=new Date();
+  const fcMap=useMemo(()=>Object.fromEntries((forecast||[]).map(f=>[f.date,f])),[forecast]);
   const rowH=60,dayGridHeight=rowH*24;
   const nowTop=(today.getHours()+today.getMinutes()/60)*rowH;
   const isAllDay=ev=>ev.hour===0&&(ev.minute||0)===0&&ev.duration>=24;
@@ -387,7 +388,11 @@ function WeekView({sel,setSel,events,onEv,onAdd,weekStart=0}){
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><button style={s.iconBtn} onClick={()=>setSel(addD(sel,-7))}>‹</button><span style={{fontSize:17,fontWeight:600,fontFamily:FF}}>{MO[start.getMonth()]} {start.getDate()} – {MO[addD(start,6).getMonth()]} {addD(start,6).getDate()}, {start.getFullYear()}</span><button style={s.iconBtn} onClick={()=>setSel(addD(sel,7))}>›</button><button style={s.todayBtn} onClick={()=>setSel(new Date())}>Today</button></div>
     <div style={{overflowX:"auto"}}><div style={{minWidth:980}}>
       <div style={{display:"grid",gridTemplateColumns:"56px repeat(7,minmax(140px,1fr))"}}>
-        <div/>{days.map((d,i)=><div key={i} style={{textAlign:"center",padding:"8px 0",fontSize:12,fontWeight:sameD(d,today)?700:500,color:sameD(d,today)?t.accent:t.sub,borderBottom:sameD(d,today)?`2px solid ${t.accent}`:`1px solid ${t.bdr}`}}>{DAYS[d.getDay()]} <span style={{fontFamily:FM,fontSize:11}}>{d.getDate()}</span></div>)}
+        <div/>{days.map((d,i)=>{const fc=fcMap[dkey(d)];const isT=sameD(d,today);return<div key={i} style={{textAlign:"center",padding:"6px 0 4px",fontSize:12,fontWeight:isT?700:500,color:isT?t.accent:t.sub,borderBottom:isT?`2px solid ${t.accent}`:`1px solid ${t.bdr}`}}>
+          <div>{DAYS[d.getDay()]} <span style={{fontFamily:FM,fontSize:11}}>{d.getDate()}</span></div>
+          {fc&&<div style={{marginTop:2,lineHeight:1}}><span style={{fontSize:14}}>{wmo(fc.code).i}</span> <span style={{fontSize:9,fontWeight:600,color:isT?t.accent:t.dim}}>{fc.hi}°<span style={{opacity:.6}}>/{fc.lo}°</span></span></div>}
+        </div>;})}
+
       </div>
       <div style={{display:"flex",borderBottom:`1px solid ${t.bdr}`}}>
         <div style={{width:56,flexShrink:0,fontSize:10,color:t.dim,textAlign:"right",paddingRight:8,paddingTop:6,fontFamily:FM}}>All day</div>
@@ -1424,7 +1429,7 @@ function SearchModal({events,onSelect,onClose}){
 }
 
 // ═════════════════ TODAY PANEL ══════════════════════════════════════
-function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,forecast,wx,onAddToday}){
+function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,onAddToday}){
   const t=useT();
   const today=dkey(new Date());
   const wkStart=dkey(wkSt(new Date()));
@@ -1441,23 +1446,7 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,f
   }
   const assignedChores=members.map(m=>({m,chores:dueChores.filter(c=>c.assignedTo===m.id)})).filter(({chores})=>chores.length>0);
   const unassigned=dueChores.filter(c=>!c.assignedTo);
-  const useF=JSON.parse(localStorage.getItem("hl4_unit")??'true');
-  const unit=useF?"°F":"°C";
   return<div>
-    {wx&&<div style={{display:"flex",gap:6,marginBottom:12,alignItems:"center",padding:"8px 10px",borderRadius:12,background:t.card,border:`1px solid ${t.bdr}`}}>
-      <div style={{flex:"none",textAlign:"center",minWidth:52}}>
-        <div style={{fontSize:22,lineHeight:1}}>{wmo(wx.code).i}</div>
-        <div style={{fontSize:15,fontWeight:700,fontFamily:FM,color:t.text,lineHeight:1.2}}>{wx.temp}<span style={{fontSize:10,color:t.sub}}>{unit}</span></div>
-        <div style={{fontSize:8,color:t.dim,marginTop:1}}>{wmo(wx.code).l}</div>
-      </div>
-      {(forecast||[]).slice(0,3).map((f,i)=>{const d=new Date(f.date+"T12:00:00");return<div key={i} style={{flex:1,textAlign:"center",borderLeft:`1px solid ${t.bdr}`,paddingLeft:6}}>
-        <div style={{fontSize:10,color:t.dim,fontWeight:600}}>{DAYS[d.getDay()]}</div>
-        <div style={{fontSize:18,margin:"2px 0",lineHeight:1}}>{wmo(f.code).i}</div>
-        <div style={{fontSize:11,fontWeight:700,color:t.text}}>{f.hi}°</div>
-        <div style={{fontSize:10,color:t.dim}}>{f.lo}°</div>
-        {f.prec>20&&<div style={{fontSize:9,color:"#60A5FA"}}>💧{f.prec}%</div>}
-      </div>;})}
-    </div>}
     {upcoming7.length>0&&<div style={{marginBottom:14}}>
       {upcoming7.map(ev=>{const d=Math.round((new Date(ev.date+"T12:00:00")-new Date())/86400000);return<div key={ev.id} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:8,background:"rgba(252,211,77,0.08)",border:"1px solid rgba(252,211,77,0.2)",marginBottom:4}}><span style={{fontSize:14}}>🎂</span><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:"#F59E0B",fontWeight:700}}>in {d} day{d!==1?"s":""}</div></div></div>;})}
     </div>}
@@ -1651,7 +1640,7 @@ function Homelight(){
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
         <div style={{flex:1,overflow:"auto",padding:"6px 4px"}} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
           {view==="month"&&<MonthView sel={sel} setSel={setSel} events={displayEvents} setView={setView} onEv={onEv} weekStart={weekStart}/>}
-          {view==="week"&&<WeekView sel={sel} setSel={setSel} events={displayEvents} onEv={onEv} onAdd={(d,h)=>onAddEvent(dkey(d),h)} weekStart={weekStart}/>}
+          {view==="week"&&<WeekView sel={sel} setSel={setSel} events={displayEvents} onEv={onEv} onAdd={(d,h)=>onAddEvent(dkey(d),h)} weekStart={weekStart} forecast={forecast}/>}
           {view==="day"&&<DayView sel={sel} setSel={setSel} events={displayEvents} onEv={onEv} onAdd={h=>onAddEvent(dkey(sel),h)}/>}
         </div>
         <div data-no-print="" style={{width:sidebarOpen?312:0,borderLeft:sidebarOpen?`1px solid ${t.bdr}`:"none",background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0,transition:"width 0.25s ease"}}>
@@ -1691,7 +1680,7 @@ function Homelight(){
               </button>)}</div>;
             })()}
             <div style={{flex:1,overflow:"auto",padding:"8px 10px"}}>
-              {sideTab==="today"&&<TodayPanel events={visibleEvents} todos={todos} setTodos={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework} forecast={forecast} wx={wx} onAddToday={()=>{setSel(new Date());setModal("add");setPanel("main");}}/>}
+              {sideTab==="today"&&<TodayPanel events={visibleEvents} todos={todos} setTodos={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework} onAddToday={()=>{setSel(new Date());setModal("add");setPanel("main");}}/>}
               {sideTab==="tasks"&&<FamilyTasks items={todos} setItems={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework} setHomework={setHomework}/>}
               {sideTab==="grocery"&&<GroceryList items={grocery} setItems={setGrocery}/>}
               {sideTab==="meals"&&<Meals meals={meals} setMeals={setMeals} recipes={recipes} setRecipes={setRecipes} grocery={grocery} setGrocery={setGrocery}/>}
