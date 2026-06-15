@@ -479,19 +479,79 @@ function Checklist({items,setItems,placeholder,accentColor}){
     {done>0&&<button onClick={()=>setItems(items.filter(i=>!i.done))} style={{marginTop:8,background:"none",border:"none",color:t.dim,fontSize:11,cursor:"pointer",padding:0}}>Clear completed</button>}
   </div>;
 }
-function Meals({meals,setMeals}){
-  const t=useT(),s=useS();const today=new Date(),[editDay,setEditDay]=useState(null),[editMeal,setEditMeal]=useState({});
+function Meals({meals,setMeals,recipes,setRecipes,grocery,setGrocery}){
+  const t=useT(),s=useS();
+  const today=new Date();
+  const[editDay,setEditDay]=useState(null);
+  const[editMeal,setEditMeal]=useState({});
+  const[showRecipes,setShowRecipes]=useState(false);
+  const[showAddRecipe,setShowAddRecipe]=useState(false);
+  const[rName,setRName]=useState("");
+  const[rIngreds,setRIngreds]=useState("");
+  const[pushed,setPushed]=useState(null);
+
+  const pushToGrocery=recipe=>{
+    const items=recipe.ingredients.filter(i=>i.trim()).map(i=>({id:mkId(),text:i.trim(),done:false}));
+    setGrocery(prev=>[...prev,...items]);
+    setPushed(recipe.id);
+    setTimeout(()=>setPushed(null),2200);
+  };
+
+  const addRecipe=()=>{
+    if(!rName.trim())return;
+    const ingredients=rIngreds.split("\n").map(i=>i.trim()).filter(Boolean);
+    setRecipes(prev=>[...prev,{id:mkId(),name:rName.trim(),ingredients}]);
+    setRName("");setRIngreds("");setShowAddRecipe(false);
+  };
+
   return<div>
-    {Array.from({length:7},(_,i)=>{const d=addD(wkSt(today),i),dayK=d.getDay(),m=meals[dayK]||{},isT=sameD(d,today);
+    {Array.from({length:7},(_,i)=>{
+      const d=addD(wkSt(today),i),dayK=d.getDay(),m=meals[dayK]||{},isT=sameD(d,today);
       return<div key={i} style={{marginBottom:8,padding:10,borderRadius:10,background:isT?t.acDim:t.card,border:isT?`1px solid ${t.acGlow}`:"none",cursor:"pointer"}} onClick={()=>{setEditDay(dayK);setEditMeal({...m});}}>
         <div style={{fontSize:10,fontWeight:700,color:isT?t.accent:t.dim,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{DAYS_F[dayK]}{isT?" (today)":""}</div>
         {["breakfast","lunch","dinner"].map(ml=><div key={ml} style={{display:"flex",gap:6,fontSize:12,marginBottom:1}}><span style={{color:t.dim,width:56,textTransform:"capitalize",flexShrink:0}}>{ml}</span><span style={{color:m[ml]?t.text:t.dim}}>{m[ml]||"—"}</span></div>)}
-      </div>;})}
+      </div>;
+    })}
     {editDay!==null&&<div style={s.overlay} onClick={()=>setEditDay(null)}><div style={s.modal} onClick={e=>e.stopPropagation()}>
       <div style={{fontSize:18,fontWeight:700,marginBottom:16,color:t.text}}>Meals — {DAYS_F[editDay]}</div>
-      {["breakfast","lunch","dinner"].map(ml=><div key={ml}><label style={s.lbl}>{ml}</label><input style={s.inp} value={editMeal[ml]||""} onChange={e=>setEditMeal({...editMeal,[ml]:e.target.value})} placeholder={`What's for ${ml}?`}/></div>)}
+      {["breakfast","lunch","dinner"].map(ml=><div key={ml}>
+        <label style={s.lbl}>{ml}</label>
+        <input style={s.inp} value={editMeal[ml]||""} onChange={e=>setEditMeal({...editMeal,[ml]:e.target.value})} placeholder={`What's for ${ml}?`}/>
+        {recipes.length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:10,marginTop:-6}}>
+          {recipes.map(r=><button key={r.id} onClick={()=>setEditMeal({...editMeal,[ml]:r.name})} style={{padding:"2px 8px",borderRadius:10,border:`1px solid ${editMeal[ml]===r.name?t.accent:t.bdr}`,background:editMeal[ml]===r.name?t.acDim:"transparent",color:editMeal[ml]===r.name?t.accent:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF}}>{r.name}</button>)}
+        </div>}
+      </div>)}
       <div style={{display:"flex",gap:8}}><button style={s.btnS} onClick={()=>setEditDay(null)}>Cancel</button><button style={s.btnP} onClick={()=>{setMeals({...meals,[editDay]:editMeal});setEditDay(null);}}>Save</button></div>
     </div></div>}
+    <div style={{borderTop:`1px solid ${t.bdr}`,marginTop:10,paddingTop:10}}>
+      <button onClick={()=>setShowRecipes(!showRecipes)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"none",border:"none",cursor:"pointer",padding:"4px 0",marginBottom:showRecipes?10:0}}>
+        <span style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:2,color:t.accent}}>Recipes{recipes.length>0?` (${recipes.length})`:""}</span>
+        <span style={{color:t.dim,fontSize:10}}>{showRecipes?"▲":"▼"}</span>
+      </button>
+      {showRecipes&&<div>
+        {recipes.map(r=><div key={r.id} style={{...s.crd,marginBottom:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:600,color:t.text}}>{r.name}</div>
+              <div style={{fontSize:10,color:t.dim,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.ingredients.slice(0,3).join(" · ")}{r.ingredients.length>3?` +${r.ingredients.length-3} more`:""}</div>
+            </div>
+            <button onClick={()=>pushToGrocery(r)} style={{padding:"5px 10px",borderRadius:8,border:"none",background:pushed===r.id?t.success:t.acDim,color:pushed===r.id?"#fff":t.accent,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:FF,whiteSpace:"nowrap",flexShrink:0,transition:"background 0.2s"}}>{pushed===r.id?`✓ Added!`:"→ Grocery"}</button>
+            <button onClick={()=>setRecipes(prev=>prev.filter(x=>x.id!==r.id))} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1,flexShrink:0}}>×</button>
+          </div>
+        </div>)}
+        {!showAddRecipe
+          ?<button onClick={()=>setShowAddRecipe(true)} style={{width:"100%",padding:"8px 0",borderRadius:10,border:`1px dashed ${t.bdr}`,background:"transparent",color:t.accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF}}>+ Add Recipe</button>
+          :<div style={s.crd}>
+            <input style={s.inp} placeholder="Recipe name (e.g. Tuesday Pasta, Taco Night)" value={rName} onChange={e=>setRName(e.target.value)} autoFocus/>
+            <label style={s.lbl}>Ingredients — one per line</label>
+            <textarea style={{...s.inp,height:96,resize:"none",marginBottom:12,fontFamily:FF}} placeholder={"1 lb ground beef\n1 packet taco seasoning\n8 taco shells\nShredded cheese\nSalsa"} value={rIngreds} onChange={e=>setRIngreds(e.target.value)}/>
+            <div style={{display:"flex",gap:8}}>
+              <button style={s.btnS} onClick={()=>{setShowAddRecipe(false);setRName("");setRIngreds("");}}>Cancel</button>
+              <button style={s.btnP} onClick={addRecipe}>Save Recipe</button>
+            </div>
+          </div>}
+      </div>}
+    </div>
   </div>;
 }
 
@@ -1058,6 +1118,7 @@ function Homelight(){
   const[geminiModel,setGeminiModel]=useP("geminiModel","gemini-2.5-flash-lite");
   const[members,setMembers]=useP("members",[]);
   const[rewards,setRewards]=useP("rewards",{stars:{},prizes:[]});
+  const[recipes,setRecipes]=useP("recipes",[]);
   const[ssCollections,setSsCollections]=useP("ssCollections",{nature:false,art:false,space:false});
   const[ssSleepEnabled,setSsSleepEnabled]=useP("ssSleepEnabled",false);
   const[ssSleepTime,setSsSleepTime]=useP("ssSleepTime","22:00");
@@ -1159,7 +1220,7 @@ function Homelight(){
             <div style={{flex:1,overflow:"auto",padding:"8px 10px"}}>
               {sideTab==="tasks"&&<FamilyTasks items={todos} setItems={setTodos} members={members} rewards={rewards} setRewards={setRewards}/>}
               {sideTab==="grocery"&&<Checklist items={grocery} setItems={setGrocery} placeholder="Add item..." accentColor="#10B981"/>}
-              {sideTab==="meals"&&<Meals meals={meals} setMeals={setMeals}/>}
+              {sideTab==="meals"&&<Meals meals={meals} setMeals={setMeals} recipes={recipes} setRecipes={setRecipes} grocery={grocery} setGrocery={setGrocery}/>}
               {sideTab==="rewards"&&<RewardsPanel members={members} rewards={rewards} setRewards={setRewards}/>}
             </div>
             <div style={{padding:"8px 12px",borderTop:`1px solid ${t.bdr}`,display:"flex",flexWrap:"wrap",gap:"5px 10px",flexShrink:0}}>
