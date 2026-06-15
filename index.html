@@ -24,6 +24,7 @@
   ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.2);}
   input,select,button{font-family:inherit;}
   input:focus,select:focus{border-color:rgba(56,189,248,0.4)!important;}
+  @keyframes confettiFall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
 </style>
 </head>
 <body>
@@ -494,6 +495,144 @@ function Meals({meals,setMeals}){
   </div>;
 }
 
+// ─── Confetti ────────────────────────────────────────────────────────
+function Confetti({data,onDone}){
+  useEffect(()=>{const t=setTimeout(onDone,1800);return()=>clearTimeout(t);},[onDone]);
+  const particles=useMemo(()=>Array.from({length:32},(_,i)=>({id:i,color:PALETTE[i%PALETTE.length],x:10+Math.random()*80,size:6+Math.random()*8,delay:Math.random()*0.35,dur:0.9+Math.random()*0.7})),[]);
+  return<>
+    <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:200,overflow:"hidden"}}>
+      {particles.map(p=><div key={p.id} style={{position:"absolute",top:-14,left:`${p.x}%`,width:p.size,height:p.size,borderRadius:p.id%3===0?"50%":2,background:p.color,animation:`confettiFall ${p.dur}s ${p.delay}s ease-in forwards`}}/>)}
+    </div>
+    <div style={{position:"fixed",top:"45%",left:"50%",transform:"translate(-50%,-50%)",zIndex:201,background:"rgba(0,0,0,0.9)",borderRadius:20,padding:"28px 40px",textAlign:"center",border:"1px solid rgba(252,211,77,0.45)",backdropFilter:"blur(12px)",pointerEvents:"none"}}>
+      <div style={{fontSize:52,lineHeight:1}}>⭐</div>
+      <div style={{fontSize:36,fontWeight:900,color:"#FCD34D",margin:"10px 0 4px",fontFamily:FM}}>+{data.stars}</div>
+      <div style={{fontSize:15,color:"rgba(255,255,255,0.75)",fontWeight:600}}>{data.name}</div>
+      <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",marginTop:4}}>{data.stars===1?"star earned!":"stars earned!"}</div>
+    </div>
+  </>;
+}
+
+// ─── Family Tasks ─────────────────────────────────────────────────────
+function FamilyTasks({items,setItems,members,rewards,setRewards}){
+  const t=useT();
+  const[val,setVal]=useState("");
+  const[assignTo,setAssignTo]=useState("");
+  const[taskStars,setTaskStars]=useState(1);
+  const[confettiData,setConfettiData]=useState(null);
+
+  const complete=it=>{
+    const wasUndone=!it.done;
+    setItems(items.map(i=>i.id===it.id?{...i,done:!i.done}:i));
+    if(wasUndone&&it.assignedTo&&(it.stars||0)>0){
+      setRewards(r=>({...r,stars:{...(r.stars||{}),[it.assignedTo]:((r.stars||{})[it.assignedTo]||0)+(it.stars||0)}}));
+      const m=members.find(m=>m.id===it.assignedTo);
+      setConfettiData({name:m?.name||"",stars:it.stars||0});
+    }
+  };
+
+  const addTask=()=>{
+    if(!val.trim())return;
+    setItems([...items,{id:mkId(),text:val.trim(),done:false,assignedTo:assignTo||null,stars:taskStars}]);
+    setVal("");
+  };
+
+  const done=items.filter(i=>i.done).length;
+  return<div style={{position:"relative"}}>
+    {confettiData&&<Confetti data={confettiData} onDone={()=>setConfettiData(null)}/>}
+    {items.length>0&&<div style={{fontSize:10,color:t.dim,marginBottom:8}}>{done}/{items.length} completed</div>}
+    {items.map(it=>{
+      const m=members.find(m=>m.id===it.assignedTo);
+      return<div key={it.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",cursor:"pointer"}} onClick={()=>complete(it)}>
+        <div style={{width:18,height:18,borderRadius:5,border:`2px solid ${it.done?"#3B82F6":t.dim}`,background:it.done?"#3B82F6":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,color:"#fff",transition:"all 0.15s"}}>{it.done&&"✓"}</div>
+        <span style={{fontSize:13,color:it.done?t.dim:t.text,textDecoration:it.done?"line-through":"none",flex:1}}>{it.text}</span>
+        {m&&<div style={{display:"flex",alignItems:"center",gap:3,padding:"2px 6px",borderRadius:10,background:m.color+"22",border:`1px solid ${m.color}44`,flexShrink:0}}><div style={{width:7,height:7,borderRadius:"50%",background:m.color}}/><span style={{fontSize:9,color:m.color,fontWeight:700}}>{m.name}</span></div>}
+        {(it.stars||0)>0&&<span style={{fontSize:10,flexShrink:0,opacity:it.done?0.35:1}}>{"⭐".repeat(Math.min(it.stars,5))}</span>}
+        <button onClick={e=>{e.stopPropagation();setItems(items.filter(i=>i.id!==it.id));}} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:14,opacity:.4,padding:"0 4px"}}>×</button>
+      </div>;
+    })}
+    <div style={{borderTop:`1px solid ${t.bdr}`,marginTop:8,paddingTop:8}}>
+      <input style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:12,fontFamily:FF,outline:"none",marginBottom:members.length?6:0,boxSizing:"border-box"}} placeholder="Add chore or task..." value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask();}}/>
+      {members.length>0&&<div style={{display:"flex",gap:4,marginBottom:6,flexWrap:"wrap"}}>
+        {members.map(m=><button key={m.id} onClick={()=>setAssignTo(assignTo===m.id?"":m.id)} style={{padding:"3px 8px",borderRadius:10,border:`1px solid ${assignTo===m.id?m.color:t.bdr}`,background:assignTo===m.id?m.color+"22":"transparent",color:assignTo===m.id?m.color:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:assignTo===m.id?700:400,display:"flex",alignItems:"center",gap:3}}><div style={{width:7,height:7,borderRadius:"50%",background:m.color}}/>{m.name}</button>)}
+      </div>}
+      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+        <div style={{display:"flex",gap:1}}>
+          {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setTaskStars(n)} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,opacity:taskStars>=n?1:0.22,padding:"0 1px",lineHeight:1}}>⭐</button>)}
+        </div>
+        <button onClick={addTask} style={{flex:1,padding:"7px 0",borderRadius:10,border:`1px solid ${val.trim()?t.accent:t.bdr}`,background:val.trim()?t.accent:"transparent",color:val.trim()?t.acText:t.dim,fontSize:12,fontWeight:700,cursor:val.trim()?"pointer":"default",fontFamily:FF}}>+ Add</button>
+      </div>
+    </div>
+    {members.length===0&&<div style={{fontSize:10,color:t.dim,marginTop:8,lineHeight:1.7}}>Add family members in Settings ⚙ to assign tasks and track stars.</div>}
+    {done>0&&<button onClick={()=>setItems(items.filter(i=>!i.done))} style={{marginTop:8,background:"none",border:"none",color:t.dim,fontSize:11,cursor:"pointer",padding:0}}>Clear completed</button>}
+  </div>;
+}
+
+// ─── Rewards Panel ────────────────────────────────────────────────────
+function RewardsPanel({members,rewards,setRewards}){
+  const t=useT(),s=useS();
+  const[prizeName,setPrizeName]=useState("");
+  const[prizeCost,setPrizeCost]=useState(10);
+  const[showAdd,setShowAdd]=useState(false);
+
+  const addPrize=()=>{
+    if(!prizeName.trim())return;
+    setRewards(r=>({...r,prizes:[...(r.prizes||[]),{id:mkId(),name:prizeName.trim(),cost:prizeCost}]}));
+    setPrizeName("");setPrizeCost(10);setShowAdd(false);
+  };
+
+  const redeem=(memberId,prize)=>{
+    const cur=(rewards.stars||{})[memberId]||0;
+    if(cur<prize.cost)return;
+    if(!confirm(`Redeem "${prize.name}" for ${prize.cost} stars?`))return;
+    setRewards(r=>({...r,stars:{...(r.stars||{}),[memberId]:cur-prize.cost}}));
+  };
+
+  if(members.length===0)return<div style={{textAlign:"center",padding:"28px 8px",color:t.sub,fontSize:12,lineHeight:1.8}}>Add family members in<br/>Settings ⚙ to track rewards.</div>;
+
+  return<div>
+    {members.map(m=>{
+      const stars=(rewards.stars||{})[m.id]||0;
+      const prizes=rewards.prizes||[];
+      return<div key={m.id} style={{...s.crd,marginBottom:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:prizes.length?10:0}}>
+          <div style={{width:34,height:34,borderRadius:"50%",background:m.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,color:"#fff",fontWeight:800,flexShrink:0}}>{m.name[0].toUpperCase()}</div>
+          <div style={{flex:1}}><div style={{fontSize:14,fontWeight:700,color:t.text}}>{m.name}</div></div>
+          <div style={{display:"flex",alignItems:"center",gap:3}}>
+            <span style={{fontSize:18}}>⭐</span>
+            <span style={{fontSize:26,fontWeight:900,fontFamily:FM,color:"#FCD34D"}}>{stars}</span>
+          </div>
+        </div>
+        {prizes.map(prize=><div key={prize.id} style={{display:"flex",alignItems:"center",gap:6,marginTop:6}}>
+          <span style={{flex:1,fontSize:11,color:t.sub}}>{prize.name}</span>
+          <span style={{fontSize:10,color:"#FCD34D",whiteSpace:"nowrap"}}>{prize.cost}⭐</span>
+          <button onClick={()=>redeem(m.id,prize)} style={{padding:"3px 10px",borderRadius:8,border:"none",background:stars>=prize.cost?m.color:t.dim,color:"#fff",fontSize:10,fontWeight:700,cursor:stars>=prize.cost?"pointer":"default",fontFamily:FF,whiteSpace:"nowrap",opacity:stars>=prize.cost?1:0.5}}>{stars>=prize.cost?"Redeem!":stars+"/"+prize.cost}</button>
+        </div>)}
+      </div>;
+    })}
+    <div style={{marginTop:6}}>
+      <div style={{...s.secT,marginBottom:8}}>Prizes</div>
+      {(rewards.prizes||[]).map(prize=><div key={prize.id} style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+        <div style={{flex:1,fontSize:12,color:t.text}}>{prize.name}</div>
+        <div style={{fontSize:11,color:"#FCD34D"}}>{prize.cost}⭐</div>
+        <button onClick={()=>setRewards(r=>({...r,prizes:(r.prizes||[]).filter(p=>p.id!==prize.id)}))} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:14,padding:"0 4px"}}>×</button>
+      </div>)}
+      {!showAdd
+        ?<button onClick={()=>setShowAdd(true)} style={{width:"100%",padding:"8px 0",borderRadius:10,border:`1px dashed ${t.bdr}`,background:"transparent",color:t.accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF}}>+ Add Prize</button>
+        :<div style={s.crd}>
+          <input style={s.inp} placeholder="e.g. Ice cream, Extra screen time, Toy store trip" value={prizeName} onChange={e=>setPrizeName(e.target.value)} autoFocus/>
+          <label style={s.lbl}>Stars required</label>
+          <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:12}}>
+            {[5,10,15,20,25,30,50].map(n=><button key={n} onClick={()=>setPrizeCost(n)} style={{padding:"4px 10px",borderRadius:8,border:`1px solid ${prizeCost===n?t.accent:t.bdr}`,background:prizeCost===n?t.acDim:"transparent",color:prizeCost===n?t.accent:t.sub,fontSize:11,cursor:"pointer",fontFamily:FF}}>{n}⭐</button>)}
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button style={s.btnS} onClick={()=>setShowAdd(false)}>Cancel</button>
+            <button style={s.btnP} onClick={addPrize}>Add Prize</button>
+          </div>
+        </div>}
+    </div>
+  </div>;
+}
+
 // ═════════════════ CAL SYNC PANEL ════════════════════════════════════
 function CalSyncPanel({feeds,setFeeds,syncAll,syncStatus}){
   const t=useT(),s=useS();const[name,setName]=useState(""),[url,setUrl]=useState(""),[showAdd,setShowAdd]=useState(false),[validateMessage,setValidateMessage]=useState("");
@@ -705,8 +844,11 @@ function VoiceAssistant({events,todos,geminiKey,geminiModel,onClose,onSaveEvent,
 }
 
 // ═════════════════ SETTINGS ═════════════════════════════════════════
-function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart,photos,setPhotos,ssCollections,setSsCollections,ssSleepEnabled,setSsSleepEnabled,ssSleepTime,setSsSleepTime,ssWakeTime,setSsWakeTime,reminderMins,setReminderMins,onClearEvents,onClearLists,onClearMeals,deferredPrompt,onInstallPrompt,installStatus,geminiKey,setGeminiKey,geminiModel,setGeminiModel,onClose}){
+function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart,photos,setPhotos,ssCollections,setSsCollections,ssSleepEnabled,setSsSleepEnabled,ssSleepTime,setSsSleepTime,ssWakeTime,setSsWakeTime,reminderMins,setReminderMins,onClearEvents,onClearLists,onClearMeals,deferredPrompt,onInstallPrompt,installStatus,geminiKey,setGeminiKey,geminiModel,setGeminiModel,members,setMembers,onClose}){
   const t=useT(),s=useS(),fileRef=useRef(null);
+  const[memberName,setMemberName]=useState("");
+  const[memberColor,setMemberColor]=useState(PALETTE[3]);
+  const[showMemberAdd,setShowMemberAdd]=useState(false);
   const[notifPerm,setNotifPerm]=useState(typeof Notification!=="undefined"?Notification.permission:"unsupported");
   const requestNotif=async()=>{if(typeof Notification==="undefined")return;const p=await Notification.requestPermission();setNotifPerm(p);};
   const[showKiosk,setShowKiosk]=useState(false),[copied,setCopied]=useState(false);
@@ -718,6 +860,28 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart
   const clearAll=()=>{if(confirm("Clear ALL Homelight data?")){Object.keys(localStorage).filter(k=>k.startsWith("hl4_")).forEach(k=>localStorage.removeItem(k));window.location.reload();}};
   return<div style={{padding:16,overflow:"auto",flex:1}}>
     <div style={s.secT}>Settings</div>
+    <label style={s.lbl}>Family Members</label>
+    <div style={{fontSize:11,color:t.sub,marginBottom:10,lineHeight:1.6}}>Add each person in your home to assign chores and track star rewards. Up to 8 members.</div>
+    {members.map(m=><div key={m.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+      <div style={{width:28,height:28,borderRadius:"50%",background:m.color,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,fontWeight:800,flexShrink:0}}>{m.name[0].toUpperCase()}</div>
+      <span style={{flex:1,fontSize:13,color:t.text,fontWeight:500}}>{m.name}</span>
+      <button onClick={()=>setMembers(prev=>prev.filter(x=>x.id!==m.id))} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:18,padding:"4px",lineHeight:1}}>×</button>
+    </div>)}
+    {members.length<8&&(!showMemberAdd
+      ?<button onClick={()=>setShowMemberAdd(true)} style={{width:"100%",padding:"9px 0",borderRadius:10,border:`1px dashed ${t.bdr}`,background:"transparent",color:t.accent,fontSize:12,fontWeight:600,cursor:"pointer",marginBottom:16}}>+ Add Family Member</button>
+      :<div style={{...s.crd,marginBottom:16}}>
+        <input style={s.inp} placeholder="Name (e.g. Emma, Sofia, Dad)" value={memberName} onChange={e=>setMemberName(e.target.value)} autoFocus/>
+        <label style={s.lbl}>Color</label>
+        <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:12}}>
+          {PALETTE.map(c=><div key={c} onClick={()=>setMemberColor(c)} style={{width:22,height:22,borderRadius:"50%",background:c,cursor:"pointer",border:memberColor===c?"3px solid #fff":"3px solid transparent",boxSizing:"border-box",transform:memberColor===c?"scale(1.2)":"scale(1)",transition:"transform 0.1s"}}/>)}
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button style={s.btnS} onClick={()=>{setShowMemberAdd(false);setMemberName("");}}>Cancel</button>
+          <button style={s.btnP} onClick={()=>{if(!memberName.trim())return;setMembers(prev=>[...prev,{id:mkId(),name:memberName.trim(),color:memberColor}]);setMemberName("");setShowMemberAdd(false);}}>Add</button>
+        </div>
+      </div>
+    )}
+    {members.length>0&&<div style={{marginBottom:16}}/>}
     <label style={s.lbl}>Theme</label>
     <div style={{display:"flex",gap:8,marginBottom:16}}>{["dark","light"].map(th=><button key={th} onClick={()=>setTheme(th)} style={{flex:1,padding:"10px 0",borderRadius:10,border:theme===th?`2px solid ${t.accent}`:`1px solid ${t.bdr}`,background:theme===th?t.acDim:"transparent",color:theme===th?t.accent:t.sub,fontSize:13,fontWeight:600,cursor:"pointer",textTransform:"capitalize",fontFamily:FF}}>{th==="dark"?"🌙 Dark":"☀️ Light"}</button>)}</div>
     <label style={s.lbl}>Week Starts On</label>
@@ -892,6 +1056,8 @@ function Homelight(){
   const[weekStart,setWeekStart]=useP("weekStart",0);
   const[geminiKey,setGeminiKey]=useP("geminiKey","");
   const[geminiModel,setGeminiModel]=useP("geminiModel","gemini-2.5-flash-lite");
+  const[members,setMembers]=useP("members",[]);
+  const[rewards,setRewards]=useP("rewards",{stars:{},prizes:[]});
   const[ssCollections,setSsCollections]=useP("ssCollections",{nature:false,art:false,space:false});
   const[ssSleepEnabled,setSsSleepEnabled]=useP("ssSleepEnabled",false);
   const[ssSleepTime,setSsSleepTime]=useP("ssSleepTime","22:00");
@@ -978,7 +1144,7 @@ function Homelight(){
         </div>
         <div style={{width:sidebarOpen?312:0,borderLeft:sidebarOpen?`1px solid ${t.bdr}`:"none",background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0,transition:"width 0.25s ease"}}>
           {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
-          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} ssCollections={ssCollections} setSsCollections={setSsCollections} ssSleepEnabled={ssSleepEnabled} setSsSleepEnabled={setSsSleepEnabled} ssSleepTime={ssSleepTime} setSsSleepTime={setSsSleepTime} ssWakeTime={ssWakeTime} setSsWakeTime={setSsWakeTime} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt} geminiKey={geminiKey} setGeminiKey={setGeminiKey} geminiModel={geminiModel} setGeminiModel={setGeminiModel} onClose={()=>setPanel("main")}/>
+          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} ssCollections={ssCollections} setSsCollections={setSsCollections} ssSleepEnabled={ssSleepEnabled} setSsSleepEnabled={setSsSleepEnabled} ssSleepTime={ssSleepTime} setSsSleepTime={setSsSleepTime} ssWakeTime={ssWakeTime} setSsWakeTime={setSsWakeTime} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt} geminiKey={geminiKey} setGeminiKey={setGeminiKey} geminiModel={geminiModel} setGeminiModel={setGeminiModel} members={members} setMembers={setMembers} onClose={()=>setPanel("main")}/>
           :<>
             <div style={{padding:"10px 10px",borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc} onWx={setWx}/></div>
             <div style={{padding:"8px 10px",borderBottom:`1px solid ${t.bdr}`,flexShrink:0}}>
@@ -989,11 +1155,12 @@ function Homelight(){
                 <div style={{width:3,height:30,borderRadius:2,background:evColor(ev),flexShrink:0}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:t.dim,fontFamily:FM}}>{ev.date} · {fmtT(ev.hour,ev.minute)}</div></div></div>)}
               </div>
             </div>
-            <div style={{display:"flex",borderBottom:`1px solid ${t.bdr}`}}>{["tasks","grocery","meals"].map(tab=><button key={tab} onClick={()=>setSideTab(tab)} style={{flex:1,padding:"10px 0",textAlign:"center",fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:1.5,color:sideTab===tab?t.accent:t.dim,background:"transparent",border:"none",cursor:"pointer",fontFamily:FF,borderBottom:`2px solid ${sideTab===tab?t.accent:"transparent"}`}}>{tab}</button>)}</div>
+            <div style={{display:"flex",borderBottom:`1px solid ${t.bdr}`}}>{["tasks","grocery","meals","rewards"].map(tab=><button key={tab} onClick={()=>setSideTab(tab)} style={{flex:1,padding:"10px 0",textAlign:"center",fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:1.5,color:sideTab===tab?t.accent:t.dim,background:"transparent",border:"none",cursor:"pointer",fontFamily:FF,borderBottom:`2px solid ${sideTab===tab?t.accent:"transparent"}`}}>{tab==="rewards"?"⭐":tab}</button>)}</div>
             <div style={{flex:1,overflow:"auto",padding:"8px 10px"}}>
-              {sideTab==="tasks"&&<Checklist items={todos} setItems={setTodos} placeholder="Add task..." accentColor="#3B82F6"/>}
+              {sideTab==="tasks"&&<FamilyTasks items={todos} setItems={setTodos} members={members} rewards={rewards} setRewards={setRewards}/>}
               {sideTab==="grocery"&&<Checklist items={grocery} setItems={setGrocery} placeholder="Add item..." accentColor="#10B981"/>}
               {sideTab==="meals"&&<Meals meals={meals} setMeals={setMeals}/>}
+              {sideTab==="rewards"&&<RewardsPanel members={members} rewards={rewards} setRewards={setRewards}/>}
             </div>
             <div style={{padding:"8px 12px",borderTop:`1px solid ${t.bdr}`,display:"flex",flexWrap:"wrap",gap:"5px 10px",flexShrink:0}}>
               {Object.entries(CATS).map(([cat,col])=><div key={cat} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:10,height:10,borderRadius:"50%",background:col.bg,flexShrink:0}}/><span style={{fontSize:11,color:t.sub,textTransform:"capitalize"}}>{cat}</span></div>)}
