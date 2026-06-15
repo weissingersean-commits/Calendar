@@ -725,6 +725,8 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
     if(it.repeat==="weekly")return it.lastCompleted>=wkStart;
     return!!it.done;
   };
+  const hwUrgent=useMemo(()=>(homework||[]).filter(h=>!h.done&&h.dueDate<=today).length,[homework,today]);
+  const taskPending=useMemo(()=>items.filter(i=>!isDone(i)).length,[items,today,wkStart]);
 
   const complete=it=>{
     const wasDone=isDone(it);
@@ -785,7 +787,7 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
   return<div style={{position:"relative"}}>
     {confettiData&&<Confetti data={confettiData} onDone={()=>setConfettiData(null)}/>}
     <div style={{display:"flex",gap:0,marginBottom:10,borderRadius:10,overflow:"hidden",border:`1px solid ${t.bdr}`}}>
-      {[["tasks","✅ Tasks"],["homework","📚 Homework"]].map(([k,l])=><button key={k} onClick={()=>setSubTab(k)} style={{flex:1,padding:"6px 0",border:"none",background:subTab===k?t.accent:"transparent",color:subTab===k?t.acText:t.sub,fontSize:11,fontWeight:subTab===k?700:500,cursor:"pointer",fontFamily:FF}}>{l}</button>)}
+      {[["tasks","✅ Tasks",taskPending,"#F59E0B"],["homework","📚 Homework",hwUrgent,"#EF4444"]].map(([k,l,badge,bc])=><button key={k} onClick={()=>setSubTab(k)} style={{flex:1,padding:"6px 0",border:"none",background:subTab===k?t.accent:"transparent",color:subTab===k?t.acText:t.sub,fontSize:11,fontWeight:subTab===k?700:500,cursor:"pointer",fontFamily:FF,display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>{l}{badge>0&&<span style={{background:bc,color:"#fff",fontSize:9,fontWeight:800,borderRadius:10,padding:"1px 5px",lineHeight:1.4}}>{badge}</span>}</button>)}
     </div>
     {subTab==="homework"&&<HomeworkPanel items={homework||[]} setItems={setHomework} members={members}/>}
     {subTab==="tasks"&&<>
@@ -892,7 +894,7 @@ function RewardsPanel({members,rewards,setRewards}){
   };
   if(members.length===0)return<div style={{textAlign:"center",padding:"28px 8px",color:t.sub,fontSize:12,lineHeight:1.8}}>Add family members in<br/>Settings ⚙ to track rewards.</div>;
 
-  const ranked=[...members].sort((a,b)=>((rewards.stars||{})[b.id]||0)-((rewards.stars||{})[a.id]||0));
+  const ranked=useMemo(()=>[...members].sort((a,b)=>((rewards.stars||{})[b.id]||0)-((rewards.stars||{})[a.id]||0)),[members,rewards.stars]);
 
   return<div>
     {ranked.map((m,rank)=>{
