@@ -1,4 +1,4 @@
-const CACHE = 'homelight-v5';
+const CACHE = 'homelight-v6';
 
 // CDN assets that are safe to cache long-term (they never change at these URLs)
 const PRECACHE = [
