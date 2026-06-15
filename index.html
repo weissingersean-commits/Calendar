@@ -516,6 +516,35 @@ function Checklist({items,setItems,placeholder,accentColor}){
     {done>0&&<button onClick={()=>setItems(items.filter(i=>!i.done))} style={{marginTop:8,background:"none",border:"none",color:t.dim,fontSize:11,cursor:"pointer",padding:0}}>Clear completed</button>}
   </div>;
 }
+const GSECTIONS=[{k:"produce",l:"Produce",i:"🥦"},{k:"dairy",l:"Dairy",i:"🥛"},{k:"meat",l:"Meat",i:"🥩"},{k:"bakery",l:"Bakery",i:"🍞"},{k:"frozen",l:"Frozen",i:"❄️"},{k:"pantry",l:"Pantry",i:"🥫"},{k:"beverages",l:"Beverages",i:"🧃"},{k:"other",l:"Other",i:"🛒"}];
+function GroceryList({items,setItems}){
+  const t=useT();
+  const[val,setVal]=useState("");
+  const[sec,setSec]=useState("other");
+  const col="#10B981";
+  const done=items.filter(i=>i.done).length;
+  const toggle=id=>setItems(items.map(i=>i.id===id?{...i,done:!i.done}:i));
+  const remove=id=>setItems(items.filter(i=>i.id!==id));
+  const add=()=>{if(!val.trim())return;setItems([...items,{id:mkId(),text:val.trim(),done:false,section:sec}]);setVal("");};
+  const grouped=GSECTIONS.map(s=>({...s,items:items.filter(i=>(i.section||"other")===s.k)})).filter(s=>s.items.length>0);
+  return<div>
+    {items.length>0&&<div style={{fontSize:10,color:t.dim,marginBottom:8}}>{done}/{items.length} checked</div>}
+    {grouped.map(sg=><div key={sg.k} style={{marginBottom:10}}>
+      <div style={{fontSize:10,fontWeight:700,color:t.accent,textTransform:"uppercase",letterSpacing:1.5,marginBottom:4,display:"flex",alignItems:"center",gap:4}}><span>{sg.i}</span><span>{sg.l}</span><span style={{color:t.dim,fontWeight:400}}>({sg.items.filter(i=>!i.done).length}/{sg.items.length})</span></div>
+      {sg.items.map(it=><div key={it.id} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",cursor:"pointer"}} onClick={()=>toggle(it.id)}>
+        <div style={{width:18,height:18,borderRadius:5,border:`2px solid ${it.done?col:t.dim}`,background:it.done?col:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,color:"#fff",transition:"all 0.15s"}}>{it.done&&"✓"}</div>
+        <span style={{fontSize:13,color:it.done?t.dim:t.text,textDecoration:it.done?"line-through":"none",flex:1}}>{it.text}</span>
+        <button onClick={e=>{e.stopPropagation();remove(it.id);}} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:14,opacity:.4,padding:"0 4px"}}>×</button>
+      </div>)}
+    </div>)}
+    {items.length===0&&<div style={{fontSize:12,color:t.dim,fontStyle:"italic",marginBottom:8}}>Your list is empty</div>}
+    <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
+      {GSECTIONS.map(s=><button key={s.k} onClick={()=>setSec(s.k)} style={{padding:"2px 8px",borderRadius:12,border:`1px solid ${sec===s.k?"#10B981":t.bdr}`,background:sec===s.k?"#10B98122":"transparent",color:sec===s.k?"#10B981":t.dim,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:sec===s.k?700:400}}>{s.i} {s.l}</button>)}
+    </div>
+    <div style={{display:"flex",gap:6}}><input style={{flex:1,padding:"8px 10px",borderRadius:10,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:12,fontFamily:FF,outline:"none"}} placeholder="Add item..." value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()}/><button onClick={add} style={{padding:"8px 12px",borderRadius:10,border:"none",background:col,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>+</button></div>
+    {done>0&&<button onClick={()=>setItems(items.filter(i=>!i.done))} style={{marginTop:8,background:"none",border:"none",color:t.dim,fontSize:11,cursor:"pointer",padding:0}}>Clear checked</button>}
+  </div>;
+}
 function Meals({meals,setMeals,recipes,setRecipes,grocery,setGrocery}){
   const t=useT(),s=useS();
   const today=new Date();
@@ -528,7 +557,7 @@ function Meals({meals,setMeals,recipes,setRecipes,grocery,setGrocery}){
   const[pushed,setPushed]=useState(null);
 
   const pushToGrocery=recipe=>{
-    const items=recipe.ingredients.filter(i=>i.trim()).map(i=>({id:mkId(),text:i.trim(),done:false}));
+    const items=recipe.ingredients.filter(i=>i.trim()).map(i=>({id:mkId(),text:i.trim(),done:false,section:"pantry"}));
     setGrocery(prev=>[...prev,...items]);
     setPushed(recipe.id);
     setTimeout(()=>setPushed(null),2200);
@@ -1379,7 +1408,7 @@ function Homelight(){
             <div style={{flex:1,overflow:"auto",padding:"8px 10px"}}>
               {sideTab==="today"&&<TodayPanel events={visibleEvents} todos={todos} setTodos={setTodos} members={members} rewards={rewards} setRewards={setRewards}/>}
               {sideTab==="tasks"&&<FamilyTasks items={todos} setItems={setTodos} members={members} rewards={rewards} setRewards={setRewards}/>}
-              {sideTab==="grocery"&&<Checklist items={grocery} setItems={setGrocery} placeholder="Add item..." accentColor="#10B981"/>}
+              {sideTab==="grocery"&&<GroceryList items={grocery} setItems={setGrocery}/>}
               {sideTab==="meals"&&<Meals meals={meals} setMeals={setMeals} recipes={recipes} setRecipes={setRecipes} grocery={grocery} setGrocery={setGrocery}/>}
               {sideTab==="rewards"&&<RewardsPanel members={members} rewards={rewards} setRewards={setRewards}/>}
             </div>
