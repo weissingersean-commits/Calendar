@@ -245,13 +245,13 @@ function useS(){const t=useT();return useMemo(()=>({
 }),[t]);}
 
 // ═════════════════ WEATHER ════════════════════════════════════════════
-function Weather({loc,setLoc,onWx}){
+function Weather({loc,setLoc,onWx,onFc}){
   const t=useT(),s=useS();
   const[wx,setWx]=useState(null),[fc,setFc]=useState([]),[ld,setLd]=useState(true),[open,setOpen]=useState(false);
   const[q,setQ]=useState(""),[res,setRes]=useState([]),[srch,setSrch]=useState(false),[gErr,setGErr]=useState(null);
   const[useF,setUseF]=useP("unit",true);
   const[wxCollapsed,setWxCollapsed]=useP("wxCollapsed",false);
-  const fetchWx=useCallback(async(lat,lon)=>{try{setLd(true);const u=useF?"fahrenheit":"celsius";const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=${u}&wind_speed_unit=mph&timezone=auto&forecast_days=7`);const d=await r.json();if(d.current){const w={temp:Math.round(d.current.temperature_2m),feels:Math.round(d.current.apparent_temperature),hum:d.current.relative_humidity_2m,wind:Math.round(d.current.wind_speed_10m),code:d.current.weather_code,hi:d.daily?Math.round(d.daily.temperature_2m_max[0]):null,lo:d.daily?Math.round(d.daily.temperature_2m_min[0]):null};setWx(w);onWx?.({temp:w.temp,code:w.code});}if(d.daily)setFc(d.daily.time.slice(1,6).map((x,i)=>({date:x,hi:Math.round(d.daily.temperature_2m_max[i+1]),lo:Math.round(d.daily.temperature_2m_min[i+1]),code:d.daily.weather_code[i+1],prec:d.daily.precipitation_probability_max[i+1]})));}catch(e){console.error(e);}finally{setLd(false);}
+  const fetchWx=useCallback(async(lat,lon)=>{try{setLd(true);const u=useF?"fahrenheit":"celsius";const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=${u}&wind_speed_unit=mph&timezone=auto&forecast_days=7`);const d=await r.json();if(d.current){const w={temp:Math.round(d.current.temperature_2m),feels:Math.round(d.current.apparent_temperature),hum:d.current.relative_humidity_2m,wind:Math.round(d.current.wind_speed_10m),code:d.current.weather_code,hi:d.daily?Math.round(d.daily.temperature_2m_max[0]):null,lo:d.daily?Math.round(d.daily.temperature_2m_min[0]):null};setWx(w);onWx?.({temp:w.temp,code:w.code});}if(d.daily){const fc=d.daily.time.slice(1,6).map((x,i)=>({date:x,hi:Math.round(d.daily.temperature_2m_max[i+1]),lo:Math.round(d.daily.temperature_2m_min[i+1]),code:d.daily.weather_code[i+1],prec:d.daily.precipitation_probability_max[i+1]}));setFc(fc);onFc?.(fc);}}catch(e){console.error(e);}finally{setLd(false);}
   },[useF]);
   const detectViaIP=useCallback(async()=>{try{const r=await fetch("https://ipapi.co/json/");const d=await r.json();if(d.latitude&&d.longitude){setLoc({name:`${d.city||"My Location"}${d.region?", "+d.region:""}${d.country_name?` · ${d.country_name}`:""}`,lat:d.latitude,lon:d.longitude});setGErr(null);return;}}catch(e){console.error(e);}setGErr("Unable to auto-detect location. Please search manually.");},[setLoc]);
   const detect=useCallback(()=>{if(!navigator.geolocation){setGErr("Geolocation unavailable — trying IP fallback...");detectViaIP();return;}setGErr(null);navigator.geolocation.getCurrentPosition(async p=>{const{latitude:la,longitude:lo}=p.coords;try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${la}&lon=${lo}&format=json&addressdetails=1`);const d=await r.json();const city=d?.address?.city||d?.address?.town||d?.address?.village||d?.address?.county||"My Location";const st=d?.address?.state||"";setLoc({name:`${city}${st?", "+st:""}`,lat:la,lon:lo});}catch{setLoc({name:"My Location",lat:la,lon:lo});}},async e=>{setGErr("Location denied — trying IP fallback...");await detectViaIP();},{timeout:10000});},[setLoc,detectViaIP]);
@@ -1348,7 +1348,7 @@ function SearchModal({events,onSelect,onClose}){
 }
 
 // ═════════════════ TODAY PANEL ══════════════════════════════════════
-function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework}){
+function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,forecast,wx}){
   const t=useT();
   const today=dkey(new Date());
   const wkStart=dkey(wkSt(new Date()));
@@ -1365,7 +1365,23 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework})
   }
   const assignedChores=members.map(m=>({m,chores:dueChores.filter(c=>c.assignedTo===m.id)})).filter(({chores})=>chores.length>0);
   const unassigned=dueChores.filter(c=>!c.assignedTo);
+  const useF=JSON.parse(localStorage.getItem("hl4_unit")??'true');
+  const unit=useF?"°F":"°C";
   return<div>
+    {wx&&<div style={{display:"flex",gap:6,marginBottom:12,alignItems:"center",padding:"8px 10px",borderRadius:12,background:t.card,border:`1px solid ${t.bdr}`}}>
+      <div style={{flex:"none",textAlign:"center",minWidth:52}}>
+        <div style={{fontSize:22,lineHeight:1}}>{wmo(wx.code).i}</div>
+        <div style={{fontSize:15,fontWeight:700,fontFamily:FM,color:t.text,lineHeight:1.2}}>{wx.temp}<span style={{fontSize:10,color:t.sub}}>{unit}</span></div>
+        <div style={{fontSize:8,color:t.dim,marginTop:1}}>{wmo(wx.code).l}</div>
+      </div>
+      {(forecast||[]).slice(0,3).map((f,i)=>{const d=new Date(f.date+"T12:00:00");return<div key={i} style={{flex:1,textAlign:"center",borderLeft:`1px solid ${t.bdr}`,paddingLeft:6}}>
+        <div style={{fontSize:10,color:t.dim,fontWeight:600}}>{DAYS[d.getDay()]}</div>
+        <div style={{fontSize:18,margin:"2px 0",lineHeight:1}}>{wmo(f.code).i}</div>
+        <div style={{fontSize:11,fontWeight:700,color:t.text}}>{f.hi}°</div>
+        <div style={{fontSize:10,color:t.dim}}>{f.lo}°</div>
+        {f.prec>20&&<div style={{fontSize:9,color:"#60A5FA"}}>💧{f.prec}%</div>}
+      </div>;})}
+    </div>}
     {upcoming7.length>0&&<div style={{marginBottom:14}}>
       {upcoming7.map(ev=>{const d=Math.round((new Date(ev.date+"T12:00:00")-new Date())/86400000);return<div key={ev.id} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:8,background:"rgba(252,211,77,0.08)",border:"1px solid rgba(252,211,77,0.2)",marginBottom:4}}><span style={{fontSize:14}}>🎂</span><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:"#F59E0B",fontWeight:700}}>in {d} day{d!==1?"s":""}</div></div></div>;})}
     </div>}
@@ -1468,6 +1484,7 @@ function Homelight(){
   const[recipes,setRecipes]=useP("recipes",[]);
   const[contacts,setContacts]=useP("contacts",[]);
   const[homework,setHomework]=useP("homework",[]);
+  const[forecast,setForecast]=useP("forecast",[]);
   const[ssCollections,setSsCollections]=useP("ssCollections",{nature:false,art:false,space:false});
   const[ssSleepEnabled,setSsSleepEnabled]=useP("ssSleepEnabled",false);
   const[ssSleepTime,setSsSleepTime]=useP("ssSleepTime","22:00");
@@ -1561,7 +1578,7 @@ function Homelight(){
           {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
           :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} ssCollections={ssCollections} setSsCollections={setSsCollections} ssSleepEnabled={ssSleepEnabled} setSsSleepEnabled={setSsSleepEnabled} ssSleepTime={ssSleepTime} setSsSleepTime={setSsSleepTime} ssWakeTime={ssWakeTime} setSsWakeTime={setSsWakeTime} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt} geminiKey={geminiKey} setGeminiKey={setGeminiKey} geminiModel={geminiModel} setGeminiModel={setGeminiModel} members={members} setMembers={setMembers} contacts={contacts} setContacts={setContacts} onClose={()=>setPanel("main")}/>
           :<>
-            <div style={{padding:"10px 10px",borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc} onWx={setWx}/></div>
+            <div style={{padding:"10px 10px",borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc} onWx={setWx} onFc={setForecast}/></div>
             <div style={{padding:"6px 10px",borderBottom:`1px solid ${t.bdr}`,flexShrink:0}}>
               {editingAnnouncement?<div style={{display:"flex",flexDirection:"column",gap:4}}>
                 <textarea value={announcementDraft} onChange={e=>setAnnouncementDraft(e.target.value)} placeholder="Family message..." maxLength={120} rows={2} style={{width:"100%",background:t.card,color:t.text,border:`1px solid ${t.accent}`,borderRadius:6,padding:"4px 6px",fontSize:12,fontFamily:FF,resize:"none",boxSizing:"border-box"}}/>
@@ -1580,9 +1597,9 @@ function Homelight(){
                 <div style={{width:3,borderRadius:2,background:evColor(ev,members),flexShrink:0,alignSelf:"stretch"}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{evPrefix(ev)}{ev.title}</div>{pm&&<div style={{fontSize:9,fontWeight:700,color:pm.color,marginTop:1}}>{pm.name}</div>}<div style={{fontSize:10,color:t.dim,fontFamily:FM,marginTop:1}}>{fmtT(ev.hour,ev.minute)}{rel&&<span style={{marginLeft:6,color:t.accent,fontWeight:700}}>{rel}</span>}</div>{ev.location&&<div style={{fontSize:9,color:t.dim,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📍 {ev.location}</div>}{ev.notes&&<div style={{fontSize:9,color:t.dim,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📝 {ev.notes}</div>}</div></div>;}))}
               </div>
             </div>
-            <div style={{display:"flex",borderBottom:`1px solid ${t.bdr}`}}>{["today","tasks","grocery","meals","rewards"].map(tab=><button key={tab} onClick={()=>setSideTab(tab)} style={{flex:1,padding:"10px 0",textAlign:"center",fontSize:9,fontWeight:600,textTransform:"uppercase",letterSpacing:1,color:sideTab===tab?t.accent:t.dim,background:"transparent",border:"none",cursor:"pointer",fontFamily:FF,borderBottom:`2px solid ${sideTab===tab?t.accent:"transparent"}`}}>{tab==="rewards"?"⭐":tab==="today"?"📅":tab}</button>)}</div>
+            <div style={{display:"flex",borderBottom:`1px solid ${t.bdr}`}}>{[["today","📅","Today"],["tasks","✅","Tasks"],["grocery","🛒","Shop"],["meals","🍽️","Meals"],["rewards","⭐","Stars"]].map(([k,em,lbl])=><button key={k} onClick={()=>setSideTab(k)} style={{flex:1,padding:"8px 0",textAlign:"center",color:sideTab===k?t.accent:t.dim,background:"transparent",border:"none",cursor:"pointer",fontFamily:FF,borderBottom:`2px solid ${sideTab===k?t.accent:"transparent"}`}}><div style={{fontSize:18,lineHeight:1,marginBottom:2}}>{em}</div><div style={{fontSize:8,fontWeight:600,textTransform:"uppercase",letterSpacing:0.8}}>{lbl}</div></button>)}</div>
             <div style={{flex:1,overflow:"auto",padding:"8px 10px"}}>
-              {sideTab==="today"&&<TodayPanel events={visibleEvents} todos={todos} setTodos={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework}/>}
+              {sideTab==="today"&&<TodayPanel events={visibleEvents} todos={todos} setTodos={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework} forecast={forecast} wx={wx}/>}
               {sideTab==="tasks"&&<FamilyTasks items={todos} setItems={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework} setHomework={setHomework}/>}
               {sideTab==="grocery"&&<GroceryList items={grocery} setItems={setGrocery}/>}
               {sideTab==="meals"&&<Meals meals={meals} setMeals={setMeals} recipes={recipes} setRecipes={setRecipes} grocery={grocery} setGrocery={setGrocery}/>}
