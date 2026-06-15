@@ -207,6 +207,7 @@ function expandManualRecurrences(events){
     const maxEnd=until?new Date(until+"T23:59:59"):wEnd;
     const effectiveEnd=maxEnd<wEnd?maxEnd:wEnd;
     let current=new Date(ev.date+"T12:00:00"),count=0;
+    const origDay=current.getDate();
     while(current<=effectiveEnd&&count<500){
       if(current>=wStart){
         const dateStr=dkey(current);
@@ -217,7 +218,7 @@ function expandManualRecurrences(events){
       if(freq==="daily")next.setDate(next.getDate()+1);
       else if(freq==="weekly")next.setDate(next.getDate()+7);
       else if(freq==="biweekly")next.setDate(next.getDate()+14);
-      else if(freq==="monthly"){const d=current.getDate();next.setMonth(next.getMonth()+1);if(next.getDate()!==d)next.setDate(0);}
+      else if(freq==="monthly"){next.setDate(1);next.setMonth(next.getMonth()+1);const lastDay=new Date(next.getFullYear(),next.getMonth()+1,0).getDate();next.setDate(Math.min(origDay,lastDay));}
       else if(freq==="yearly")next.setFullYear(next.getFullYear()+1);
       else break;
       if(next.getTime()===current.getTime())break;
@@ -472,7 +473,7 @@ function EventModal({event,sel,defaultHour=9,onClose,onSave,onDelete}){
       <input style={s.inp} placeholder="Location (optional)" value={location} onChange={e=>setLoc(e.target.value)}/>
       <textarea style={{...s.inp,height:64,resize:"none",marginBottom:12}} placeholder="Notes — bring: cleats, snack, etc." value={notes} onChange={e=>setNotes(e.target.value)}/>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-        <input id="all-day-toggle" type="checkbox" checked={allDay} onChange={e=>{const v=e.target.checked;setAllDay(v);if(v){setHour("0");setMinute("0");setEndHour("0");setEndMinute("0");setEndDate(dkey(sel));}}} style={{width:16,height:16,cursor:"pointer"}}/>
+        <input id="all-day-toggle" type="checkbox" checked={allDay} onChange={e=>{const v=e.target.checked;setAllDay(v);if(v){setHour("0");setMinute("0");setEndHour("0");setEndMinute("0");setEndDate(dkey(sel));}else{const h=String(event?.hour??defaultHour);setHour(h);setMinute(String(event?.minute||0));setEndHour(String((parseInt(h)+1)%24));setEndMinute("0");}}} style={{width:16,height:16,cursor:"pointer"}}/>
         <label htmlFor="all-day-toggle" style={{fontSize:12,color:t.text,cursor:"pointer"}}>All-day block</label>
       </div>
       {allDay&&<div style={{marginBottom:12}}><label style={s.lbl}>End Date</label><input type="date" style={{...s.inp,marginBottom:0}} value={endDate} onChange={e=>setEndDate(e.target.value)} min={dkey(sel)}/></div>}
@@ -870,14 +871,25 @@ function RewardsPanel({members,rewards,setRewards}){
     setPrizeName("");setPrizeCost(10);setShowAdd(false);
   };
 
-  const redeem=(memberId,prize)=>{
-    const cur=(rewards.stars||{})[memberId]||0;
-    if(cur<prize.cost)return;
-    if(!confirm(`Redeem "${prize.name}" for ${prize.cost} stars?`))return;
-    setRewards(r=>({...r,stars:{...(r.stars||{}),[memberId]:cur-prize.cost}}));
-  };
 
   const[awardTarget,setAwardTarget]=useState(null);
+  const[redeemTarget,setRedeemTarget]=useState(null);
+  const redeemTimerRef=useRef(null);
+  const confirmRedeem=(memberId,prize)=>{
+    const key=`${memberId}~${prize.id}`;
+    if(redeemTarget===key){
+      clearTimeout(redeemTimerRef.current);
+      setRedeemTarget(null);
+      const cur=(rewards.stars||{})[memberId]||0;
+      if(cur<prize.cost)return;
+      setRewards(r=>({...r,stars:{...(r.stars||{}),[memberId]:cur-prize.cost}}));
+      playDing();
+    }else{
+      clearTimeout(redeemTimerRef.current);
+      setRedeemTarget(key);
+      redeemTimerRef.current=setTimeout(()=>setRedeemTarget(null),3000);
+    }
+  };
   if(members.length===0)return<div style={{textAlign:"center",padding:"28px 8px",color:t.sub,fontSize:12,lineHeight:1.8}}>Add family members in<br/>Settings ⚙ to track rewards.</div>;
 
   const ranked=[...members].sort((a,b)=>((rewards.stars||{})[b.id]||0)-((rewards.stars||{})[a.id]||0));
@@ -901,13 +913,14 @@ function RewardsPanel({members,rewards,setRewards}){
           </div>
         </div>
         {isAward&&<div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
-          {[1,2,3,5,10].map(n=><button key={n} onClick={()=>{setRewards(r=>({...r,stars:{...(r.stars||{}),[m.id]:((r.stars||{})[m.id]||0)+n}}));playDing();setAwardTarget(null);}} style={{flex:1,padding:"6px 0",borderRadius:8,border:`1px solid ${m.color}`,background:m.color+"22",color:m.color,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+{n}⭐</button>)}
+          {[1,2,3,5,10].map(n=><button key={n} onClick={e=>{e.currentTarget.disabled=true;setRewards(r=>({...r,stars:{...(r.stars||{}),[m.id]:((r.stars||{})[m.id]||0)+n}}));playDing();setAwardTarget(null);}} style={{flex:1,padding:"6px 0",borderRadius:8,border:`1px solid ${m.color}`,background:m.color+"22",color:m.color,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+{n}⭐</button>)}
         </div>}
         {prizes.map(prize=>{const pct=Math.min(100,(stars/prize.cost)*100);return<div key={prize.id} style={{marginTop:8,padding:"6px 8px",borderRadius:8,background:t.bg,border:`1px solid ${t.bdr}`}}>
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
             <span style={{flex:1,fontSize:11,color:t.text,fontWeight:500}}>{prize.name}</span>
             <span style={{fontSize:10,color:"#FCD34D",whiteSpace:"nowrap"}}>{prize.cost}⭐</span>
-            <button onClick={()=>redeem(m.id,prize)} style={{padding:"2px 9px",borderRadius:7,border:"none",background:stars>=prize.cost?m.color:"transparent",color:stars>=prize.cost?"#fff":t.dim,fontSize:9,fontWeight:700,cursor:stars>=prize.cost?"pointer":"default",fontFamily:FF,border:`1px solid ${stars>=prize.cost?m.color:t.bdr}`,whiteSpace:"nowrap"}}>{stars>=prize.cost?"Redeem!":"Locked"}</button>
+            {stars>=prize.cost&&<button onClick={()=>confirmRedeem(m.id,prize)} style={{padding:"2px 9px",borderRadius:7,border:`1px solid ${redeemTarget===`${m.id}~${prize.id}`?"#EF4444":m.color}`,background:redeemTarget===`${m.id}~${prize.id}`?"#EF4444":m.color,color:"#fff",fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:FF,whiteSpace:"nowrap",transition:"all 0.2s"}}>{redeemTarget===`${m.id}~${prize.id}`?"Confirm? ✓":"Redeem!"}</button>}
+            {stars<prize.cost&&<button disabled style={{padding:"2px 9px",borderRadius:7,border:`1px solid ${t.bdr}`,background:"transparent",color:t.dim,fontSize:9,fontWeight:700,cursor:"default",fontFamily:FF,whiteSpace:"nowrap"}}>🔒 Locked</button>}
           </div>
           <div style={{height:4,borderRadius:4,background:t.bdr,overflow:"hidden"}}>
             <div style={{height:"100%",width:`${pct}%`,background:stars>=prize.cost?"#FCD34D":m.color,borderRadius:4,transition:"width 0.4s ease"}}/>
@@ -1018,13 +1031,14 @@ function Screensaver({onTap,wx,loc,forecast,customPhotos,ssCollections,ssSleepEn
   const wkStartKey=dkey(wkSt(time));
   const dueChoresSS=useMemo(()=>(todos||[]).filter(it=>{if(!it.repeat||it.repeat==="none")return false;if(it.repeat==="daily")return it.lastCompleted!==todayKey;if(it.repeat==="weekly")return!it.lastCompleted||it.lastCompleted<wkStartKey;return false;}),[todos,todayKey,wkStartKey]);
   const choresByMember=members.map(m=>({m,chores:dueChoresSS.filter(c=>c.assignedTo===m.id)})).filter(({chores})=>chores.length>0);
-  const checkChoreSS=(it,m)=>{if(!setTodos)return;setTodos(ts=>ts.map(x=>x.id!==it.id?x:{...x,lastCompleted:todayKey}));playDing();if(it.stars&&it.assignedTo&&setRewards)setRewards(r=>{const st={...r.stars};st[it.assignedTo]=(st[it.assignedTo]||0)+it.stars;return{...r,stars:st};});};
   const agenda=useMemo(()=>{const r=[];for(let i=0;i<21&&r.length<7;i++){const d=new Date(todayKey+"T12:00:00");d.setDate(d.getDate()+i);const dk=dkey(d);const dayEvs=(events||[]).filter(e=>e.date===dk).sort((a,b)=>a.hour-b.hour);if(dayEvs.length>0)r.push({dk,d,evs:dayEvs});}return r;},[events,todayKey]);
   const wallCountdowns=useMemo(()=>{const now=new Date();now.setHours(0,0,0,0);return(events||[]).filter(ev=>{const diff=Math.round((new Date(ev.date+"T00:00:00")-now)/86400000);return diff>=1&&diff<=90;}).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);},[events,todayKey]);
   const miniCalCells=useMemo(()=>{const y=time.getFullYear(),m=time.getMonth();const fd=new Date(y,m,1).getDay();const tot=new Date(y,m+1,0).getDate();const cells=[];for(let i=0;i<fd;i++)cells.push(null);for(let i=1;i<=tot;i++)cells.push(i);return cells;},[time.getMonth(),time.getFullYear()]);
   const evDateSet=useMemo(()=>{const y=time.getFullYear(),mth=time.getMonth();const ms=`${y}-${String(mth+1).padStart(2,"0")}`;const s=new Set();(events||[]).forEach(e=>{if(e.date.startsWith(ms))s.add(parseInt(e.date.slice(8)));});return s;},[events,time.getMonth(),time.getFullYear()]);
-  useEffect(()=>{const fk=window.fully;if(fk){try{if(sleeping)fk.turnScreenOff();else fk.turnScreenOn();}catch(e){}}},[sleeping]);
-  if(sleeping)return<div style={{position:"fixed",inset:0,zIndex:100,background:"#000",cursor:"pointer"}} onClick={handleTap}/>;
+  useEffect(()=>{const fk=window.fully;if(fk&&fk.turnScreenOff&&fk.turnScreenOn){try{if(sleeping)fk.turnScreenOff();else fk.turnScreenOn();}catch(e){}}},[sleeping]);
+  const[justDone,setJustDone]=useState(new Set());
+  const checkChoreSS=(it,m)=>{if(!setTodos)return;setTodos(ts=>ts.map(x=>x.id!==it.id?x:{...x,lastCompleted:todayKey}));playDing();setJustDone(s=>new Set([...s,it.id]));setTimeout(()=>setJustDone(s=>{const n=new Set(s);n.delete(it.id);return n;}),2000);if(it.stars&&it.assignedTo&&setRewards)setRewards(r=>{const st={...r.stars};st[it.assignedTo]=(st[it.assignedTo]||0)+it.stars;return{...r,stars:st};});};
+  if(sleeping)return<div style={{position:"fixed",inset:0,zIndex:100,background:"#000",cursor:"pointer"}} onClick={handleTap}><div style={{position:"absolute",bottom:32,left:"50%",transform:"translateX(-50%)",fontSize:11,color:"rgba(255,255,255,0.1)",fontFamily:FF,letterSpacing:3,textTransform:"uppercase"}}>tap to wake</div></div>;
   return<div style={{position:"fixed",inset:0,zIndex:100,background:"#000",cursor:"pointer"}} onClick={handleTap}>
     <img src={photos[idx]} alt="" style={{width:"100%",height:"100%",objectFit:"cover",position:"absolute",transition:"opacity 0.7s ease-in-out",opacity:fade?1:0}}/>
     <div style={{position:"absolute",inset:0,background:"linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.2) 45%, transparent 70%)"}}/>
@@ -1036,7 +1050,7 @@ function Screensaver({onTap,wx,loc,forecast,customPhotos,ssCollections,ssSleepEn
           <span style={{fontSize:13,fontWeight:700,color:m.color}}>{m.name}</span>
         </div>
         {chores.slice(0,3).map(c=><div key={c.id} onClick={e=>{e.stopPropagation();checkChoreSS(c,m);}} style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:"rgba(255,255,255,0.7)",marginBottom:4,paddingLeft:4,cursor:setTodos?"pointer":"default",borderRadius:8,padding:"3px 8px",background:"rgba(255,255,255,0.04)",userSelect:"none"}}>
-          <div style={{width:14,height:14,borderRadius:"50%",border:`1.5px solid ${m.color}88`,background:"transparent",flexShrink:0}}/>
+          <div style={{width:14,height:14,borderRadius:"50%",border:`1.5px solid ${m.color}`,background:justDone.has(c.id)?m.color:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",transition:"background 0.2s"}}>{justDone.has(c.id)&&<span style={{fontSize:9,color:"#fff",fontWeight:800}}>✓</span>}</div>
           {c.text}
         </div>)}
         {chores.length>3&&<div style={{fontSize:11,color:"rgba(255,255,255,0.4)",paddingLeft:28}}>+{chores.length-3} more</div>}
@@ -1627,7 +1641,7 @@ function Homelight(){
   const[wallReturnMins,setWallReturnMins]=useP("wallReturnMins",2);
   const[wallCountdown,setWallCountdown]=useState(null);
   useEffect(()=>{if(!ssSleepEnabled)return;const ck=setInterval(()=>{if(inSleepWindow(new Date(),ssSleepTime,ssWakeTime)&&Date.now()>sleepDismissedUntil.current)setShowSS(true);},10000);if(inSleepWindow(new Date(),ssSleepTime,ssWakeTime)&&Date.now()>sleepDismissedUntil.current)setShowSS(true);return()=>clearInterval(ck);},[ssSleepEnabled,ssSleepTime,ssWakeTime]);
-  useEffect(()=>{if(wallMode)setShowSS(true);},[]);
+  useEffect(()=>{if(wallMode)setShowSS(true);},[wallMode]);
   useEffect(()=>{
     if(!wallMode||showSS){setWallCountdown(null);return;}
     lastAct.current=Date.now();
@@ -1746,7 +1760,7 @@ function Homelight(){
             <div style={{padding:"8px 10px",borderBottom:`1px solid ${t.bdr}`,flexShrink:0}}>
               <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:2,color:t.accent,marginBottom:10}}>Coming Up</div>
               {upcoming.length===0&&<div style={{fontSize:12,color:t.dim}}>Nothing scheduled</div>}
-              <div style={{maxHeight:130,overflowY:"auto"}}>
+              <div style={{maxHeight:200,overflowY:"auto"}}>
               {upcoming.map(ev=>{const pm=members.find(m=>m.id===ev.assignedTo);const rel=relTime(ev.date,ev.hour,ev.minute);return<div key={ev.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,cursor:"pointer"}} onClick={()=>{setSel(new Date(ev.date+"T12:00:00"));setView("day");}}>
                 <div style={{width:3,borderRadius:2,background:evColor(ev,members),flexShrink:0,alignSelf:"stretch"}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{evPrefix(ev)}{ev.title}</div>{pm&&<div style={{fontSize:9,fontWeight:700,color:pm.color,marginTop:1}}>{pm.name}</div>}<div style={{fontSize:10,color:t.dim,fontFamily:FM,marginTop:1}}>{fmtT(ev.hour,ev.minute)}{rel&&<span style={{marginLeft:6,color:t.accent,fontWeight:700}}>{rel}</span>}</div>{ev.location&&<div style={{fontSize:9,color:t.dim,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📍 {ev.location}</div>}{ev.notes&&<div style={{fontSize:9,color:t.dim,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📝 {ev.notes}</div>}</div></div>;})}
 
