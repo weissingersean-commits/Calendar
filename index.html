@@ -30,6 +30,8 @@
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
     [data-no-print]{display:none!important;}
   }
+  @keyframes confettiFall{0%{transform:translateY(0) rotate(0deg);opacity:1;}100%{transform:translateY(100vh) rotate(720deg);opacity:0;}}
+  @keyframes confettiPop{0%{transform:translate(-50%,-50%) scale(0.5);opacity:0;}15%{transform:translate(-50%,-50%) scale(1.08);opacity:1;}85%{opacity:1;}100%{transform:translate(-50%,-50%) scale(1);opacity:0;}}
 </style>
 </head>
 <body>
@@ -694,12 +696,12 @@ function Confetti({data,onDone}){
     <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:200,overflow:"hidden"}}>
       {particles.map(p=><div key={p.id} style={{position:"absolute",top:-14,left:`${p.x}%`,width:p.size,height:p.size,borderRadius:p.id%3===0?"50%":2,background:p.color,animation:`confettiFall ${p.dur}s ${p.delay}s ease-in forwards`}}/>)}
     </div>
-    <div style={{position:"fixed",top:"45%",left:"50%",transform:"translate(-50%,-50%)",zIndex:201,background:"rgba(0,0,0,0.9)",borderRadius:20,padding:"28px 40px",textAlign:"center",border:"1px solid rgba(252,211,77,0.45)",backdropFilter:"blur(12px)",pointerEvents:"none"}}>
+    {data.stars>0&&<div style={{position:"fixed",top:"45%",left:"50%",zIndex:201,background:"rgba(0,0,0,0.9)",borderRadius:20,padding:"28px 40px",textAlign:"center",border:"1px solid rgba(252,211,77,0.45)",backdropFilter:"blur(12px)",pointerEvents:"none",animation:"confettiPop 1.8s ease forwards"}}>
       <div style={{fontSize:52,lineHeight:1}}>⭐</div>
       <div style={{fontSize:36,fontWeight:900,color:"#FCD34D",margin:"10px 0 4px",fontFamily:FM}}>+{data.stars}</div>
       <div style={{fontSize:15,color:"rgba(255,255,255,0.75)",fontWeight:600}}>{data.name}</div>
       <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",marginTop:4}}>{data.stars===1?"star earned!":"stars earned!"}</div>
-    </div>
+    </div>}
   </>;
 }
 
@@ -733,20 +735,20 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
       setItems(items.map(i=>i.id===it.id?{...i,done:!i.done}:i));
       if(!wasDone){
         playDing();
+        const m=members.find(m=>m.id===it.assignedTo);
         if(it.assignedTo&&(it.stars||0)>0){
           setRewards(r=>({...r,stars:{...(r.stars||{}),[it.assignedTo]:((r.stars||{})[it.assignedTo]||0)+(it.stars||0)}}));
-          const m=members.find(m=>m.id===it.assignedTo);
-          setConfettiData({name:m?.name||"",stars:it.stars||0});
         }
+        setConfettiData({name:m?.name||it.text||"",stars:it.stars||0});
       }
     } else {
       setItems(items.map(i=>i.id===it.id?{...i,lastCompleted:today}:i));
       playDing();
+      const m=members.find(m=>m.id===it.assignedTo);
       if(it.assignedTo&&(it.stars||0)>0){
         setRewards(r=>({...r,stars:{...(r.stars||{}),[it.assignedTo]:((r.stars||{})[it.assignedTo]||0)+(it.stars||0)}}));
-        const m=members.find(m=>m.id===it.assignedTo);
-        setConfettiData({name:m?.name||"",stars:it.stars||0});
       }
+      setConfettiData({name:m?.name||it.text||"",stars:it.stars||0});
     }
   };
 
@@ -1018,6 +1020,7 @@ function Screensaver({onTap,wx,loc,forecast,customPhotos,ssCollections,ssSleepEn
   const choresByMember=members.map(m=>({m,chores:dueChoresSS.filter(c=>c.assignedTo===m.id)})).filter(({chores})=>chores.length>0);
   const checkChoreSS=(it,m)=>{if(!setTodos)return;setTodos(ts=>ts.map(x=>x.id!==it.id?x:{...x,lastCompleted:todayKey}));playDing();if(it.stars&&it.assignedTo&&setRewards)setRewards(r=>{const st={...r.stars};st[it.assignedTo]=(st[it.assignedTo]||0)+it.stars;return{...r,stars:st};});};
   const agenda=useMemo(()=>{const r=[];for(let i=0;i<21&&r.length<7;i++){const d=new Date(todayKey+"T12:00:00");d.setDate(d.getDate()+i);const dk=dkey(d);const dayEvs=(events||[]).filter(e=>e.date===dk).sort((a,b)=>a.hour-b.hour);if(dayEvs.length>0)r.push({dk,d,evs:dayEvs});}return r;},[events,todayKey]);
+  const wallCountdowns=useMemo(()=>{const now=new Date();now.setHours(0,0,0,0);return(events||[]).filter(ev=>{const diff=Math.round((new Date(ev.date+"T00:00:00")-now)/86400000);return diff>=1&&diff<=90;}).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);},[events,todayKey]);
   const miniCalCells=useMemo(()=>{const y=time.getFullYear(),m=time.getMonth();const fd=new Date(y,m,1).getDay();const tot=new Date(y,m+1,0).getDate();const cells=[];for(let i=0;i<fd;i++)cells.push(null);for(let i=1;i<=tot;i++)cells.push(i);return cells;},[time.getMonth(),time.getFullYear()]);
   const evDateSet=useMemo(()=>{const y=time.getFullYear(),mth=time.getMonth();const ms=`${y}-${String(mth+1).padStart(2,"0")}`;const s=new Set();(events||[]).forEach(e=>{if(e.date.startsWith(ms))s.add(parseInt(e.date.slice(8)));});return s;},[events,time.getMonth(),time.getFullYear()]);
   useEffect(()=>{const fk=window.fully;if(fk){try{if(sleeping)fk.turnScreenOff();else fk.turnScreenOn();}catch(e){}}},[sleeping]);
@@ -1059,6 +1062,13 @@ function Screensaver({onTap,wx,loc,forecast,customPhotos,ssCollections,ssSleepEn
       <div style={{fontSize:120,fontWeight:200,color:"#fff",lineHeight:1,fontFamily:FM,letterSpacing:-6}}>{String(time.getHours()%12||12).padStart(2,"0")}:{String(time.getMinutes()).padStart(2,"0")}<span style={{fontSize:40,fontWeight:300,marginLeft:16,opacity:.45}}>{time.getHours()>=12?"PM":"AM"}</span></div>
       <div style={{fontSize:28,fontWeight:300,color:"rgba(255,255,255,0.55)",marginTop:12,fontFamily:FF}}>{DAYS_F[time.getDay()]}, {MO[time.getMonth()]} {time.getDate()}</div>
       <div style={{fontSize:22,fontWeight:400,color:"rgba(255,255,255,0.45)",marginTop:10,fontFamily:FF}}>{time.getHours()<12?"Good morning ☀️":time.getHours()<17?"Good afternoon 🌤️":time.getHours()<21?"Good evening 🌙":"Good night 🌛"}</div>
+      {wallCountdowns.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:10}}>
+        {wallCountdowns.map(ev=>{const now=new Date();now.setHours(0,0,0,0);const d=Math.round((new Date(ev.date+"T00:00:00")-now)/86400000);const icon=isBday(ev)?"🎂":evPrefix(ev)||"📅";return<div key={ev.id} style={{display:"flex",alignItems:"center",gap:6,background:"rgba(0,0,0,0.3)",borderRadius:20,padding:"5px 12px",backdropFilter:"blur(8px)",border:"1px solid rgba(255,255,255,0.1)"}}>
+          <span style={{fontSize:14}}>{icon}</span>
+          <span style={{fontSize:12,color:"rgba(255,255,255,0.7)",fontWeight:500,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ev.title}</span>
+          <span style={{fontSize:12,fontWeight:800,color:d<=3?"#FCD34D":"rgba(255,255,255,0.5)",fontFamily:FM,marginLeft:2}}>{d===1?"tmrw":`${d}d`}</span>
+        </div>;})}
+      </div>}
       {wx&&info&&<div style={{fontSize:18,color:"rgba(255,255,255,0.3)",marginTop:6,fontFamily:FF}}>{info.i} {wx.temp}° · {info.l}{loc?.name?` · ${loc.name}`:""}</div>}
       {forecast&&forecast.length>0&&<div style={{display:"flex",gap:10,marginTop:10}}>
         {forecast.slice(0,3).map((f,i)=>{const d=new Date(f.date+"T12:00:00");return<div key={i} style={{textAlign:"center",background:"rgba(0,0,0,0.22)",borderRadius:10,padding:"6px 10px",backdropFilter:"blur(4px)"}}>
@@ -1483,7 +1493,7 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,o
   const dueChores=useMemo(()=>todos.filter(it=>{if(!it.repeat||it.repeat==="none")return false;if(it.repeat==="daily")return it.lastCompleted!==today;if(it.repeat==="weekly")return!it.lastCompleted||it.lastCompleted<wkStart;return false;}),[todos,today,wkStart]);
   const dueTasks=useMemo(()=>todos.filter(it=>(!it.repeat||it.repeat==="none")&&!it.done&&it.dueDate&&it.dueDate<=today),[todos,today]);
   const hwDue=useMemo(()=>(homework||[]).filter(h=>!h.done&&h.dueDate<=today).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)),[homework,today]);
-  const upcoming7=useMemo(()=>{const limit=dkey(new Date(new Date().getTime()+7*86400000));return events.filter(ev=>isBday(ev)&&ev.date>today&&ev.date<=limit).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);},[events,today]);
+  const countdowns=useMemo(()=>{const now=new Date();now.setHours(0,0,0,0);return events.filter(ev=>{const d=new Date(ev.date+"T00:00:00");const diff=Math.round((d-now)/86400000);return diff>=1&&diff<=90;}).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,5);},[events,today]);
   const weekAhead=useMemo(()=>{const days=[];for(let i=1;i<=6;i++){const d=new Date();d.setDate(d.getDate()+i);const dk=dkey(d);const evs=events.filter(ev=>ev.date===dk).sort((a,b)=>(a.hour*60+(a.minute||0))-(b.hour*60+(b.minute||0)));if(evs.length>0)days.push({date:dk,d,evs});}return days;},[events,today]);
   function checkChore(it){
     setTodos(ts=>ts.map(x=>x.id!==it.id?x:{...x,lastCompleted:today}));
@@ -1493,8 +1503,19 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,o
   const assignedChores=members.map(m=>({m,chores:dueChores.filter(c=>c.assignedTo===m.id)})).filter(({chores})=>chores.length>0);
   const unassigned=dueChores.filter(c=>!c.assignedTo);
   return<div>
-    {upcoming7.length>0&&<div style={{marginBottom:14}}>
-      {upcoming7.map(ev=>{const d=Math.round((new Date(ev.date+"T12:00:00")-new Date())/86400000);return<div key={ev.id} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:8,background:"rgba(252,211,77,0.08)",border:"1px solid rgba(252,211,77,0.2)",marginBottom:4}}><span style={{fontSize:14}}>🎂</span><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:"#F59E0B",fontWeight:700}}>in {d} day{d!==1?"s":""}</div></div></div>;})}
+    {countdowns.length>0&&<div style={{marginBottom:14}}>
+      <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.accent,marginBottom:8}}>⏳ Coming Up</div>
+      {countdowns.map(ev=>{const now=new Date();now.setHours(0,0,0,0);const d=Math.round((new Date(ev.date+"T00:00:00")-now)/86400000);const isB=isBday(ev);const icon=isB?"🎂":evPrefix(ev)||"📅";const evDate=new Date(ev.date+"T12:00:00");return<div key={ev.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 10px",borderRadius:10,background:t.card,border:`1px solid ${d<=3?t.accent+"44":t.bdr}`,marginBottom:5}}>
+        <span style={{fontSize:20,lineHeight:1,flexShrink:0}}>{icon}</span>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:12,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ev.title}</div>
+          <div style={{fontSize:10,color:t.sub,marginTop:1}}>{MO[evDate.getMonth()]} {evDate.getDate()}</div>
+        </div>
+        <div style={{textAlign:"right",flexShrink:0}}>
+          <div style={{fontSize:20,fontWeight:800,color:d<=3?t.accent:t.text,fontFamily:FM,lineHeight:1}}>{d===1?"tmrw":d}</div>
+          {d!==1&&<div style={{fontSize:9,color:t.sub}}>days</div>}
+        </div>
+      </div>;})}
     </div>}
     {dueTasks.length>0&&<div style={{marginBottom:14}}>
       <div style={{fontSize:11,fontWeight:700,color:"#EF4444",textTransform:"uppercase",letterSpacing:1.5,marginBottom:6}}>Due / Overdue</div>
