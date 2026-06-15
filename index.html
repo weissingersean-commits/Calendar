@@ -1060,12 +1060,36 @@ function VoiceAssistant({events,todos,geminiKey,geminiModel,onClose,onSaveEvent,
   </div></div>;
 }
 
+// ═════════════════ CONTACTS WIDGET ═══════════════════════════════════
+function ContactsWidget({contacts}){
+  const t=useT();
+  const[open,setOpen]=useState(false);
+  if(!contacts||!contacts.length)return null;
+  return<div style={{borderTop:`1px solid ${t.bdr}`,flexShrink:0}}>
+    <div onClick={()=>setOpen(!open)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 14px",cursor:"pointer",userSelect:"none"}}>
+      <span style={{fontSize:11,fontWeight:700,color:t.sub,textTransform:"uppercase",letterSpacing:1}}>📞 Quick Contacts</span>
+      <span style={{color:t.dim,fontSize:10,lineHeight:1}}>{open?"▲":"▼"}</span>
+    </div>
+    {open&&<div style={{padding:"0 14px 10px"}}>
+      {contacts.map(c=><div key={c.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
+        <span style={{fontSize:13,flexShrink:0}}>{c.label==="school"?"🏫":c.label==="doctor"?"🏥":c.label==="work"?"💼":"📞"}</span>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:12,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
+          <div style={{fontSize:10,color:t.sub,fontFamily:FM}}>{c.phone}</div>
+        </div>
+        <a href={`tel:${c.phone.replace(/\D/g,"")}`} style={{padding:"4px 10px",borderRadius:8,background:t.acDim,border:`1px solid ${t.acGlow}`,color:t.accent,fontSize:11,fontWeight:700,textDecoration:"none",flexShrink:0}}>Call</a>
+      </div>)}
+    </div>}
+  </div>;
+}
+
 // ═════════════════ SETTINGS ═════════════════════════════════════════
-function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart,photos,setPhotos,ssCollections,setSsCollections,ssSleepEnabled,setSsSleepEnabled,ssSleepTime,setSsSleepTime,ssWakeTime,setSsWakeTime,reminderMins,setReminderMins,onClearEvents,onClearLists,onClearMeals,deferredPrompt,onInstallPrompt,installStatus,geminiKey,setGeminiKey,geminiModel,setGeminiModel,members,setMembers,onClose}){
+function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart,photos,setPhotos,ssCollections,setSsCollections,ssSleepEnabled,setSsSleepEnabled,ssSleepTime,setSsSleepTime,ssWakeTime,setSsWakeTime,reminderMins,setReminderMins,onClearEvents,onClearLists,onClearMeals,deferredPrompt,onInstallPrompt,installStatus,geminiKey,setGeminiKey,geminiModel,setGeminiModel,members,setMembers,contacts,setContacts,onClose}){
   const t=useT(),s=useS(),fileRef=useRef(null);
   const[memberName,setMemberName]=useState("");
   const[memberColor,setMemberColor]=useState(PALETTE[3]);
   const[showMemberAdd,setShowMemberAdd]=useState(false);
+  const[cName,setCName]=useState("");const[cPhone,setCPhone]=useState("");const[cLabel,setCLabel]=useState("other");const[showCAdd,setShowCAdd]=useState(false);
   const[notifPerm,setNotifPerm]=useState(typeof Notification!=="undefined"?Notification.permission:"unsupported");
   const requestNotif=async()=>{if(typeof Notification==="undefined")return;const p=await Notification.requestPermission();setNotifPerm(p);};
   const[showKiosk,setShowKiosk]=useState(false),[copied,setCopied]=useState(false);
@@ -1101,6 +1125,29 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart
       </div>
     )}
     {members.length>0&&<div style={{marginBottom:16}}/>}
+    <label style={s.lbl}>Quick Contacts</label>
+    <div style={{fontSize:11,color:t.sub,marginBottom:10,lineHeight:1.6}}>Phone numbers shown in the sidebar — tap Call to dial from a wall tablet.</div>
+    {(contacts||[]).map(c=><div key={c.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+      <span style={{fontSize:16}}>{c.label==="school"?"🏫":c.label==="doctor"?"🏥":c.label==="work"?"💼":"📞"}</span>
+      <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div><div style={{fontSize:11,color:t.sub,fontFamily:FM}}>{c.phone}</div></div>
+      <button onClick={()=>setContacts(prev=>prev.filter(x=>x.id!==c.id))} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:18,padding:"4px",lineHeight:1}}>×</button>
+    </div>)}
+    {(contacts||[]).length<12&&(!showCAdd
+      ?<button onClick={()=>setShowCAdd(true)} style={{width:"100%",padding:"9px 0",borderRadius:10,border:`1px dashed ${t.bdr}`,background:"transparent",color:t.accent,fontSize:12,fontWeight:600,cursor:"pointer",marginBottom:16}}>+ Add Contact</button>
+      :<div style={{...s.crd,marginBottom:16}}>
+        <input style={s.inp} placeholder="Name (e.g. Dr. Smith, Lincoln Elementary)" value={cName} onChange={e=>setCName(e.target.value)} autoFocus/>
+        <input style={s.inp} placeholder="Phone number" value={cPhone} onChange={e=>setCPhone(e.target.value)} type="tel"/>
+        <label style={s.lbl}>Type</label>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+          {[["school","🏫 School"],["doctor","🏥 Doctor"],["work","💼 Work"],["other","📞 Other"]].map(([val,lbl])=><button key={val} onClick={()=>setCLabel(val)} style={{padding:"5px 12px",borderRadius:8,border:`1px solid ${cLabel===val?t.accent:t.bdr}`,background:cLabel===val?t.acDim:"transparent",color:cLabel===val?t.accent:t.sub,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>{lbl}</button>)}
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button style={s.btnS} onClick={()=>{setShowCAdd(false);setCName("");setCPhone("");}}>Cancel</button>
+          <button style={s.btnP} onClick={()=>{if(!cName.trim()||!cPhone.trim())return;setContacts(prev=>[...prev,{id:mkId(),name:cName.trim(),phone:cPhone.trim(),label:cLabel}]);setCName("");setCPhone("");setShowCAdd(false);}}>Add</button>
+        </div>
+      </div>
+    )}
+    {(contacts||[]).length>0&&<div style={{marginBottom:4}}/>}
     <label style={s.lbl}>Theme</label>
     <div style={{display:"flex",gap:8,marginBottom:16}}>{["dark","light"].map(th=><button key={th} onClick={()=>setTheme(th)} style={{flex:1,padding:"10px 0",borderRadius:10,border:theme===th?`2px solid ${t.accent}`:`1px solid ${t.bdr}`,background:theme===th?t.acDim:"transparent",color:theme===th?t.accent:t.sub,fontSize:13,fontWeight:600,cursor:"pointer",textTransform:"capitalize",fontFamily:FF}}>{th==="dark"?"🌙 Dark":"☀️ Light"}</button>)}</div>
     <label style={s.lbl}>Week Starts On</label>
@@ -1368,6 +1415,7 @@ function Homelight(){
   const[announcementDraft,setAnnouncementDraft]=useState("");
   const[rewards,setRewards]=useP("rewards",{stars:{},prizes:[]});
   const[recipes,setRecipes]=useP("recipes",[]);
+  const[contacts,setContacts]=useP("contacts",[]);
   const[ssCollections,setSsCollections]=useP("ssCollections",{nature:false,art:false,space:false});
   const[ssSleepEnabled,setSsSleepEnabled]=useP("ssSleepEnabled",false);
   const[ssSleepTime,setSsSleepTime]=useP("ssSleepTime","22:00");
@@ -1459,7 +1507,7 @@ function Homelight(){
         </div>
         <div style={{width:sidebarOpen?312:0,borderLeft:sidebarOpen?`1px solid ${t.bdr}`:"none",background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0,transition:"width 0.25s ease"}}>
           {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
-          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} ssCollections={ssCollections} setSsCollections={setSsCollections} ssSleepEnabled={ssSleepEnabled} setSsSleepEnabled={setSsSleepEnabled} ssSleepTime={ssSleepTime} setSsSleepTime={setSsSleepTime} ssWakeTime={ssWakeTime} setSsWakeTime={setSsWakeTime} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt} geminiKey={geminiKey} setGeminiKey={setGeminiKey} geminiModel={geminiModel} setGeminiModel={setGeminiModel} members={members} setMembers={setMembers} onClose={()=>setPanel("main")}/>
+          :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} ssCollections={ssCollections} setSsCollections={setSsCollections} ssSleepEnabled={ssSleepEnabled} setSsSleepEnabled={setSsSleepEnabled} ssSleepTime={ssSleepTime} setSsSleepTime={setSsSleepTime} ssWakeTime={ssWakeTime} setSsWakeTime={setSsWakeTime} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt} geminiKey={geminiKey} setGeminiKey={setGeminiKey} geminiModel={geminiModel} setGeminiModel={setGeminiModel} members={members} setMembers={setMembers} contacts={contacts} setContacts={setContacts} onClose={()=>setPanel("main")}/>
           :<>
             <div style={{padding:"10px 10px",borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc} onWx={setWx}/></div>
             <div style={{padding:"6px 10px",borderBottom:`1px solid ${t.bdr}`,flexShrink:0}}>
@@ -1488,6 +1536,7 @@ function Homelight(){
               {sideTab==="meals"&&<Meals meals={meals} setMeals={setMeals} recipes={recipes} setRecipes={setRecipes} grocery={grocery} setGrocery={setGrocery}/>}
               {sideTab==="rewards"&&<RewardsPanel members={members} rewards={rewards} setRewards={setRewards}/>}
             </div>
+            <ContactsWidget contacts={contacts}/>
             <div style={{padding:"8px 12px",borderTop:`1px solid ${t.bdr}`,display:"flex",flexWrap:"wrap",gap:"5px 10px",flexShrink:0}}>
               {Object.entries(CATS).map(([cat,col])=><div key={cat} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:10,height:10,borderRadius:"50%",background:col.bg,flexShrink:0}}/><span style={{fontSize:11,color:t.sub,textTransform:"capitalize"}}>{cat}</span></div>)}
               {feeds.filter(f=>f.enabled).map(f=><div key={f.id} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:10,height:10,borderRadius:"50%",background:f.color,flexShrink:0}}/><span style={{fontSize:11,color:t.sub}}>{f.name}</span></div>)}
