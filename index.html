@@ -1056,6 +1056,8 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart
   const[urlInput,setUrlInput]=useState("");
   const addPhotoUrls=()=>{const urls=urlInput.split("\n").map(u=>u.trim()).filter(u=>u.startsWith("http"));if(!urls.length)return;setPhotos(prev=>[...prev,...urls]);setUrlInput("");};
   const clearAll=()=>{if(confirm("Clear ALL Homelight data?")){Object.keys(localStorage).filter(k=>k.startsWith("hl4_")).forEach(k=>localStorage.removeItem(k));window.location.reload();}};
+  const exportData=()=>{const data={};Object.keys(localStorage).filter(k=>k.startsWith("hl4_")).forEach(k=>{try{data[k]=JSON.parse(localStorage.getItem(k));}catch{data[k]=localStorage.getItem(k);}});const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`homelight-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url);};
+  const importData=(file)=>{if(!file)return;const reader=new FileReader();reader.onload=e=>{try{const data=JSON.parse(e.target.result);if(confirm(`Import ${Object.keys(data).length} data keys? This will overwrite current data.`)){Object.entries(data).forEach(([k,v])=>{if(k.startsWith("hl4_"))localStorage.setItem(k,JSON.stringify(v));});window.location.reload();}}catch{alert("Invalid backup file.");};};reader.readAsText(file);};
   return<div style={{padding:16,overflow:"auto",flex:1}}>
     <div style={s.secT}>Settings</div>
     <label style={s.lbl}>Family Members</label>
@@ -1181,7 +1183,13 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart
         <button onClick={()=>window.open("https://www.fully-kiosk.com/","_blank")} style={{...s.btnS,width:"100%",marginTop:10,fontSize:11}}>Open Fully Kiosk website ↗</button>
       </div>}
     </div>
-    <label style={{...s.lbl,marginTop:8}}>Clear Data</label>
+    <label style={{...s.lbl,marginTop:8}}>Backup &amp; Restore</label>
+    <div style={{display:"flex",gap:6,marginBottom:12}}>
+      <button onClick={exportData} style={{flex:1,padding:"9px 0",borderRadius:8,border:`1px solid ${t.accent}`,background:t.acDim,color:t.accent,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FF}}>⬇ Export Backup</button>
+      <button onClick={()=>fileRef.current?.click()} style={{flex:1,padding:"9px 0",borderRadius:8,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FF}}>⬆ Import Backup</button>
+      <input ref={fileRef} type="file" accept=".json" style={{display:"none"}} onChange={e=>importData(e.target.files?.[0])}/>
+    </div>
+    <label style={{...s.lbl,marginTop:0}}>Clear Data</label>
     <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
       <button onClick={onClearEvents} style={{flex:1,padding:"9px 0",borderRadius:8,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF}}>Clear Events</button>
       <button onClick={onClearLists} style={{flex:1,padding:"9px 0",borderRadius:8,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF}}>Clear Lists</button>
