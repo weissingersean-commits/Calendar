@@ -563,7 +563,7 @@ function GroceryList({items,setItems}){
     </div>
   </div>;
 }
-function Meals({meals,setMeals,recipes,setRecipes,grocery,setGrocery}){
+function Meals({meals,setMeals,recipes,setRecipes,grocery,setGrocery,geminiKey,geminiModel}){
   const t=useT(),s=useS();
   const today=new Date();
   const[editDay,setEditDay]=useState(null);
@@ -573,6 +573,32 @@ function Meals({meals,setMeals,recipes,setRecipes,grocery,setGrocery}){
   const[rName,setRName]=useState("");
   const[rIngreds,setRIngreds]=useState("");
   const[pushed,setPushed]=useState(null);
+  const[aiStatus,setAiStatus]=useState({});
+
+  const aiGetIngredients=async(mealName,slot)=>{
+    if(!mealName.trim()||!(geminiKey||GEMINI_PROXY))return;
+    setAiStatus(p=>({...p,[slot]:"loading"}));
+    const prompt=`List only the ingredients needed to make "${mealName}" for a family of 4. One ingredient per line with quantity (e.g. "2 chicken breasts", "1 can diced tomatoes"). No headers, no numbers, no bullet points — just the ingredient list, one per line.`;
+    try{
+      const model=geminiModel||"gemini-2.5-flash-lite";
+      const contents=[{role:"user",parts:[{text:prompt}]}];
+      const res=GEMINI_PROXY
+        ?await fetch(GEMINI_PROXY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model,contents,generationConfig:{temperature:0.3,maxOutputTokens:300}})})
+        :await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents,generationConfig:{temperature:0.3,maxOutputTokens:300}})});
+      const data=await res.json();
+      const text=data?.candidates?.[0]?.content?.parts?.[0]?.text||"";
+      const ingredients=text.split("\n").map(l=>l.replace(/^[-•*\d.)\s]+/,"").trim()).filter(Boolean);
+      if(ingredients.length){
+        const nm=mealName.trim();
+        const exists=recipes.find(r=>r.name.toLowerCase()===nm.toLowerCase());
+        if(!exists)setRecipes(prev=>[...prev,{id:mkId(),name:nm,ingredients}]);
+        const items=ingredients.map(i=>({id:mkId(),text:i,done:false,section:"pantry"}));
+        setGrocery(prev=>[...prev,...items]);
+        setAiStatus(p=>({...p,[slot]:`✓ ${items.length} items added`}));
+        setTimeout(()=>setAiStatus(p=>({...p,[slot]:null})),3000);
+      }else{setAiStatus(p=>({...p,[slot]:null}));}
+    }catch(e){setAiStatus(p=>({...p,[slot]:null}));}
+  };
 
   const pushToGrocery=recipe=>{
     const items=recipe.ingredients.filter(i=>i.trim()).map(i=>({id:mkId(),text:i.trim(),done:false,section:"pantry"}));
@@ -613,6 +639,7 @@ function Meals({meals,setMeals,recipes,setRecipes,grocery,setGrocery}){
         {recipes.length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:10,marginTop:-6}}>
           {recipes.map(r=><button key={r.id} onClick={()=>setEditMeal({...editMeal,[ml]:r.name})} style={{padding:"2px 8px",borderRadius:10,border:`1px solid ${editMeal[ml]===r.name?t.accent:t.bdr}`,background:editMeal[ml]===r.name?t.acDim:"transparent",color:editMeal[ml]===r.name?t.accent:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF}}>{r.name}</button>)}
         </div>}
+        {(geminiKey||GEMINI_PROXY)&&editMeal[ml]&&editMeal[ml].trim()&&<button onClick={()=>aiGetIngredients(editMeal[ml],ml)} disabled={aiStatus[ml]==="loading"} style={{width:"100%",padding:"8px 0",borderRadius:8,border:`1px solid ${aiStatus[ml]&&aiStatus[ml]!=="loading"?t.success:t.accent}`,background:aiStatus[ml]&&aiStatus[ml]!=="loading"?t.success+"22":t.acDim,color:aiStatus[ml]&&aiStatus[ml]!=="loading"?t.success:t.accent,fontSize:11,fontWeight:700,cursor:aiStatus[ml]==="loading"?"default":"pointer",fontFamily:FF,marginBottom:10,transition:"all 0.2s"}}>{aiStatus[ml]==="loading"?"⏳ Getting ingredients…":aiStatus[ml]?aiStatus[ml]:`✨ Add ingredients to grocery list`}</button>}
       </div>)}
       <div style={{display:"flex",gap:8}}><button style={s.btnS} onClick={()=>setEditDay(null)}>Cancel</button><button style={s.btnP} onClick={()=>{setMeals({...meals,[editDay]:editMeal});setEditDay(null);}}>Save</button></div>
     </div></div>}
@@ -1710,7 +1737,7 @@ function Homelight(){
               {sideTab==="today"&&<TodayPanel events={visibleEvents} todos={todos} setTodos={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework} onAddToday={()=>{setSel(new Date());setModal("add");setPanel("main");}}/>}
               {sideTab==="tasks"&&<FamilyTasks items={todos} setItems={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework} setHomework={setHomework}/>}
               {sideTab==="grocery"&&<GroceryList items={grocery} setItems={setGrocery}/>}
-              {sideTab==="meals"&&<Meals meals={meals} setMeals={setMeals} recipes={recipes} setRecipes={setRecipes} grocery={grocery} setGrocery={setGrocery}/>}
+              {sideTab==="meals"&&<Meals meals={meals} setMeals={setMeals} recipes={recipes} setRecipes={setRecipes} grocery={grocery} setGrocery={setGrocery} geminiKey={geminiKey} geminiModel={geminiModel}/>}
               {sideTab==="rewards"&&<RewardsPanel members={members} rewards={rewards} setRewards={setRewards}/>}
             </div>
             <ContactsWidget contacts={contacts}/>
