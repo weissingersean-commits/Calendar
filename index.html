@@ -384,7 +384,7 @@ function WeekView({sel,setSel,events,onEv,onAdd,weekStart=0}){
   const laned=withCols.map(item=>{let lane=0;while(laneEnds[lane]!==undefined&&laneEnds[lane]>item.sc)lane++;laneEnds[lane]=item.ec;return{...item,lane};});
   const laneCount=Math.max(1,laned.reduce((m,x)=>Math.max(m,x.lane+1),0));
   return<div>
-    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><button style={s.iconBtn} onClick={()=>setSel(addD(sel,-7))}>‹</button><span style={{fontSize:17,fontWeight:600,fontFamily:FF}}>{MO[start.getMonth()]} {start.getDate()} – {MO[addD(start,6).getMonth()]} {addD(start,6).getDate()}, {start.getFullYear()}</span><button style={s.iconBtn} onClick={()=>setSel(addD(sel,7))}>›</button></div>
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><button style={s.iconBtn} onClick={()=>setSel(addD(sel,-7))}>‹</button><span style={{fontSize:17,fontWeight:600,fontFamily:FF}}>{MO[start.getMonth()]} {start.getDate()} – {MO[addD(start,6).getMonth()]} {addD(start,6).getDate()}, {start.getFullYear()}</span><button style={s.iconBtn} onClick={()=>setSel(addD(sel,7))}>›</button><button style={s.todayBtn} onClick={()=>setSel(new Date())}>Today</button></div>
     <div style={{overflowX:"auto"}}><div style={{minWidth:980}}>
       <div style={{display:"grid",gridTemplateColumns:"56px repeat(7,minmax(140px,1fr))"}}>
         <div/>{days.map((d,i)=><div key={i} style={{textAlign:"center",padding:"8px 0",fontSize:12,fontWeight:sameD(d,today)?700:500,color:sameD(d,today)?t.accent:t.sub,borderBottom:sameD(d,today)?`2px solid ${t.accent}`:`1px solid ${t.bdr}`}}>{DAYS[d.getDay()]} <span style={{fontFamily:FM,fontSize:11}}>{d.getDate()}</span></div>)}
@@ -1628,6 +1628,7 @@ function Homelight(){
         <div style={{display:"flex",alignItems:"center",gap:16}}>
           <span style={{fontSize:16,fontWeight:700,letterSpacing:3,color:t.accent,textTransform:"uppercase",fontFamily:FM}}>☀ Homelight</span>
           <div style={{display:"flex",gap:2,background:t.card,borderRadius:24,padding:3}}>{["day","week","month"].map(v=><button key={v} onClick={()=>setView(v)} style={{padding:"6px 16px",borderRadius:22,border:"none",background:view===v?t.accent:"transparent",color:view===v?t.acText:t.sub,fontSize:11,fontWeight:view===v?700:500,cursor:"pointer",textTransform:"uppercase",letterSpacing:1,fontFamily:FF,transition:"all 0.2s"}}>{v}</button>)}</div>
+          <input type="date" value={dkey(sel)} onChange={e=>{const d=new Date(e.target.value+"T12:00:00");if(!isNaN(d))setSel(d);}} style={{padding:"5px 10px",borderRadius:22,border:`1px solid ${t.bdr}`,background:t.card,color:t.sub,fontSize:11,fontFamily:FF,cursor:"pointer",colorScheme:theme==="dark"?"dark":"light"}} title="Jump to date"/>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <span style={{fontSize:14,fontWeight:400,color:t.sub,fontFamily:FM}}>{time.getHours()%12||12}:{String(time.getMinutes()).padStart(2,"0")} {time.getHours()>=12?"PM":"AM"}</span>
@@ -1673,7 +1674,8 @@ function Homelight(){
               {upcoming.length===0&&<div style={{fontSize:12,color:t.dim}}>Nothing scheduled</div>}
               <div style={{maxHeight:130,overflowY:"auto"}}>
               {upcoming.map(ev=>{const pm=members.find(m=>m.id===ev.assignedTo);const rel=relTime(ev.date,ev.hour,ev.minute);return<div key={ev.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,cursor:"pointer"}} onClick={()=>{setSel(new Date(ev.date+"T12:00:00"));setView("day");}}>
-                <div style={{width:3,borderRadius:2,background:evColor(ev,members),flexShrink:0,alignSelf:"stretch"}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{evPrefix(ev)}{ev.title}</div>{pm&&<div style={{fontSize:9,fontWeight:700,color:pm.color,marginTop:1}}>{pm.name}</div>}<div style={{fontSize:10,color:t.dim,fontFamily:FM,marginTop:1}}>{fmtT(ev.hour,ev.minute)}{rel&&<span style={{marginLeft:6,color:t.accent,fontWeight:700}}>{rel}</span>}</div>{ev.location&&<div style={{fontSize:9,color:t.dim,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📍 {ev.location}</div>}{ev.notes&&<div style={{fontSize:9,color:t.dim,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📝 {ev.notes}</div>}</div></div>;}))}
+                <div style={{width:3,borderRadius:2,background:evColor(ev,members),flexShrink:0,alignSelf:"stretch"}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{evPrefix(ev)}{ev.title}</div>{pm&&<div style={{fontSize:9,fontWeight:700,color:pm.color,marginTop:1}}>{pm.name}</div>}<div style={{fontSize:10,color:t.dim,fontFamily:FM,marginTop:1}}>{fmtT(ev.hour,ev.minute)}{rel&&<span style={{marginLeft:6,color:t.accent,fontWeight:700}}>{rel}</span>}</div>{ev.location&&<div style={{fontSize:9,color:t.dim,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📍 {ev.location}</div>}{ev.notes&&<div style={{fontSize:9,color:t.dim,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📝 {ev.notes}</div>}</div></div>;})}
+
               </div>
             </div>
             {(()=>{
