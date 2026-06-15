@@ -60,11 +60,15 @@ const CATS={
   social:{bg:"#8B5CF6",lt:a=>`rgba(139,92,246,${a})`,tx:"#C4B5FD"},
   errand:{bg:"#EF4444",lt:a=>`rgba(239,68,68,${a})`,tx:"#FCA5A5"},
   family:{bg:"#EC4899",lt:a=>`rgba(236,72,153,${a})`,tx:"#F9A8D4"},
+  school:{bg:"#06B6D4",lt:a=>`rgba(6,182,212,${a})`,tx:"#67E8F9"},
+  sports:{bg:"#F97316",lt:a=>`rgba(249,115,22,${a})`,tx:"#FED7AA"},
 };
 const FEED_COLORS=["#06B6D4","#8B5CF6","#F43F5E","#F59E0B","#10B981","#EC4899","#6366F1","#14B8A6"];
 const PALETTE=["#EF4444","#F97316","#F59E0B","#EAB308","#84CC16","#22C55E","#10B981","#14B8A6","#06B6D4","#0EA5E9","#3B82F6","#6366F1","#8B5CF6","#A855F7","#EC4899","#F43F5E","#78716C","#64748B"];
 const ThemeCtx=createContext(THEMES.dark);
 const useT=()=>useContext(ThemeCtx);
+const MembersCtx=createContext([]);
+const useM=()=>useContext(MembersCtx);
 
 const DAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAYS_F=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
@@ -217,8 +221,8 @@ function expandManualRecurrences(events){
 
 
 // ─── Shared Styles ───────────────────────────────────────────────────
-function evColor(ev){return ev.color||ev.feedColor||CATS[ev.category]?.bg||"#38BDF8";}
-function evLt(ev){const c=ev.color||ev.feedColor;if(c)return c+"22";return CATS[ev.category]?.lt?.(0.1)||"rgba(56,189,248,0.1)";}
+function evColor(ev,members=[]){if(ev.assignedTo){const m=(members||[]).find(m=>m.id===ev.assignedTo);if(m)return m.color;}return ev.color||ev.feedColor||CATS[ev.category]?.bg||"#38BDF8";}
+function evLt(ev,members=[]){if(ev.assignedTo){const m=(members||[]).find(m=>m.id===ev.assignedTo);if(m)return m.color+"22";}const c=ev.color||ev.feedColor;if(c)return c+"22";return CATS[ev.category]?.lt?.(0.1)||"rgba(56,189,248,0.1)";}
 
 function useS(){const t=useT();return useMemo(()=>({
   iconBtn:{background:"none",border:"none",color:t.accent,fontSize:22,cursor:"pointer",padding:"8px 14px",borderRadius:10,fontWeight:300,minHeight:44,minWidth:44},
@@ -278,7 +282,7 @@ function Weather({loc,setLoc,onWx}){
 
 // ═════════════════ CALENDAR VIEWS ════════════════════════════════════
 function MonthView({sel,setSel,events,setView,onEv,weekStart=0}){
-  const t=useT(),s=useS();const y=sel.getFullYear(),m=sel.getMonth(),dinm=dInM(y,m),pd=dInM(y,m-1);
+  const t=useT(),s=useS();const members=useM();const y=sel.getFullYear(),m=sel.getMonth(),dinm=dInM(y,m),pd=dInM(y,m-1);
   const fd=(new Date(y,m,1).getDay()-weekStart+7)%7;
   const today=new Date();
   const isAllDay=ev=>ev.hour===0&&(ev.minute||0)===0&&ev.duration>=24;
@@ -320,11 +324,11 @@ function MonthView({sel,setSel,events,setView,onEv,weekStart=0}){
       {weekData.map(({week,laned,laneCount},wi)=>{
         const spanH=laneCount*20;
         return<div key={wi} style={{flex:1,display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,position:"relative",minHeight:80}}>
-          {laned.map(({ev,sc,ec,lane,continuesLeft,continuesRight})=>{const lm=continuesLeft?0:2,rm=continuesRight?0:2;return<div key={ev.id} onClick={e=>{e.stopPropagation();onEv(ev);}} style={{position:"absolute",left:`calc(${sc*(100/7)}% + ${lm}px)`,width:`calc(${(ec-sc)*(100/7)}% - ${lm+rm}px)`,top:28+lane*20,height:18,background:evColor(ev),color:"#fff",borderRadius:`${continuesLeft?0:4}px ${continuesRight?0:4}px ${continuesRight?0:4}px ${continuesLeft?0:4}px`,fontSize:10,fontWeight:600,padding:`2px ${rm?6:3}px 2px ${lm?6:4}px`,cursor:"pointer",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",zIndex:2,boxSizing:"border-box"}}>{continuesLeft?"‹ ":""}{ev.title}{continuesRight?" ›":""}</div>;})}
+          {laned.map(({ev,sc,ec,lane,continuesLeft,continuesRight})=>{const lm=continuesLeft?0:2,rm=continuesRight?0:2;return<div key={ev.id} onClick={e=>{e.stopPropagation();onEv(ev);}} style={{position:"absolute",left:`calc(${sc*(100/7)}% + ${lm}px)`,width:`calc(${(ec-sc)*(100/7)}% - ${lm+rm}px)`,top:28+lane*20,height:18,background:evColor(ev,members),color:"#fff",borderRadius:`${continuesLeft?0:4}px ${continuesRight?0:4}px ${continuesRight?0:4}px ${continuesLeft?0:4}px`,fontSize:10,fontWeight:600,padding:`2px ${rm?6:3}px 2px ${lm?6:4}px`,cursor:"pointer",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",zIndex:2,boxSizing:"border-box"}}>{continuesLeft?"‹ ":""}{ev.title}{continuesRight?" ›":""}</div>;})}
           {week.map((c,ci)=>{const key=dkey(c.d),isT=sameD(c.d,today),evs=events.filter(e=>e.date===key&&!isAllDay(e));
             return<div key={ci} onClick={()=>{setSel(c.d);setView("day");}} style={{padding:3,paddingTop:26+spanH+2,borderRadius:10,cursor:"pointer",background:isT?t.acDim:c.c?t.card:"rgba(128,128,128,0.05)",border:isT?`1px solid ${t.acGlow}`:"1px solid transparent",transition:"all 0.15s",overflow:"hidden",position:"relative",display:"flex",flexDirection:"column",justifyContent:"space-between"}} onMouseEnter={e=>{if(!isT)e.currentTarget.style.background=t.cardH;}} onMouseLeave={e=>{if(!isT)e.currentTarget.style.background=c.c?t.card:"rgba(128,128,128,0.05)";}}>
               <div style={{position:"absolute",top:6,left:8,fontSize:13,fontWeight:isT?800:400,color:isT?t.accent:c.c?t.sub:t.dim}}>{c.d.getDate()}</div>
-              <div>{evs.slice(0,2).map(ev=><div key={ev.id} onClick={e=>{e.stopPropagation();onEv(ev);}} style={{background:evColor(ev),color:"#fff",padding:"1px 6px",borderRadius:4,fontSize:10,fontWeight:500,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer"}}>{ev.title}</div>)}</div>
+              <div>{evs.slice(0,2).map(ev=><div key={ev.id} onClick={e=>{e.stopPropagation();onEv(ev);}} style={{background:evColor(ev,members),color:"#fff",padding:"1px 6px",borderRadius:4,fontSize:10,fontWeight:500,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer"}}>{ev.title}</div>)}</div>
               {evs.length>2&&<div style={{fontSize:9,color:t.dim}}>+{evs.length-2}</div>}
             </div>;})}
         </div>;
@@ -333,7 +337,7 @@ function MonthView({sel,setSel,events,setView,onEv,weekStart=0}){
   </div>;
 }
 function WeekView({sel,setSel,events,onEv,onAdd,weekStart=0}){
-  const t=useT(),s=useS();const start=wkSt(sel,weekStart),days=Array.from({length:7},(_,i)=>addD(start,i)),hrs=Array.from({length:24},(_,i)=>i),today=new Date();
+  const t=useT(),s=useS();const members=useM();const start=wkSt(sel,weekStart),days=Array.from({length:7},(_,i)=>addD(start,i)),hrs=Array.from({length:24},(_,i)=>i),today=new Date();
   const rowH=60,dayGridHeight=rowH*24;
   const nowTop=(today.getHours()+today.getMinutes()/60)*rowH;
   const isAllDay=ev=>ev.hour===0&&(ev.minute||0)===0&&ev.duration>=24;
@@ -362,18 +366,18 @@ function WeekView({sel,setSel,events,onEv,onAdd,weekStart=0}){
       <div style={{display:"flex",borderBottom:`1px solid ${t.bdr}`}}>
         <div style={{width:56,flexShrink:0,fontSize:10,color:t.dim,textAlign:"right",paddingRight:8,paddingTop:6,fontFamily:FM}}>All day</div>
         <div style={{flex:1,position:"relative",height:laneCount*28+8,minHeight:36}}>
-          {laned.map(({ev,sc,ec,lane})=><div key={ev.id} onClick={()=>onEv(ev)} style={{position:"absolute",left:`calc(${sc*(100/7)}% + 2px)`,width:`calc(${(ec-sc)*(100/7)}% - 4px)`,top:lane*28+4,height:22,background:evColor(ev),color:"#fff",borderRadius:6,fontSize:11,fontWeight:600,padding:"3px 8px",cursor:"pointer",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",boxSizing:"border-box"}}>{ev.title}</div>)}
+          {laned.map(({ev,sc,ec,lane})=><div key={ev.id} onClick={()=>onEv(ev)} style={{position:"absolute",left:`calc(${sc*(100/7)}% + 2px)`,width:`calc(${(ec-sc)*(100/7)}% - 4px)`,top:lane*28+4,height:22,background:evColor(ev,members),color:"#fff",borderRadius:6,fontSize:11,fontWeight:600,padding:"3px 8px",cursor:"pointer",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",boxSizing:"border-box"}}>{ev.title}</div>)}
         </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"56px repeat(7,minmax(140px,1fr))"}}>
         <div style={{position:"relative",minHeight:dayGridHeight,borderTop:`1px solid ${t.bdr}`,borderRight:`1px solid ${t.bdr}`}}>{hrs.map(h=><div key={h} style={{height:rowH,borderBottom:`1px solid ${t.bdr}`,paddingRight:8,paddingTop:4,fontSize:10,color:t.dim,fontFamily:FM,textAlign:"right"}}>{fmtT(h)}</div>)}</div>
-        {days.map((d,di)=>{const key=dkey(d);const dayEvents=events.filter(e=>e.date===key&&!isAllDay(e));const layout=buildEventColumns(dayEvents);return<div key={di} style={{position:"relative",minHeight:dayGridHeight,borderLeft:`1px solid ${t.bdr}`,borderTop:`1px solid ${t.bdr}`,background:sameD(d,today)?"rgba(56,189,248,0.02)":"transparent"}}>{Array.from({length:24},(_,h)=><div key={h} onClick={()=>onAdd(d,h)} style={{height:rowH,borderBottom:`1px solid ${t.bdr}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=t.acDim} onMouseLeave={e=>e.currentTarget.style.background="transparent"}/>)}{dayEvents.map(ev=>{const top=(ev.hour+(ev.minute||0)/60)*rowH;const height=Math.max(36,ev.duration*rowH-4);const {col,total}=layout.get(ev.id)||{col:0,total:1};return<div key={ev.id} onClick={()=>onEv(ev)} style={{position:"absolute",top,left:`calc(${col*(100/total)}% + 4px)`,width:`calc(${100/total}% - 8px)`,height,background:evLt(ev),borderLeft:`4px solid ${evColor(ev)}`,borderRadius:10,color:t.text,padding:"8px 10px",fontSize:11,fontWeight:600,overflow:"hidden",cursor:"pointer",boxShadow:"0 4px 12px rgba(0,0,0,0.08)"}}><div style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:t.dim,marginTop:4}}>{fmtT(ev.hour,ev.minute)} – {fmtT(Math.floor(ev.hour+ev.duration),Math.round(((ev.hour+ev.duration)%1)*60))}</div></div>;})}{sameD(d,today)&&<div style={{position:"absolute",top:nowTop,left:0,right:0,height:2,background:"#EF4444",zIndex:5,pointerEvents:"none"}}><div style={{position:"absolute",left:-4,top:-4,width:10,height:10,borderRadius:"50%",background:"#EF4444"}}/></div>}</div>;})}
+        {days.map((d,di)=>{const key=dkey(d);const dayEvents=events.filter(e=>e.date===key&&!isAllDay(e));const layout=buildEventColumns(dayEvents);return<div key={di} style={{position:"relative",minHeight:dayGridHeight,borderLeft:`1px solid ${t.bdr}`,borderTop:`1px solid ${t.bdr}`,background:sameD(d,today)?"rgba(56,189,248,0.02)":"transparent"}}>{Array.from({length:24},(_,h)=><div key={h} onClick={()=>onAdd(d,h)} style={{height:rowH,borderBottom:`1px solid ${t.bdr}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=t.acDim} onMouseLeave={e=>e.currentTarget.style.background="transparent"}/>)}{dayEvents.map(ev=>{const top=(ev.hour+(ev.minute||0)/60)*rowH;const height=Math.max(36,ev.duration*rowH-4);const {col,total}=layout.get(ev.id)||{col:0,total:1};return<div key={ev.id} onClick={()=>onEv(ev)} style={{position:"absolute",top,left:`calc(${col*(100/total)}% + 4px)`,width:`calc(${100/total}% - 8px)`,height,background:evLt(ev,members),borderLeft:`4px solid ${evColor(ev,members)}`,borderRadius:10,color:t.text,padding:"8px 10px",fontSize:11,fontWeight:600,overflow:"hidden",cursor:"pointer",boxShadow:"0 4px 12px rgba(0,0,0,0.08)"}}><div style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:t.dim,marginTop:4}}>{fmtT(ev.hour,ev.minute)} – {fmtT(Math.floor(ev.hour+ev.duration),Math.round(((ev.hour+ev.duration)%1)*60))}</div></div>;})}{sameD(d,today)&&<div style={{position:"absolute",top:nowTop,left:0,right:0,height:2,background:"#EF4444",zIndex:5,pointerEvents:"none"}}><div style={{position:"absolute",left:-4,top:-4,width:10,height:10,borderRadius:"50%",background:"#EF4444"}}/></div>}</div>;})}
       </div>
     </div></div>
   </div>;
 }
 function DayView({sel,setSel,events,onEv,onAdd}){
-  const t=useT(),s=useS();const key=dkey(sel),dayEvs=events.filter(e=>e.date===key),today=new Date();
+  const t=useT(),s=useS();const members=useM();const key=dkey(sel),dayEvs=events.filter(e=>e.date===key),today=new Date();
   const isAllDay=ev=>ev.hour===0&&(ev.minute||0)===0&&ev.duration>=24;
   const allDayEvs=dayEvs.filter(isAllDay);
   const timedEvents=dayEvs.filter(e=>!isAllDay(e));
@@ -389,11 +393,11 @@ function DayView({sel,setSel,events,onEv,onAdd}){
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><button style={s.iconBtn} onClick={()=>setSel(addD(sel,-1))}>‹</button><span style={{fontSize:18,fontWeight:600,fontFamily:FF}}>{DAYS_F[sel.getDay()]}, {MO[sel.getMonth()]} {sel.getDate()}, {sel.getFullYear()}</span><button style={s.iconBtn} onClick={()=>setSel(addD(sel,1))}>›</button>{!sameD(sel,today)&&<button style={s.todayBtn} onClick={()=>setSel(new Date())}>Today</button>}</div>
     {allDayEvs.length>0&&<div style={{marginBottom:14,marginLeft:56,padding:12,borderRadius:14,background:t.card,border:`1px solid ${t.bdr}`,position:"sticky",top:0,zIndex:10}}>
       <div style={{fontSize:11,fontWeight:700,color:t.accent,textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>All-day events</div>
-      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{allDayEvs.map(ev=><div key={ev.id} onClick={()=>onEv(ev)} style={{background:evColor(ev),color:"#fff",padding:"8px 12px",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div>)}</div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{allDayEvs.map(ev=><div key={ev.id} onClick={()=>onEv(ev)} style={{background:evColor(ev,members),color:"#fff",padding:"8px 12px",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div>)}</div>
     </div>}
     <div style={{display:"grid",gridTemplateColumns:"56px 1fr",minHeight:gridHeight,position:"relative"}}>
       <div style={{display:"grid",gridTemplateRows:`repeat(24, ${rowH}px)`}}>{hrs.map(h=><div key={h} style={{height:rowH,paddingRight:8,paddingTop:4,fontSize:10,color:t.dim,fontFamily:FM,textAlign:"right",borderBottom:`1px solid ${t.bdr}`}}>{fmtT(h)}</div>)}</div>
-      <div style={{position:"relative",minHeight:gridHeight,background:t.card,borderLeft:`1px solid ${t.bdr}`}}><div ref={scrollSentinel} style={{position:"absolute",top:scrollTarget,height:1,width:"100%",pointerEvents:"none"}}/>{Array.from({length:24},(_,h)=><div key={h} onClick={()=>onAdd(h)} style={{height:rowH,borderBottom:`1px solid ${t.bdr}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=t.acDim} onMouseLeave={e=>e.currentTarget.style.background="transparent"}/>)}{timedEvents.map(ev=>{const top=(ev.hour+(ev.minute||0)/60)*rowH;const height=Math.max(38,ev.duration*rowH-4);const {col,total}=buildEventColumns(timedEvents).get(ev.id)||{col:0,total:1};return<div key={ev.id} onClick={()=>onEv(ev)} style={{position:"absolute",top,left:`calc(${col*(100/total)}% + 6px)`,width:`calc(${100/total}% - 12px)`,height,background:evColor(ev),borderRadius:10,color:"#fff",padding:"10px 12px",fontSize:12,fontWeight:600,overflow:"hidden",cursor:"pointer",boxShadow:"0 4px 14px rgba(0,0,0,0.25)"}}><div style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.75)",marginTop:4}}>{fmtT(ev.hour,ev.minute)} – {fmtT(Math.floor(ev.hour+ev.duration),Math.round(((ev.hour+ev.duration)%1)*60))}</div></div>;})}{isToday&&<div style={{position:"absolute",top:nowTop,left:0,right:0,height:2,background:"#EF4444",zIndex:5,pointerEvents:"none"}}><div style={{position:"absolute",left:-5,top:-4,width:10,height:10,borderRadius:"50%",background:"#EF4444"}}/></div>}</div>
+      <div style={{position:"relative",minHeight:gridHeight,background:t.card,borderLeft:`1px solid ${t.bdr}`}}><div ref={scrollSentinel} style={{position:"absolute",top:scrollTarget,height:1,width:"100%",pointerEvents:"none"}}/>{Array.from({length:24},(_,h)=><div key={h} onClick={()=>onAdd(h)} style={{height:rowH,borderBottom:`1px solid ${t.bdr}`,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=t.acDim} onMouseLeave={e=>e.currentTarget.style.background="transparent"}/>)}{timedEvents.map(ev=>{const top=(ev.hour+(ev.minute||0)/60)*rowH;const height=Math.max(38,ev.duration*rowH-4);const {col,total}=buildEventColumns(timedEvents).get(ev.id)||{col:0,total:1};return<div key={ev.id} onClick={()=>onEv(ev)} style={{position:"absolute",top,left:`calc(${col*(100/total)}% + 6px)`,width:`calc(${100/total}% - 12px)`,height,background:evColor(ev,members),borderRadius:10,color:"#fff",padding:"10px 12px",fontSize:12,fontWeight:600,overflow:"hidden",cursor:"pointer",boxShadow:"0 4px 14px rgba(0,0,0,0.25)"}}><div style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.75)",marginTop:4}}>{fmtT(ev.hour,ev.minute)} – {fmtT(Math.floor(ev.hour+ev.duration),Math.round(((ev.hour+ev.duration)%1)*60))}</div></div>;})}{isToday&&<div style={{position:"absolute",top:nowTop,left:0,right:0,height:2,background:"#EF4444",zIndex:5,pointerEvents:"none"}}><div style={{position:"absolute",left:-5,top:-4,width:10,height:10,borderRadius:"50%",background:"#EF4444"}}/></div>}</div>
     </div>
   </div>;
 }
@@ -401,7 +405,9 @@ function DayView({sel,setSel,events,onEv,onAdd}){
 // ═════════════════ EVENT MODAL ═══════════════════════════════════════
 function EventModal({event,sel,defaultHour=9,onClose,onSave,onDelete}){
   const t=useT(),s=useS(),isEdit=!!event;
+  const members=useM();
   const[title,setTitle]=useState(event?.title||""),[hour,setHour]=useState(String(event?.hour??defaultHour)),[minute,setMinute]=useState(String(event?.minute||0)),[category,setCat]=useState(event?.category||"personal"),[location,setLoc]=useState(event?.location||"");
+  const[assignedTo,setAssignedTo]=useState(event?.assignedTo||null);
   const[allDay,setAllDay]=useState(event?.hour===0&&(event?.minute||0)===0&&(event?.duration||0)>=24);
   const initEh=()=>{const sm=(event?.hour??defaultHour)*60+(event?.minute||0);const em=sm+Math.round((event?.duration||1)*60);return String(Math.floor(em/60)%24);};
   const initEm=()=>{const sm=(event?.hour??defaultHour)*60+(event?.minute||0);const em=sm+Math.round((event?.duration||1)*60);return String(em%60);};
@@ -449,6 +455,13 @@ function EventModal({event,sel,defaultHour=9,onClose,onSave,onDelete}){
       </div>
       <label style={s.lbl}>Category</label>
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>{Object.entries(CATS).map(([cat,col])=><button key={cat} onClick={()=>setCat(cat)} style={{padding:"6px 14px",borderRadius:20,border:category===cat?`2px solid ${col.bg}`:`1px solid ${t.bdr}`,background:category===cat?col.lt(0.15):"transparent",color:category===cat?col.tx:t.sub,fontSize:12,fontWeight:500,cursor:"pointer",textTransform:"capitalize",fontFamily:FF}}>{cat}</button>)}</div>
+      {members.length>0&&<div style={{marginBottom:16}}>
+        <label style={s.lbl}>Who</label>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          <button onClick={()=>setAssignedTo(null)} style={{padding:"5px 12px",borderRadius:20,border:`1px solid ${!assignedTo?t.accent:t.bdr}`,background:!assignedTo?t.acDim:"transparent",color:!assignedTo?t.accent:t.sub,fontSize:11,fontWeight:!assignedTo?700:400,cursor:"pointer",fontFamily:FF}}>Everyone</button>
+          {members.map(m=><button key={m.id} onClick={()=>setAssignedTo(assignedTo===m.id?null:m.id)} style={{padding:"5px 12px",borderRadius:20,border:`1px solid ${assignedTo===m.id?m.color:t.bdr}`,background:assignedTo===m.id?m.color+"22":"transparent",color:assignedTo===m.id?m.color:t.sub,fontSize:11,fontWeight:assignedTo===m.id?700:400,cursor:"pointer",fontFamily:FF,display:"flex",alignItems:"center",gap:5}}><div style={{width:8,height:8,borderRadius:"50%",background:m.color,flexShrink:0}}/>{m.name}</button>)}
+        </div>
+      </div>}
       <label style={s.lbl}>Color Override</label>
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:20,alignItems:"center"}}>
         {PALETTE.map(c=><div key={c} onClick={()=>setColor(color===c?"":c)} style={{width:22,height:22,borderRadius:"50%",background:c,cursor:"pointer",flexShrink:0,border:color===c?`3px solid ${t.text}`:"3px solid transparent",boxSizing:"border-box",transform:color===c?"scale(1.18)":"scale(1)",transition:"transform 0.12s"}}/>)}
@@ -457,7 +470,7 @@ function EventModal({event,sel,defaultHour=9,onClose,onSave,onDelete}){
       <div style={{display:"flex",gap:8}}>
         {isEdit&&<button style={s.btnD} onClick={()=>{onDelete(event.id);onClose();}}>Delete</button>}
         <button style={s.btnS} onClick={onClose}>Cancel</button>
-        <button style={s.btnP} onClick={()=>{if(!title.trim())return;let dur;if(allDay){const sp=(event?.date||dkey(sel)).split('-'),ep=endDate.split('-');const days=Math.max(1,Math.round((new Date(+ep[0],+ep[1]-1,+ep[2])-new Date(+sp[0],+sp[1]-1,+sp[2]))/86400000)+1);dur=days*24;}else{dur=calcDur();}onSave({id:event?.id||mkId(),title:title.trim(),date:dkey(sel),hour:allDay?0:parseInt(hour),minute:allDay?0:parseInt(minute),duration:dur,category,location,synced:false,color:color||null,repeat:repeat!=="none"?{freq:repeat,until:repeatUntil||null}:null});onClose();}}>
+        <button style={s.btnP} onClick={()=>{if(!title.trim())return;let dur;if(allDay){const sp=(event?.date||dkey(sel)).split('-'),ep=endDate.split('-');const days=Math.max(1,Math.round((new Date(+ep[0],+ep[1]-1,+ep[2])-new Date(+sp[0],+sp[1]-1,+sp[2]))/86400000)+1);dur=days*24;}else{dur=calcDur();}onSave({id:event?.id||mkId(),title:title.trim(),date:dkey(sel),hour:allDay?0:parseInt(hour),minute:allDay?0:parseInt(minute),duration:dur,category,location,synced:false,color:color||null,assignedTo:assignedTo||null,repeat:repeat!=="none"?{freq:repeat,until:repeatUntil||null}:null});onClose();}}>
           {isEdit?"Save":"Add Event"}</button>
       </div>
       {isEdit&&<button onClick={exportICS} style={{marginTop:10,background:"none",border:"none",color:t.accent,fontSize:12,cursor:"pointer",padding:0,fontFamily:FF}}>📥 Download .ics (add to phone)</button>}
@@ -578,43 +591,84 @@ function FamilyTasks({items,setItems,members,rewards,setRewards}){
   const[val,setVal]=useState("");
   const[assignTo,setAssignTo]=useState("");
   const[taskStars,setTaskStars]=useState(1);
+  const[taskRepeat,setTaskRepeat]=useState("none");
   const[confettiData,setConfettiData]=useState(null);
+  const today=dkey(new Date());
+  const wkStart=dkey(wkSt(new Date()));
+
+  const isDone=it=>{
+    if(!it.repeat||it.repeat==="none")return!!it.done;
+    if(it.repeat==="daily")return it.lastCompleted===today;
+    if(it.repeat==="weekly")return it.lastCompleted>=wkStart;
+    return!!it.done;
+  };
 
   const complete=it=>{
-    const wasUndone=!it.done;
-    setItems(items.map(i=>i.id===it.id?{...i,done:!i.done}:i));
-    if(wasUndone&&it.assignedTo&&(it.stars||0)>0){
-      setRewards(r=>({...r,stars:{...(r.stars||{}),[it.assignedTo]:((r.stars||{})[it.assignedTo]||0)+(it.stars||0)}}));
-      const m=members.find(m=>m.id===it.assignedTo);
-      setConfettiData({name:m?.name||"",stars:it.stars||0});
+    const wasDone=isDone(it);
+    if(wasDone&&it.repeat&&it.repeat!=="none"){
+      setItems(items.map(i=>i.id===it.id?{...i,lastCompleted:null}:i));
+      return;
+    }
+    if(!it.repeat||it.repeat==="none"){
+      setItems(items.map(i=>i.id===it.id?{...i,done:!i.done}:i));
+      if(!wasDone&&it.assignedTo&&(it.stars||0)>0){
+        setRewards(r=>({...r,stars:{...(r.stars||{}),[it.assignedTo]:((r.stars||{})[it.assignedTo]||0)+(it.stars||0)}}));
+        const m=members.find(m=>m.id===it.assignedTo);
+        setConfettiData({name:m?.name||"",stars:it.stars||0});
+      }
+    } else {
+      setItems(items.map(i=>i.id===it.id?{...i,lastCompleted:today}:i));
+      if(it.assignedTo&&(it.stars||0)>0){
+        setRewards(r=>({...r,stars:{...(r.stars||{}),[it.assignedTo]:((r.stars||{})[it.assignedTo]||0)+(it.stars||0)}}));
+        const m=members.find(m=>m.id===it.assignedTo);
+        setConfettiData({name:m?.name||"",stars:it.stars||0});
+      }
     }
   };
 
   const addTask=()=>{
     if(!val.trim())return;
-    setItems([...items,{id:mkId(),text:val.trim(),done:false,assignedTo:assignTo||null,stars:taskStars}]);
+    setItems([...items,{id:mkId(),text:val.trim(),done:false,assignedTo:assignTo||null,stars:taskStars,repeat:taskRepeat==="none"?null:taskRepeat,lastCompleted:null}]);
     setVal("");
   };
 
-  const done=items.filter(i=>i.done).length;
+  const oneTime=items.filter(it=>!it.repeat||it.repeat==="none");
+  const recurring=items.filter(it=>it.repeat&&it.repeat!=="none");
+  const doneCount=items.filter(it=>isDone(it)).length;
+
+  const TaskRow=({it})=>{
+    const m=members.find(m=>m.id===it.assignedTo);
+    const done=isDone(it);
+    const isRecurring=it.repeat&&it.repeat!=="none";
+    return<div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",cursor:"pointer"}} onClick={()=>complete(it)}>
+      <div style={{width:18,height:18,borderRadius:isRecurring?9:5,border:`2px solid ${done?m?.color||"#3B82F6":t.dim}`,background:done?m?.color||"#3B82F6":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,color:"#fff",transition:"all 0.15s"}}>{done&&"✓"}</div>
+      <span style={{fontSize:13,color:done?t.dim:t.text,textDecoration:done?"line-through":"none",flex:1}}>{it.text}</span>
+      {isRecurring&&<span style={{fontSize:9,color:t.dim,flexShrink:0,opacity:0.6}}>{it.repeat==="daily"?"↻daily":"↻weekly"}</span>}
+      {m&&<div style={{display:"flex",alignItems:"center",gap:3,padding:"2px 6px",borderRadius:10,background:m.color+"22",border:`1px solid ${m.color}44`,flexShrink:0}}><div style={{width:7,height:7,borderRadius:"50%",background:m.color}}/><span style={{fontSize:9,color:m.color,fontWeight:700}}>{m.name}</span></div>}
+      {(it.stars||0)>0&&<span style={{fontSize:10,flexShrink:0,opacity:done?0.35:1}}>{"⭐".repeat(Math.min(it.stars,5))}</span>}
+      <button onClick={e=>{e.stopPropagation();setItems(items.filter(i=>i.id!==it.id));}} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:14,opacity:.4,padding:"0 4px"}}>×</button>
+    </div>;
+  };
+
   return<div style={{position:"relative"}}>
     {confettiData&&<Confetti data={confettiData} onDone={()=>setConfettiData(null)}/>}
-    {items.length>0&&<div style={{fontSize:10,color:t.dim,marginBottom:8}}>{done}/{items.length} completed</div>}
-    {items.map(it=>{
-      const m=members.find(m=>m.id===it.assignedTo);
-      return<div key={it.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",cursor:"pointer"}} onClick={()=>complete(it)}>
-        <div style={{width:18,height:18,borderRadius:5,border:`2px solid ${it.done?"#3B82F6":t.dim}`,background:it.done?"#3B82F6":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,color:"#fff",transition:"all 0.15s"}}>{it.done&&"✓"}</div>
-        <span style={{fontSize:13,color:it.done?t.dim:t.text,textDecoration:it.done?"line-through":"none",flex:1}}>{it.text}</span>
-        {m&&<div style={{display:"flex",alignItems:"center",gap:3,padding:"2px 6px",borderRadius:10,background:m.color+"22",border:`1px solid ${m.color}44`,flexShrink:0}}><div style={{width:7,height:7,borderRadius:"50%",background:m.color}}/><span style={{fontSize:9,color:m.color,fontWeight:700}}>{m.name}</span></div>}
-        {(it.stars||0)>0&&<span style={{fontSize:10,flexShrink:0,opacity:it.done?0.35:1}}>{"⭐".repeat(Math.min(it.stars,5))}</span>}
-        <button onClick={e=>{e.stopPropagation();setItems(items.filter(i=>i.id!==it.id));}} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:14,opacity:.4,padding:"0 4px"}}>×</button>
-      </div>;
-    })}
+    {items.length>0&&<div style={{fontSize:10,color:t.dim,marginBottom:8}}>{doneCount}/{items.length} completed</div>}
+    {recurring.length>0&&<div style={{marginBottom:4}}>
+      <div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.dim,marginBottom:4}}>Recurring</div>
+      {recurring.map(it=><TaskRow key={it.id} it={it}/>)}
+    </div>}
+    {oneTime.length>0&&<div>
+      {recurring.length>0&&<div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.dim,marginBottom:4,marginTop:8}}>One-time</div>}
+      {oneTime.map(it=><TaskRow key={it.id} it={it}/>)}
+    </div>}
     <div style={{borderTop:`1px solid ${t.bdr}`,marginTop:8,paddingTop:8}}>
-      <input style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:12,fontFamily:FF,outline:"none",marginBottom:members.length?6:0,boxSizing:"border-box"}} placeholder="Add chore or task..." value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask();}}/>
+      <input style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:12,fontFamily:FF,outline:"none",marginBottom:6,boxSizing:"border-box"}} placeholder="Add chore or task..." value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask();}}/>
       {members.length>0&&<div style={{display:"flex",gap:4,marginBottom:6,flexWrap:"wrap"}}>
         {members.map(m=><button key={m.id} onClick={()=>setAssignTo(assignTo===m.id?"":m.id)} style={{padding:"3px 8px",borderRadius:10,border:`1px solid ${assignTo===m.id?m.color:t.bdr}`,background:assignTo===m.id?m.color+"22":"transparent",color:assignTo===m.id?m.color:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:assignTo===m.id?700:400,display:"flex",alignItems:"center",gap:3}}><div style={{width:7,height:7,borderRadius:"50%",background:m.color}}/>{m.name}</button>)}
       </div>}
+      <div style={{display:"flex",gap:4,marginBottom:6}}>
+        {["none","daily","weekly"].map(r=><button key={r} onClick={()=>setTaskRepeat(r)} style={{flex:1,padding:"4px 0",borderRadius:8,border:`1px solid ${taskRepeat===r?t.accent:t.bdr}`,background:taskRepeat===r?t.acDim:"transparent",color:taskRepeat===r?t.accent:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:taskRepeat===r?700:400}}>{r==="none"?"Once":r==="daily"?"↻ Daily":"↻ Weekly"}</button>)}
+      </div>
       <div style={{display:"flex",gap:6,alignItems:"center"}}>
         <div style={{display:"flex",gap:1}}>
           {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setTaskStars(n)} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,opacity:taskStars>=n?1:0.22,padding:"0 1px",lineHeight:1}}>⭐</button>)}
@@ -623,7 +677,7 @@ function FamilyTasks({items,setItems,members,rewards,setRewards}){
       </div>
     </div>
     {members.length===0&&<div style={{fontSize:10,color:t.dim,marginTop:8,lineHeight:1.7}}>Add family members in Settings ⚙ to assign tasks and track stars.</div>}
-    {done>0&&<button onClick={()=>setItems(items.filter(i=>!i.done))} style={{marginTop:8,background:"none",border:"none",color:t.dim,fontSize:11,cursor:"pointer",padding:0}}>Clear completed</button>}
+    {oneTime.filter(i=>isDone(i)).length>0&&<button onClick={()=>setItems(items.filter(i=>i.repeat||!i.done))} style={{marginTop:8,background:"none",border:"none",color:t.dim,fontSize:11,cursor:"pointer",padding:0}}>Clear completed</button>}
   </div>;
 }
 
@@ -733,6 +787,7 @@ function Screensaver({onTap,wx,loc,customPhotos,ssCollections,ssSleepEnabled,ssS
   const[idx,setIdx]=useState(0),[time,setTime]=useState(new Date()),[fade,setFade]=useState(true);
   const[tempWake,setTempWake]=useState(false);
   const tempWakeRef=useRef(null);
+  const members=useM();
   const sleeping=ssSleepEnabled&&inSleepWindow(time,ssSleepTime,ssWakeTime)&&!tempWake;
   const handleTap=()=>{
     if(ssSleepEnabled&&inSleepWindow(time,ssSleepTime,ssWakeTime)&&!tempWake){
@@ -781,7 +836,7 @@ function Screensaver({onTap,wx,loc,customPhotos,ssCollections,ssSleepEnabled,ssS
       <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.3)",textTransform:"uppercase",letterSpacing:2,marginBottom:16}}>Coming Up</div>
       {upcoming.map(ev=><div key={ev.id} style={{marginBottom:14,display:"flex",alignItems:"center",gap:12,justifyContent:"flex-end"}}>
         <div style={{textAlign:"right"}}><div style={{fontSize:16,fontWeight:600,color:"rgba(255,255,255,0.85)",marginBottom:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:300}}>{ev.title}</div><div style={{fontSize:12,color:"rgba(255,255,255,0.38)"}}>{ev.date===todayKey?"Today":ev.date} · {fmtT(ev.hour,ev.minute||0)}</div></div>
-        <div style={{width:3,height:38,borderRadius:2,background:evColor(ev),flexShrink:0}}/>
+        <div style={{width:3,height:38,borderRadius:2,background:evColor(ev,members),flexShrink:0}}/>
       </div>)}
     </div>}
     <div style={{position:"absolute",bottom:22,right:32,fontSize:11,color:"rgba(255,255,255,0.2)",fontFamily:FF}}>Tap anywhere to return</div>
@@ -1055,7 +1110,7 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart
 
 // ═════════════════ SEARCH ════════════════════════════════════════════
 function SearchModal({events,onSelect,onClose}){
-  const t=useT(),s=useS(),inputRef=useRef(null);
+  const t=useT(),s=useS(),inputRef=useRef(null);const members=useM();
   const[q,setQ]=useState("");
   useEffect(()=>{inputRef.current?.focus();},[]);
   const results=useMemo(()=>{
@@ -1078,7 +1133,7 @@ function SearchModal({events,onSelect,onClose}){
       {results.map(ev=>{
         const d=new Date(ev.date+"T12:00:00");
         return<div key={ev.id} onClick={()=>onSelect(ev)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 8px",borderRadius:10,cursor:"pointer",marginBottom:2,transition:"background 0.1s"}} onMouseEnter={e=>e.currentTarget.style.background=t.cardH} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-          <div style={{width:4,height:38,borderRadius:2,background:evColor(ev),flexShrink:0}}/>
+          <div style={{width:4,height:38,borderRadius:2,background:evColor(ev,members),flexShrink:0}}/>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:13,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div>
             <div style={{fontSize:11,color:t.dim,fontFamily:FM,marginTop:2}}>
@@ -1177,7 +1232,7 @@ function Homelight(){
 
   if(showSS)return<Screensaver onTap={()=>{setShowSS(false);lastAct.current=Date.now();sleepDismissedUntil.current=Date.now()+5*60*1000;}} wx={wx} loc={loc} customPhotos={photos} ssCollections={ssCollections} ssSleepEnabled={ssSleepEnabled} ssSleepTime={ssSleepTime} ssWakeTime={ssWakeTime} events={visibleEvents}/>;
 
-  return<ThemeCtx.Provider value={t}>
+  return<MembersCtx.Provider value={members}><ThemeCtx.Provider value={t}>
     <div style={{fontFamily:FF,height:"100vh",width:"100vw",background:t.grad,color:t.text,display:"flex",flexDirection:"column",overflow:"hidden",userSelect:"none"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 20px",borderBottom:`1px solid ${t.bdr}`,background:t.headerBg,backdropFilter:"blur(24px)",flexShrink:0,zIndex:10}}>
         <div style={{display:"flex",alignItems:"center",gap:16}}>
@@ -1213,7 +1268,7 @@ function Homelight(){
               {upcoming.length===0&&<div style={{fontSize:12,color:t.dim}}>Nothing scheduled</div>}
               <div style={{maxHeight:130,overflowY:"auto"}}>
               {upcoming.map(ev=><div key={ev.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,cursor:"pointer"}} onClick={()=>{setSel(new Date(ev.date+"T12:00:00"));setView("day");}}>
-                <div style={{width:3,height:30,borderRadius:2,background:evColor(ev),flexShrink:0}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:t.dim,fontFamily:FM}}>{ev.date} · {fmtT(ev.hour,ev.minute)}</div></div></div>)}
+                <div style={{width:3,height:30,borderRadius:2,background:evColor(ev,members),flexShrink:0}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</div><div style={{fontSize:10,color:t.dim,fontFamily:FM}}>{ev.date} · {fmtT(ev.hour,ev.minute)}</div></div></div>)}
               </div>
             </div>
             <div style={{display:"flex",borderBottom:`1px solid ${t.bdr}`}}>{["tasks","grocery","meals","rewards"].map(tab=><button key={tab} onClick={()=>setSideTab(tab)} style={{flex:1,padding:"10px 0",textAlign:"center",fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:1.5,color:sideTab===tab?t.accent:t.dim,background:"transparent",border:"none",cursor:"pointer",fontFamily:FF,borderBottom:`2px solid ${sideTab===tab?t.accent:"transparent"}`}}>{tab==="rewards"?"⭐":tab}</button>)}</div>
@@ -1235,7 +1290,7 @@ function Homelight(){
       {showSearch&&<SearchModal events={visibleEvents} onSelect={ev=>{setSel(new Date(ev.date+"T12:00:00"));setView("day");setShowSearch(false);}} onClose={()=>setShowSearch(false)}/>}
       {showVoice&&<VoiceAssistant events={visibleEvents} todos={todos} geminiKey={geminiKey} geminiModel={geminiModel} onClose={()=>setShowVoice(false)} onSaveEvent={saveEvent} onAddTodo={onAddTodo} onAddGrocery={onAddGrocery}/>}
     </div>
-  </ThemeCtx.Provider>;
+  </ThemeCtx.Provider></MembersCtx.Provider>;
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<Homelight/>);
