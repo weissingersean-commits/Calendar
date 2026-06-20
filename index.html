@@ -233,7 +233,7 @@ function expandManualRecurrences(events){
 function evColor(ev,members=[]){if(ev._isTask&&ev._done)return"#6B7280";if(ev.assignedTo){const m=(members||[]).find(m=>m.id===ev.assignedTo);if(m)return m.color;}if(ev._isTask&&(members||[]).length===1)return members[0].color;return ev.color||ev.feedColor||CATS[ev.category]?.bg||"#38BDF8";}
 function evLt(ev,members=[]){if(ev.assignedTo){const m=(members||[]).find(m=>m.id===ev.assignedTo);if(m)return m.color+"22";}const c=ev.color||ev.feedColor;if(c)return c+"22";return CATS[ev.category]?.lt?.(0.1)||"rgba(56,189,248,0.1)";}
 const isBday=ev=>/birthday/i.test(ev.title);
-const evPrefix=ev=>ev._isTask?(ev._done?"✓ ":"○ "):ev.reaction?ev.reaction+" ":isBday(ev)?"🎂 ":"";
+const evPrefix=ev=>ev._isTask?(ev._done?"✓ ":(ev._emoji?ev._emoji+" ":"○ ")):ev.reaction?ev.reaction+" ":isBday(ev)?"🎂 ":"";
 const isAllDay=ev=>ev.hour===0&&(ev.minute||0)===0&&(ev.duration||0)>=24;
 function relTime(dateStr,hour,minute){const now=new Date();const ev=new Date(dateStr+"T"+String(hour??0).padStart(2,"0")+":"+String(minute||0).padStart(2,"0")+":00");const diff=ev-now;if(diff<=0)return null;const h=diff/3600000;const d=Math.floor(diff/86400000);if(h<1)return"< 1 hr";if(h<2)return"1 hr";if(h<24)return`${Math.floor(h)} hrs`;if(d===1)return"Tomorrow";if(d<7)return`${d} days`;return null;}
 function playDing(){try{const a=new(window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;o.type="sine";g.gain.setValueAtTime(0.25,a.currentTime);g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.55);o.start();o.stop(a.currentTime+0.55);}catch(e){}}
@@ -717,6 +717,7 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
   const[taskRepeat,setTaskRepeat]=useState("none");
   const[taskDue,setTaskDue]=useState("");
   const[taskDayOfWeek,setTaskDayOfWeek]=useState(0);
+  const[taskEmoji,setTaskEmoji]=useState("");
   const[confettiData,setConfettiData]=useState(null);
   const today=dkey(new Date());
   const wkStart=dkey(wkSt(new Date()));
@@ -747,7 +748,9 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
         setConfettiData({name:m?.name||it.text||"",stars:it.stars||0});
       }
     } else {
-      setItems(items.map(i=>i.id===it.id?{...i,lastCompleted:today}:i));
+      const yesterday=dkey(addD(new Date(),-1));const prevWkS=dkey(wkSt(addD(new Date(),-7)));
+      const newStreak=it.repeat==="daily"?(it.lastCompleted===yesterday?(it.streak||0)+1:1):(it.lastCompleted&&it.lastCompleted>=prevWkS&&it.lastCompleted<wkStart?(it.streak||0)+1:1);
+      setItems(items.map(i=>i.id===it.id?{...i,lastCompleted:today,streak:newStreak}:i));
       playDing();
       const m=members.find(m=>m.id===it.assignedTo);
       if(it.assignedTo&&(it.stars||0)>0){
@@ -759,8 +762,8 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
 
   const addTask=()=>{
     if(!val.trim())return;
-    setItems([...items,{id:mkId(),text:val.trim(),done:false,assignedTo:assignTo||null,stars:taskStars,repeat:taskRepeat==="none"?null:taskRepeat,lastCompleted:null,dueDate:taskRepeat==="none"&&taskDue?taskDue:null,dayOfWeek:taskRepeat==="weekly"?taskDayOfWeek:null}]);
-    setVal("");setTaskDue("");
+    setItems([...items,{id:mkId(),text:val.trim(),done:false,assignedTo:assignTo||null,stars:taskStars,repeat:taskRepeat==="none"?null:taskRepeat,lastCompleted:null,dueDate:taskRepeat==="none"&&taskDue?taskDue:null,dayOfWeek:taskRepeat==="weekly"?taskDayOfWeek:null,emoji:taskEmoji||null,streak:0}]);
+    setVal("");setTaskDue("");setTaskEmoji("");
   };
 
   const oneTime=items.filter(it=>!it.repeat||it.repeat==="none");
@@ -774,12 +777,15 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
     const overdue=!done&&it.dueDate&&it.dueDate<today;
     const dueToday=!done&&it.dueDate===today;
     return<div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",cursor:"pointer"}} onClick={()=>complete(it)}>
-      <div style={{width:18,height:18,borderRadius:isRecurring?9:5,border:`2px solid ${done?m?.color||"#3B82F6":overdue?"#EF4444":dueToday?"#F59E0B":t.dim}`,background:done?m?.color||"#3B82F6":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,color:"#fff",transition:"all 0.15s"}}>{done&&"✓"}</div>
+      {it.emoji
+        ?<span style={{fontSize:22,flexShrink:0,opacity:done?0.35:1,transition:"opacity 0.15s",lineHeight:1}}>{it.emoji}</span>
+        :<div style={{width:18,height:18,borderRadius:isRecurring?9:5,border:`2px solid ${done?m?.color||"#3B82F6":overdue?"#EF4444":dueToday?"#F59E0B":t.dim}`,background:done?m?.color||"#3B82F6":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,color:"#fff",transition:"all 0.15s"}}>{done&&"✓"}</div>}
       <div style={{flex:1,minWidth:0}}>
         <div style={{fontSize:13,color:done?t.dim:overdue?"#EF4444":t.text,textDecoration:done?"line-through":"none",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{it.text}</div>
         {it.dueDate&&!done&&<div style={{fontSize:9,color:overdue?"#EF4444":dueToday?"#F59E0B":t.dim,fontWeight:overdue||dueToday?700:400}}>{overdue?"Overdue":dueToday?"Due today":"Due "+it.dueDate}</div>}
       </div>
       {isRecurring&&<span style={{fontSize:9,color:t.dim,flexShrink:0,opacity:0.6}}>{it.repeat==="daily"?"↻daily":it.dayOfWeek!=null?"↻"+["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][it.dayOfWeek]:"↻weekly"}</span>}
+      {(it.streak||0)>1&&<span style={{fontSize:10,color:"#F97316",flexShrink:0,fontWeight:700,whiteSpace:"nowrap"}}>🔥{it.streak}</span>}
       {m&&<div style={{display:"flex",alignItems:"center",gap:3,padding:"2px 6px",borderRadius:10,background:m.color+"22",border:`1px solid ${m.color}44`,flexShrink:0}}><div style={{width:7,height:7,borderRadius:"50%",background:m.color}}/><span style={{fontSize:9,color:m.color,fontWeight:700}}>{m.name}</span></div>}
       {(it.stars||0)>0&&<span style={{fontSize:10,flexShrink:0,opacity:done?0.35:1}}>{"⭐".repeat(Math.min(it.stars,5))}</span>}
       <button onClick={e=>{e.stopPropagation();setItems(items.filter(i=>i.id!==it.id));}} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:14,opacity:.4,padding:"0 4px"}}>×</button>
@@ -801,6 +807,9 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
           {["Clean room","Make bed","Dishes","Take out trash","Vacuum","Laundry","Feed pet","Homework","Set table","Wipe counters"].map(s=><button key={s} onClick={()=>setVal(s)} style={{padding:"2px 8px",borderRadius:12,border:`1px solid ${val===s?t.accent:t.bdr}`,background:val===s?t.acDim:"transparent",color:val===s?t.accent:t.dim,fontSize:9,cursor:"pointer",fontFamily:FF,fontWeight:val===s?700:400,whiteSpace:"nowrap"}}>{s}</button>)}
         </div>
         <input style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:12,fontFamily:FF,outline:"none",marginBottom:6,boxSizing:"border-box"}} placeholder="Add chore or task..." value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask();}}/>
+        <div style={{display:"flex",gap:3,flexWrap:"wrap",marginBottom:6}}>
+          {["🍽️","🛏️","🧹","🗑️","🧺","🧽","🪣","🐶","🐱","🌿","📚","🎒","👕","🪥","🍳","🚿","💊","🚗","🛒","🪴"].map(e=><button key={e} onClick={()=>setTaskEmoji(taskEmoji===e?"":e)} style={{fontSize:17,padding:"2px 4px",borderRadius:7,border:`1px solid ${taskEmoji===e?t.accent:t.bdr}`,background:taskEmoji===e?t.acDim:"transparent",cursor:"pointer",lineHeight:1,transition:"all 0.1s"}}>{e}</button>)}
+        </div>
         {members.length>0&&<div style={{display:"flex",gap:4,marginBottom:6,flexWrap:"wrap"}}>{members.map(m=><button key={m.id} onClick={()=>setAssignTo(assignTo===m.id?"":m.id)} style={{padding:"3px 8px",borderRadius:10,border:`1px solid ${assignTo===m.id?m.color:t.bdr}`,background:assignTo===m.id?m.color+"22":"transparent",color:assignTo===m.id?m.color:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:assignTo===m.id?700:400,display:"flex",alignItems:"center",gap:3}}><div style={{width:7,height:7,borderRadius:"50%",background:m.color}}/>{m.name}</button>)}</div>}
         <div style={{display:"flex",gap:4,marginBottom:6}}>{["none","daily","weekly"].map(r=><button key={r} onClick={()=>setTaskRepeat(r)} style={{flex:1,padding:"4px 0",borderRadius:8,border:`1px solid ${taskRepeat===r?t.accent:t.bdr}`,background:taskRepeat===r?t.acDim:"transparent",color:taskRepeat===r?t.accent:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:taskRepeat===r?700:400}}>{r==="none"?"Once":r==="daily"?"↻ Daily":"↻ Weekly"}</button>)}</div>
         {taskRepeat==="weekly"&&<div style={{display:"flex",gap:3,marginBottom:6}}><span style={{fontSize:9,color:t.dim,alignSelf:"center",marginRight:2}}>Due:</span>{["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d,i)=><button key={i} onClick={()=>setTaskDayOfWeek(i)} style={{flex:1,padding:"3px 0",borderRadius:6,border:`1px solid ${taskDayOfWeek===i?t.accent:t.bdr}`,background:taskDayOfWeek===i?t.accent:"transparent",color:taskDayOfWeek===i?t.acText:t.sub,fontSize:9,cursor:"pointer",fontFamily:FF,fontWeight:taskDayOfWeek===i?700:400}}>{d}</button>)}</div>}
@@ -920,17 +929,18 @@ function RewardsPanel({members,rewards,setRewards}){
         {isAward&&<div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
           {[1,2,3,5,10].map(n=><button key={n} onClick={e=>{e.currentTarget.disabled=true;setRewards(r=>({...r,stars:{...(r.stars||{}),[m.id]:((r.stars||{})[m.id]||0)+n}}));playDing();setAwardTarget(null);}} style={{flex:1,padding:"6px 0",borderRadius:8,border:`1px solid ${m.color}`,background:m.color+"22",color:m.color,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+{n}⭐</button>)}
         </div>}
-        {prizes.map(prize=>{const pct=Math.min(100,(stars/prize.cost)*100);return<div key={prize.id} style={{marginTop:8,padding:"6px 8px",borderRadius:8,background:t.bg,border:`1px solid ${t.bdr}`}}>
-          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-            <span style={{flex:1,fontSize:11,color:t.text,fontWeight:500}}>{prize.name}</span>
-            <span style={{fontSize:10,color:"#FCD34D",whiteSpace:"nowrap"}}>{prize.cost}⭐</span>
-            {stars>=prize.cost&&<button onClick={()=>confirmRedeem(m.id,prize)} style={{padding:"2px 9px",borderRadius:7,border:`1px solid ${redeemTarget===`${m.id}~${prize.id}`?"#EF4444":m.color}`,background:redeemTarget===`${m.id}~${prize.id}`?"#EF4444":m.color,color:"#fff",fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:FF,whiteSpace:"nowrap",transition:"all 0.2s"}}>{redeemTarget===`${m.id}~${prize.id}`?"Confirm? ✓":"Redeem!"}</button>}
-            {stars<prize.cost&&<button disabled style={{padding:"2px 9px",borderRadius:7,border:`1px solid ${t.bdr}`,background:"transparent",color:t.dim,fontSize:9,fontWeight:700,cursor:"default",fontFamily:FF,whiteSpace:"nowrap"}}>🔒 Locked</button>}
+        {prizes.map(prize=>{const pct=Math.min(100,(stars/prize.cost)*100);const unlocked=stars>=prize.cost;return<div key={prize.id} style={{marginTop:10,padding:"10px 12px",borderRadius:14,background:unlocked?m.color+"18":t.bg,border:`1.5px solid ${unlocked?m.color:t.bdr}`,transition:"all 0.3s"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
+            <span style={{fontSize:20}}>{unlocked?"🎁":"🎯"}</span>
+            <span style={{flex:1,fontSize:13,color:t.text,fontWeight:700}}>{prize.name}</span>
+            <span style={{fontSize:11,color:"#FCD34D",fontWeight:700,whiteSpace:"nowrap"}}>{stars}/{prize.cost}⭐</span>
+            {unlocked&&<button onClick={()=>confirmRedeem(m.id,prize)} style={{padding:"4px 12px",borderRadius:9,border:`1.5px solid ${redeemTarget===`${m.id}~${prize.id}`?"#EF4444":m.color}`,background:redeemTarget===`${m.id}~${prize.id}`?"#EF4444":m.color,color:"#fff",fontSize:10,fontWeight:800,cursor:"pointer",fontFamily:FF,whiteSpace:"nowrap",transition:"all 0.2s"}}>{redeemTarget===`${m.id}~${prize.id}`?"Confirm? ✓":"🎉 Claim!"}</button>}
           </div>
-          <div style={{height:4,borderRadius:4,background:t.bdr,overflow:"hidden"}}>
-            <div style={{height:"100%",width:`${pct}%`,background:stars>=prize.cost?"#FCD34D":m.color,borderRadius:4,transition:"width 0.4s ease"}}/>
+          <div style={{height:10,borderRadius:8,background:t.bdr,overflow:"hidden",position:"relative"}}>
+            <div style={{height:"100%",width:`${pct}%`,background:unlocked?"linear-gradient(90deg,#FCD34D,#F97316)":m.color,borderRadius:8,transition:"width 0.6s ease",boxShadow:unlocked?"0 0 8px #FCD34D55":"none"}}/>
           </div>
-          {stars<prize.cost&&<div style={{fontSize:9,color:t.dim,marginTop:2}}>{stars}/{prize.cost} stars · {prize.cost-stars} to go</div>}
+          {!unlocked&&<div style={{fontSize:10,color:t.dim,marginTop:3,fontWeight:500}}>🔒 {prize.cost-stars} more stars to unlock</div>}
+          {unlocked&&<div style={{fontSize:10,color:m.color,marginTop:3,fontWeight:700}}>🌟 Ready to claim!</div>}
         </div>;})}
       </div>;
     })}
@@ -1612,6 +1622,83 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,o
   </div>;
 }
 
+// ═════════════════ KID VIEW ══════════════════════════════════════════
+function KidView({member,todos,setTodos,rewards,setRewards,onClose}){
+  const t=useT();
+  const today=dkey(new Date());
+  const wkStart=dkey(wkSt(new Date()));
+  const myTasks=todos.filter(todo=>{
+    if(todo.assignedTo!==member.id)return false;
+    if(!todo.repeat||todo.repeat==="none")return!todo.done&&(!todo.dueDate||todo.dueDate===today);
+    return true;
+  });
+  const isDoneK=it=>{
+    if(!it.repeat||it.repeat==="none")return!!it.done;
+    if(it.repeat==="daily")return it.lastCompleted===today;
+    if(it.repeat==="weekly")return!!(it.lastCompleted&&it.lastCompleted>=wkStart);
+    return false;
+  };
+  const stars=(rewards.stars||{})[member.id]||0;
+  const doneCount=myTasks.filter(isDoneK).length;
+  const allDone=myTasks.length>0&&doneCount===myTasks.length;
+  const[confetti,setConfetti]=useState(null);
+  const tap=it=>{
+    if(isDoneK(it))return;
+    const prev1=dkey(addD(new Date(),-1));const prevWkS=dkey(wkSt(addD(new Date(),-7)));
+    if(!it.repeat||it.repeat==="none"){
+      setTodos(prev=>prev.map(x=>x.id===it.id?{...x,done:true}:x));
+    }else{
+      const ns=it.repeat==="daily"?(it.lastCompleted===prev1?(it.streak||0)+1:1):(it.lastCompleted&&it.lastCompleted>=prevWkS&&it.lastCompleted<wkStart?(it.streak||0)+1:1);
+      setTodos(prev=>prev.map(x=>x.id===it.id?{...x,lastCompleted:today,streak:ns}:x));
+    }
+    playDing();
+    if(it.assignedTo&&(it.stars||0)>0){
+      setRewards(r=>({...r,stars:{...(r.stars||{}),[it.assignedTo]:((r.stars||{})[it.assignedTo]||0)+(it.stars||0)}}));
+    }
+    setConfetti({name:member.name,stars:it.stars||0});
+  };
+  return<div style={{position:"fixed",inset:0,zIndex:200,background:member.color,display:"flex",flexDirection:"column",overflow:"hidden",fontFamily:FF}}>
+    {confetti&&<Confetti data={confetti} onDone={()=>setConfetti(null)}/>}
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 20px",background:"rgba(0,0,0,0.18)",flexShrink:0}}>
+      <div style={{display:"flex",alignItems:"center",gap:14}}>
+        <div style={{width:52,height:52,borderRadius:"50%",background:"rgba(255,255,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:900,color:"#fff",border:"3px solid rgba(255,255,255,0.4)"}}>{member.name[0].toUpperCase()}</div>
+        <div>
+          <div style={{fontSize:22,fontWeight:900,color:"#fff",lineHeight:1.1}}>{member.name}'s Chores</div>
+          <div style={{fontSize:13,color:"rgba(255,255,255,0.8)",marginTop:2}}>⭐ {stars} stars · {doneCount}/{myTasks.length} done</div>
+        </div>
+      </div>
+      <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"2px solid rgba(255,255,255,0.4)",color:"#fff",fontSize:13,fontWeight:700,borderRadius:14,padding:"9px 20px",cursor:"pointer",fontFamily:FF}}>✕ Exit</button>
+    </div>
+    {myTasks.length>0&&<div style={{height:6,background:"rgba(0,0,0,0.2)",flexShrink:0}}>
+      <div style={{height:"100%",width:`${myTasks.length?(doneCount/myTasks.length)*100:0}%`,background:"rgba(255,255,255,0.6)",transition:"width 0.5s ease",borderRadius:"0 4px 4px 0"}}/>
+    </div>}
+    <div style={{flex:1,overflowY:"auto",padding:"16px 14px 40px"}}>
+      {myTasks.length===0&&<div style={{textAlign:"center",padding:60,color:"rgba(255,255,255,0.85)",fontSize:24,fontWeight:700}}>No chores today! 🎉<div style={{fontSize:16,marginTop:8,opacity:0.7}}>Enjoy your free time!</div></div>}
+      {myTasks.map(it=>{
+        const done=isDoneK(it);
+        return<div key={it.id} onClick={()=>tap(it)} style={{background:done?"rgba(0,0,0,0.18)":"rgba(255,255,255,0.93)",borderRadius:22,padding:"16px 20px",marginBottom:14,display:"flex",alignItems:"center",gap:18,cursor:done?"default":"pointer",opacity:done?0.7:1,transform:done?"scale(0.97)":"scale(1)",transition:"all 0.2s",boxShadow:done?"none":"0 8px 28px rgba(0,0,0,0.22)"}}>
+          <div style={{fontSize:56,lineHeight:1,flexShrink:0}}>{it.emoji||"📋"}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:21,fontWeight:800,color:done?"rgba(255,255,255,0.65)":"#1a1a1a",textDecoration:done?"line-through":"none",lineHeight:1.2}}>{it.text}</div>
+            <div style={{display:"flex",gap:8,marginTop:5,flexWrap:"wrap",alignItems:"center"}}>
+              {(it.stars||0)>0&&<span style={{fontSize:15,opacity:done?0.5:1}}>{"⭐".repeat(Math.min(it.stars,5))}</span>}
+              {(it.streak||0)>1&&!done&&<span style={{fontSize:12,color:"#F97316",fontWeight:800,background:"rgba(249,115,22,0.15)",borderRadius:8,padding:"2px 7px"}}>🔥 {it.streak} day streak!</span>}
+              {it.repeat==="daily"&&<span style={{fontSize:11,color:done?"rgba(255,255,255,0.5)":"rgba(0,0,0,0.4)",fontWeight:600}}>↻ Daily</span>}
+              {it.repeat==="weekly"&&<span style={{fontSize:11,color:done?"rgba(255,255,255,0.5)":"rgba(0,0,0,0.4)",fontWeight:600}}>↻ Weekly</span>}
+            </div>
+          </div>
+          <div style={{width:56,height:56,borderRadius:"50%",background:done?"rgba(255,255,255,0.3)":"transparent",border:`3px solid ${done?"transparent":"rgba(255,255,255,0.5)"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30,color:"#fff",flexShrink:0,transition:"all 0.2s",fontWeight:900}}>{done?"✓":""}</div>
+        </div>;
+      })}
+      {allDone&&<div style={{textAlign:"center",padding:"20px 16px 8px",color:"#fff"}}>
+        <div style={{fontSize:56,marginBottom:10}}>🎉</div>
+        <div style={{fontSize:26,fontWeight:900,marginBottom:6}}>All done, {member.name}!</div>
+        <div style={{fontSize:17,opacity:0.85}}>Amazing work! You earned ⭐ {stars} total stars!</div>
+      </div>}
+    </div>
+  </div>;
+}
+
 // ═════════════════ MAIN APP ═════════════════════════════════════════
 function Homelight(){
   const[theme,setTheme]=useP("theme","dark");const t=THEMES[theme]||THEMES.dark;
@@ -1637,6 +1724,7 @@ function Homelight(){
   const[geminiModel,setGeminiModel]=useP("geminiModel","gemini-2.5-flash-lite");
   const[members,setMembers]=useP("members",[]);
   const[memberFilter,setMemberFilter]=useState(null);
+  const[kidView,setKidView]=useState(null);
   const[announcement,setAnnouncement]=useP("announcement","");
   const[editingAnnouncement,setEditingAnnouncement]=useState(false);
   const[announcementDraft,setAnnouncementDraft]=useState("");
@@ -1693,12 +1781,12 @@ function Homelight(){
   const deleteEvent=useCallback(id=>setEvents(prev=>prev.filter(e=>e.id!==id)),[setEvents]);
   const onAddTodo=useCallback(text=>setTodos(prev=>[...prev,{id:mkId(),text,done:false}]),[setTodos]);
   const onAddGrocery=useCallback(text=>setGrocery(prev=>[...prev,{id:mkId(),text,done:false}]),[setGrocery]);
-  const onEv=useCallback(ev=>{if(ev._taskId){setTodos(prev=>prev.map(t=>{if(t.id!==ev._taskId)return t;if(t.repeat==="daily"){const wasDone=t.lastCompleted===ev.date;return{...t,lastCompleted:wasDone?null:ev.date};}if(t.repeat==="weekly"){const wkS=dkey(wkSt(new Date(ev.date+"T12:00:00")));const wasDone=t.lastCompleted&&t.lastCompleted>=wkS;return{...t,lastCompleted:wasDone?null:ev.date};}return t;}));playDing();return;}if(ev._masterId){setRecurChoice(ev);return;}setSel(new Date(ev.date+"T12:00:00"));setModal(ev);},[setSel,setTodos]);
+  const onEv=useCallback(ev=>{if(ev._taskId){setTodos(prev=>prev.map(t=>{if(t.id!==ev._taskId)return t;if(t.repeat==="daily"){const wasDone=t.lastCompleted===ev.date;if(wasDone)return{...t,lastCompleted:null};const prev1=dkey(addD(new Date(ev.date+"T12:00:00"),-1));const ns=t.lastCompleted===prev1?(t.streak||0)+1:1;return{...t,lastCompleted:ev.date,streak:ns};}if(t.repeat==="weekly"){const wkS=dkey(wkSt(new Date(ev.date+"T12:00:00")));const wasDone=t.lastCompleted&&t.lastCompleted>=wkS;if(wasDone)return{...t,lastCompleted:null};const pwkS=dkey(wkSt(addD(new Date(ev.date+"T12:00:00"),-7)));const ns=t.lastCompleted&&t.lastCompleted>=pwkS&&t.lastCompleted<wkS?(t.streak||0)+1:1;return{...t,lastCompleted:ev.date,streak:ns};}return t;}));playDing();return;}if(ev._masterId){setRecurChoice(ev);return;}setSel(new Date(ev.date+"T12:00:00"));setModal(ev);},[setSel,setTodos]);
   const onAddEvent=useCallback((date,hour)=>{setSel(new Date(date+"T12:00:00"));setAddHour(hour);setModal("add");},[setSel]);
   const upcoming=useMemo(()=>events.filter(e=>e.date>=dkey(new Date())).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date)).slice(0,3),[events]);
   const visibleEvents=useMemo(()=>{const dis=new Set(feeds.filter(f=>!f.enabled).map(f=>f.id));const filtered=events.filter(e=>!e.feedId||!dis.has(e.feedId));return expandManualRecurrences(filtered);},[events,feeds]);
   const displayEvents=useMemo(()=>memberFilter?visibleEvents.filter(ev=>ev.assignedTo===memberFilter):visibleEvents,[visibleEvents,memberFilter]);
-  const taskEvents=useMemo(()=>{const result=[];const now=new Date();for(let offset=-14;offset<=90;offset++){const d=new Date(now);d.setDate(d.getDate()+offset);const dateKey=dkey(d);const dow=d.getDay();const wkS=dkey(wkSt(d));todos.forEach(todo=>{if(!todo.repeat||todo.repeat==="none")return;let show=false;if(todo.repeat==="daily")show=true;else if(todo.repeat==="weekly"){const td=todo.dayOfWeek!=null?todo.dayOfWeek:0;show=dow===td;}if(!show)return;const done=todo.repeat==="daily"?todo.lastCompleted===dateKey:!!(todo.lastCompleted&&todo.lastCompleted>=wkS);result.push({id:"task~"+todo.id+"~"+dateKey,title:todo.text,date:dateKey,hour:0,minute:0,duration:24,category:"task",assignedTo:todo.assignedTo||null,feedColor:"#10B981",_taskId:todo.id,_isTask:true,_done:done});});}return result;},[todos]);
+  const taskEvents=useMemo(()=>{const result=[];const now=new Date();for(let offset=-14;offset<=90;offset++){const d=new Date(now);d.setDate(d.getDate()+offset);const dateKey=dkey(d);const dow=d.getDay();const wkS=dkey(wkSt(d));todos.forEach(todo=>{if(!todo.repeat||todo.repeat==="none")return;let show=false;if(todo.repeat==="daily")show=true;else if(todo.repeat==="weekly"){const td=todo.dayOfWeek!=null?todo.dayOfWeek:0;show=dow===td;}if(!show)return;const done=todo.repeat==="daily"?todo.lastCompleted===dateKey:!!(todo.lastCompleted&&todo.lastCompleted>=wkS);result.push({id:"task~"+todo.id+"~"+dateKey,title:todo.text,date:dateKey,hour:0,minute:0,duration:24,category:"task",assignedTo:todo.assignedTo||null,feedColor:"#10B981",_taskId:todo.id,_isTask:true,_done:done,_emoji:todo.emoji||null,_streak:todo.streak||0});});}return result;},[todos]);
   const displayEventsWithTasks=useMemo(()=>[...displayEvents,...taskEvents],[displayEvents,taskEvents]);
 
   useEffect(()=>{
@@ -1725,6 +1813,7 @@ function Homelight(){
 
   return<MembersCtx.Provider value={members}><ThemeCtx.Provider value={t}>
     <div style={{fontFamily:FF,height:"100vh",width:"100vw",background:t.grad,color:t.text,display:"flex",flexDirection:"column",overflow:"hidden",userSelect:"none"}}>
+      {kidView&&members.find(m=>m.id===kidView)&&<KidView member={members.find(m=>m.id===kidView)} todos={todos} setTodos={setTodos} rewards={rewards} setRewards={setRewards} onClose={()=>setKidView(null)}/>}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 20px",borderBottom:`1px solid ${t.bdr}`,background:t.headerBg,backdropFilter:"blur(24px)",flexShrink:0,zIndex:10}}>
         <div style={{display:"flex",alignItems:"center",gap:16}}>
           <span style={{fontSize:16,fontWeight:700,letterSpacing:3,color:t.accent,textTransform:"uppercase",fontFamily:FM}}>☀ Homelight</span>
@@ -1748,7 +1837,7 @@ function Homelight(){
       </div>
       {members.length>0&&<div style={{display:"flex",alignItems:"center",gap:6,padding:"5px 20px",borderBottom:`1px solid ${t.bdr}`,background:t.headerBg,flexShrink:0,flexWrap:"wrap"}}>
         <button onClick={()=>setMemberFilter(null)} style={{padding:"3px 12px",borderRadius:16,border:`1px solid ${memberFilter===null?t.accent:t.bdr}`,background:memberFilter===null?t.accent:"transparent",color:memberFilter===null?t.acText:t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF,transition:"all 0.15s"}}>All</button>
-        {members.map(m=><button key={m.id} onClick={()=>setMemberFilter(memberFilter===m.id?null:m.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"3px 10px 3px 6px",borderRadius:16,border:`1px solid ${m.color}`,background:memberFilter===m.id?m.color:"transparent",color:memberFilter===m.id?"#fff":t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF,transition:"all 0.15s"}}><div style={{width:16,height:16,borderRadius:"50%",background:m.color,color:"#fff",fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{m.name[0]}</div>{m.name}</button>)}
+        {members.map(m=><React.Fragment key={m.id}><button onClick={()=>setMemberFilter(memberFilter===m.id?null:m.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"3px 10px 3px 6px",borderRadius:16,border:`1px solid ${m.color}`,background:memberFilter===m.id?m.color:"transparent",color:memberFilter===m.id?"#fff":t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF,transition:"all 0.15s"}}><div style={{width:16,height:16,borderRadius:"50%",background:m.color,color:"#fff",fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{m.name[0]}</div>{m.name}</button><button onClick={e=>{e.stopPropagation();setKidView(m.id);}} title={`${m.name}'s chore view`} style={{padding:"3px 8px",borderRadius:14,border:`1px solid ${m.color}55`,background:m.color+"22",color:m.color,fontSize:14,cursor:"pointer",lineHeight:1,transition:"all 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background=m.color+"44"} onMouseLeave={e=>e.currentTarget.style.background=m.color+"22"}>🎮</button></React.Fragment>)}
       </div>}
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
         <div style={{flex:1,overflow:"auto",padding:"6px 4px"}} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
