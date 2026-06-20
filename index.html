@@ -1539,8 +1539,9 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,o
     playDing();
     if(it.stars&&it.assignedTo)setRewards(r=>{const st={...r.stars};st[it.assignedTo]=(st[it.assignedTo]||0)+it.stars;return{...r,stars:st};});
   }
-  const assignedChores=members.map(m=>({m,chores:dueChores.filter(c=>c.assignedTo===m.id)})).filter(({chores})=>chores.length>0);
-  const unassigned=dueChores.filter(c=>!c.assignedTo);
+  const effOwner=c=>c.assignedTo||(members.length===1?members[0].id:null);
+  const assignedChores=members.map(m=>({m,chores:dueChores.filter(c=>effOwner(c)===m.id)})).filter(({chores})=>chores.length>0);
+  const unassigned=dueChores.filter(c=>!effOwner(c));
   return<div>
     {countdowns.length>0&&<div style={{marginBottom:14}}>
       <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.accent,marginBottom:8}}>⏳ Coming Up</div>
