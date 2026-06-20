@@ -230,10 +230,10 @@ function expandManualRecurrences(events){
 
 
 // ─── Shared Styles ───────────────────────────────────────────────────
-function evColor(ev,members=[]){if(ev.assignedTo){const m=(members||[]).find(m=>m.id===ev.assignedTo);if(m)return m.color;}return ev.color||ev.feedColor||CATS[ev.category]?.bg||"#38BDF8";}
+function evColor(ev,members=[]){if(ev._isTask&&ev._done)return"#6B7280";if(ev.assignedTo){const m=(members||[]).find(m=>m.id===ev.assignedTo);if(m)return ev._isTask&&ev._done?"#6B7280":m.color;}return ev.color||ev.feedColor||CATS[ev.category]?.bg||"#38BDF8";}
 function evLt(ev,members=[]){if(ev.assignedTo){const m=(members||[]).find(m=>m.id===ev.assignedTo);if(m)return m.color+"22";}const c=ev.color||ev.feedColor;if(c)return c+"22";return CATS[ev.category]?.lt?.(0.1)||"rgba(56,189,248,0.1)";}
 const isBday=ev=>/birthday/i.test(ev.title);
-const evPrefix=ev=>ev.reaction?ev.reaction+" ":isBday(ev)?"🎂 ":"";
+const evPrefix=ev=>ev._isTask?(ev._done?"✓ ":"○ "):ev.reaction?ev.reaction+" ":isBday(ev)?"🎂 ":"";
 const isAllDay=ev=>ev.hour===0&&(ev.minute||0)===0&&(ev.duration||0)>=24;
 function relTime(dateStr,hour,minute){const now=new Date();const ev=new Date(dateStr+"T"+String(hour??0).padStart(2,"0")+":"+String(minute||0).padStart(2,"0")+":00");const diff=ev-now;if(diff<=0)return null;const h=diff/3600000;const d=Math.floor(diff/86400000);if(h<1)return"< 1 hr";if(h<2)return"1 hr";if(h<24)return`${Math.floor(h)} hrs`;if(d===1)return"Tomorrow";if(d<7)return`${d} days`;return null;}
 function playDing(){try{const a=new(window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;o.type="sine";g.gain.setValueAtTime(0.25,a.currentTime);g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.55);o.start();o.stop(a.currentTime+0.55);}catch(e){}}
@@ -716,6 +716,7 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
   const[taskStars,setTaskStars]=useState(1);
   const[taskRepeat,setTaskRepeat]=useState("none");
   const[taskDue,setTaskDue]=useState("");
+  const[taskDayOfWeek,setTaskDayOfWeek]=useState(0);
   const[confettiData,setConfettiData]=useState(null);
   const today=dkey(new Date());
   const wkStart=dkey(wkSt(new Date()));
@@ -758,7 +759,7 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
 
   const addTask=()=>{
     if(!val.trim())return;
-    setItems([...items,{id:mkId(),text:val.trim(),done:false,assignedTo:assignTo||null,stars:taskStars,repeat:taskRepeat==="none"?null:taskRepeat,lastCompleted:null,dueDate:taskRepeat==="none"&&taskDue?taskDue:null}]);
+    setItems([...items,{id:mkId(),text:val.trim(),done:false,assignedTo:assignTo||null,stars:taskStars,repeat:taskRepeat==="none"?null:taskRepeat,lastCompleted:null,dueDate:taskRepeat==="none"&&taskDue?taskDue:null,dayOfWeek:taskRepeat==="weekly"?taskDayOfWeek:null}]);
     setVal("");setTaskDue("");
   };
 
@@ -778,7 +779,7 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
         <div style={{fontSize:13,color:done?t.dim:overdue?"#EF4444":t.text,textDecoration:done?"line-through":"none",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{it.text}</div>
         {it.dueDate&&!done&&<div style={{fontSize:9,color:overdue?"#EF4444":dueToday?"#F59E0B":t.dim,fontWeight:overdue||dueToday?700:400}}>{overdue?"Overdue":dueToday?"Due today":"Due "+it.dueDate}</div>}
       </div>
-      {isRecurring&&<span style={{fontSize:9,color:t.dim,flexShrink:0,opacity:0.6}}>{it.repeat==="daily"?"↻daily":"↻weekly"}</span>}
+      {isRecurring&&<span style={{fontSize:9,color:t.dim,flexShrink:0,opacity:0.6}}>{it.repeat==="daily"?"↻daily":it.dayOfWeek!=null?"↻"+["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][it.dayOfWeek]:"↻weekly"}</span>}
       {m&&<div style={{display:"flex",alignItems:"center",gap:3,padding:"2px 6px",borderRadius:10,background:m.color+"22",border:`1px solid ${m.color}44`,flexShrink:0}}><div style={{width:7,height:7,borderRadius:"50%",background:m.color}}/><span style={{fontSize:9,color:m.color,fontWeight:700}}>{m.name}</span></div>}
       {(it.stars||0)>0&&<span style={{fontSize:10,flexShrink:0,opacity:done?0.35:1}}>{"⭐".repeat(Math.min(it.stars,5))}</span>}
       <button onClick={e=>{e.stopPropagation();setItems(items.filter(i=>i.id!==it.id));}} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:14,opacity:.4,padding:"0 4px"}}>×</button>
@@ -802,6 +803,7 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
         <input style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:12,fontFamily:FF,outline:"none",marginBottom:6,boxSizing:"border-box"}} placeholder="Add chore or task..." value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask();}}/>
         {members.length>0&&<div style={{display:"flex",gap:4,marginBottom:6,flexWrap:"wrap"}}>{members.map(m=><button key={m.id} onClick={()=>setAssignTo(assignTo===m.id?"":m.id)} style={{padding:"3px 8px",borderRadius:10,border:`1px solid ${assignTo===m.id?m.color:t.bdr}`,background:assignTo===m.id?m.color+"22":"transparent",color:assignTo===m.id?m.color:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:assignTo===m.id?700:400,display:"flex",alignItems:"center",gap:3}}><div style={{width:7,height:7,borderRadius:"50%",background:m.color}}/>{m.name}</button>)}</div>}
         <div style={{display:"flex",gap:4,marginBottom:6}}>{["none","daily","weekly"].map(r=><button key={r} onClick={()=>setTaskRepeat(r)} style={{flex:1,padding:"4px 0",borderRadius:8,border:`1px solid ${taskRepeat===r?t.accent:t.bdr}`,background:taskRepeat===r?t.acDim:"transparent",color:taskRepeat===r?t.accent:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:taskRepeat===r?700:400}}>{r==="none"?"Once":r==="daily"?"↻ Daily":"↻ Weekly"}</button>)}</div>
+        {taskRepeat==="weekly"&&<div style={{display:"flex",gap:3,marginBottom:6}}><span style={{fontSize:9,color:t.dim,alignSelf:"center",marginRight:2}}>Due:</span>{["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d,i)=><button key={i} onClick={()=>setTaskDayOfWeek(i)} style={{flex:1,padding:"3px 0",borderRadius:6,border:`1px solid ${taskDayOfWeek===i?t.accent:t.bdr}`,background:taskDayOfWeek===i?t.accent:"transparent",color:taskDayOfWeek===i?t.acText:t.sub,fontSize:9,cursor:"pointer",fontFamily:FF,fontWeight:taskDayOfWeek===i?700:400}}>{d}</button>)}</div>}
         {taskRepeat==="none"&&<input type="date" style={{width:"100%",padding:"6px 10px",borderRadius:8,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:11,fontFamily:FF,outline:"none",marginBottom:6,boxSizing:"border-box"}} value={taskDue} onChange={e=>setTaskDue(e.target.value)} min={today}/>}
         <div style={{display:"flex",gap:6,alignItems:"center"}}><div style={{display:"flex",gap:1}}>{[1,2,3,4,5].map(n=><button key={n} onClick={()=>setTaskStars(n)} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,opacity:taskStars>=n?1:0.22,padding:"0 1px",lineHeight:1}}>⭐</button>)}</div><button onClick={addTask} style={{flex:1,padding:"7px 0",borderRadius:10,border:`1px solid ${val.trim()?t.accent:t.bdr}`,background:val.trim()?t.accent:"transparent",color:val.trim()?t.acText:t.dim,fontSize:12,fontWeight:700,cursor:val.trim()?"pointer":"default",fontFamily:FF}}>+ Add</button></div>
       </div>
@@ -1691,11 +1693,13 @@ function Homelight(){
   const deleteEvent=useCallback(id=>setEvents(prev=>prev.filter(e=>e.id!==id)),[setEvents]);
   const onAddTodo=useCallback(text=>setTodos(prev=>[...prev,{id:mkId(),text,done:false}]),[setTodos]);
   const onAddGrocery=useCallback(text=>setGrocery(prev=>[...prev,{id:mkId(),text,done:false}]),[setGrocery]);
-  const onEv=useCallback(ev=>{if(ev._masterId){setRecurChoice(ev);return;}setSel(new Date(ev.date+"T12:00:00"));setModal(ev);},[setSel]);
+  const onEv=useCallback(ev=>{if(ev._taskId){setTodos(prev=>prev.map(t=>{if(t.id!==ev._taskId)return t;if(t.repeat==="daily"){const wasDone=t.lastCompleted===ev.date;return{...t,lastCompleted:wasDone?null:ev.date};}if(t.repeat==="weekly"){const wkS=dkey(wkSt(new Date(ev.date+"T12:00:00")));const wasDone=t.lastCompleted&&t.lastCompleted>=wkS;return{...t,lastCompleted:wasDone?null:ev.date};}return t;}));playDing();return;}if(ev._masterId){setRecurChoice(ev);return;}setSel(new Date(ev.date+"T12:00:00"));setModal(ev);},[setSel,setTodos]);
   const onAddEvent=useCallback((date,hour)=>{setSel(new Date(date+"T12:00:00"));setAddHour(hour);setModal("add");},[setSel]);
-  const upcoming=useMemo(()=>events.filter(e=>e.date>=dkey(new Date())).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date)).slice(0,6),[events]);
+  const upcoming=useMemo(()=>events.filter(e=>e.date>=dkey(new Date())).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date)).slice(0,3),[events]);
   const visibleEvents=useMemo(()=>{const dis=new Set(feeds.filter(f=>!f.enabled).map(f=>f.id));const filtered=events.filter(e=>!e.feedId||!dis.has(e.feedId));return expandManualRecurrences(filtered);},[events,feeds]);
   const displayEvents=useMemo(()=>memberFilter?visibleEvents.filter(ev=>ev.assignedTo===memberFilter):visibleEvents,[visibleEvents,memberFilter]);
+  const taskEvents=useMemo(()=>{const result=[];const now=new Date();for(let offset=-14;offset<=90;offset++){const d=new Date(now);d.setDate(d.getDate()+offset);const dateKey=dkey(d);const dow=d.getDay();const wkS=dkey(wkSt(d));todos.forEach(todo=>{if(!todo.repeat||todo.repeat==="none")return;let show=false;if(todo.repeat==="daily")show=true;else if(todo.repeat==="weekly"){const td=todo.dayOfWeek!=null?todo.dayOfWeek:0;show=dow===td;}if(!show)return;const done=todo.repeat==="daily"?todo.lastCompleted===dateKey:!!(todo.lastCompleted&&todo.lastCompleted>=wkS);result.push({id:"task~"+todo.id+"~"+dateKey,title:todo.text,date:dateKey,hour:0,minute:0,duration:24,category:"task",assignedTo:todo.assignedTo||null,feedColor:"#10B981",_taskId:todo.id,_isTask:true,_done:done});});}return result;},[todos]);
+  const displayEventsWithTasks=useMemo(()=>[...displayEvents,...taskEvents],[displayEvents,taskEvents]);
 
   useEffect(()=>{
     if(!reminderMins||typeof Notification==="undefined"||Notification.permission!=="granted")return;
@@ -1748,9 +1752,9 @@ function Homelight(){
       </div>}
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
         <div style={{flex:1,overflow:"auto",padding:"6px 4px"}} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-          {view==="month"&&<MonthView sel={sel} setSel={setSel} events={displayEvents} setView={setView} onEv={onEv} weekStart={weekStart}/>}
-          {view==="week"&&<WeekView sel={sel} setSel={setSel} events={displayEvents} onEv={onEv} onAdd={(d,h)=>onAddEvent(dkey(d),h)} weekStart={weekStart} forecast={forecast}/>}
-          {view==="day"&&<DayView sel={sel} setSel={setSel} events={displayEvents} onEv={onEv} onAdd={h=>onAddEvent(dkey(sel),h)}/>}
+          {view==="month"&&<MonthView sel={sel} setSel={setSel} events={displayEventsWithTasks} setView={setView} onEv={onEv} weekStart={weekStart}/>}
+          {view==="week"&&<WeekView sel={sel} setSel={setSel} events={displayEventsWithTasks} onEv={onEv} onAdd={(d,h)=>onAddEvent(dkey(d),h)} weekStart={weekStart} forecast={forecast}/>}
+          {view==="day"&&<DayView sel={sel} setSel={setSel} events={displayEventsWithTasks} onEv={onEv} onAdd={h=>onAddEvent(dkey(sel),h)}/>}
         </div>
         <div data-no-print="" style={{width:sidebarOpen?"clamp(300px, 27vw, 400px)":0,borderLeft:sidebarOpen?`1px solid ${t.bdr}`:"none",background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0,transition:"width 0.25s ease"}}>
           {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
@@ -1770,7 +1774,7 @@ function Homelight(){
             <div style={{padding:"8px 10px",borderBottom:`1px solid ${t.bdr}`,flexShrink:0}}>
               <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:2,color:t.accent,marginBottom:10}}>Coming Up</div>
               {upcoming.length===0&&<div style={{fontSize:12,color:t.dim}}>Nothing scheduled</div>}
-              <div style={{maxHeight:200,overflowY:"auto"}}>
+              <div style={{maxHeight:110,overflowY:"auto"}}>
               {upcoming.map(ev=>{const pm=members.find(m=>m.id===ev.assignedTo);const rel=relTime(ev.date,ev.hour,ev.minute);return<div key={ev.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,cursor:"pointer"}} onClick={()=>{setSel(new Date(ev.date+"T12:00:00"));setView("day");}}>
                 <div style={{width:3,borderRadius:2,background:evColor(ev,members),flexShrink:0,alignSelf:"stretch"}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{evPrefix(ev)}{ev.title}</div>{pm&&<div style={{fontSize:9,fontWeight:700,color:pm.color,marginTop:1}}>{pm.name}</div>}<div style={{fontSize:10,color:t.dim,fontFamily:FM,marginTop:1}}>{fmtT(ev.hour,ev.minute)}{rel&&<span style={{marginLeft:6,color:t.accent,fontWeight:700}}>{rel}</span>}</div>{ev.location&&<div style={{fontSize:9,color:t.dim,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📍 {ev.location}</div>}{ev.notes&&<div style={{fontSize:9,color:t.dim,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📝 {ev.notes}</div>}</div></div>;})}
 
