@@ -230,7 +230,7 @@ function expandManualRecurrences(events){
 
 
 // ─── Shared Styles ───────────────────────────────────────────────────
-function evColor(ev,members=[]){if(ev._isTask&&ev._done)return"#6B7280";if(ev.assignedTo){const m=(members||[]).find(m=>m.id===ev.assignedTo);if(m)return ev._isTask&&ev._done?"#6B7280":m.color;}return ev.color||ev.feedColor||CATS[ev.category]?.bg||"#38BDF8";}
+function evColor(ev,members=[]){if(ev._isTask&&ev._done)return"#6B7280";if(ev.assignedTo){const m=(members||[]).find(m=>m.id===ev.assignedTo);if(m)return m.color;}if(ev._isTask&&(members||[]).length===1)return members[0].color;return ev.color||ev.feedColor||CATS[ev.category]?.bg||"#38BDF8";}
 function evLt(ev,members=[]){if(ev.assignedTo){const m=(members||[]).find(m=>m.id===ev.assignedTo);if(m)return m.color+"22";}const c=ev.color||ev.feedColor;if(c)return c+"22";return CATS[ev.category]?.lt?.(0.1)||"rgba(56,189,248,0.1)";}
 const isBday=ev=>/birthday/i.test(ev.title);
 const evPrefix=ev=>ev._isTask?(ev._done?"✓ ":"○ "):ev.reaction?ev.reaction+" ":isBday(ev)?"🎂 ":"";
