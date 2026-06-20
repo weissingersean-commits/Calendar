@@ -94,6 +94,14 @@ const dInM=(y,m)=>new Date(y,m+1,0).getDate();
 const fmtT=(h,m)=>`${h%12||12}:${String(m||0).padStart(2,"0")} ${h>=12?"PM":"AM"}`;
 const mkId=()=>`${Date.now()}-${Math.random().toString(36).slice(2,9)}`;
 const getEventMinutes=ev=>{const minutes=(ev.minute||0);return ev.hour*60+minutes;};
+// Streak calc: vacationMode=true prevents resets; graceDays=1 means 1 missed day is forgiven automatically
+const calcStreak=(it,completionDate,vacationMode,graceDays=1)=>{
+  if(vacationMode)return(it.streak||0)+1;
+  const d=new Date(completionDate+"T12:00:00");
+  if(it.repeat==="daily"){const cutoff=dkey(addD(d,-(1+graceDays)));return(it.lastCompleted&&it.lastCompleted>=cutoff)?(it.streak||0)+1:1;}
+  if(it.repeat==="weekly"){const wkS=dkey(wkSt(d));const cWk=dkey(wkSt(addD(d,-7*(1+graceDays))));return(it.lastCompleted&&it.lastCompleted>=cWk&&it.lastCompleted<wkS)?(it.streak||0)+1:1;}
+  return 1;
+};
 const buildEventColumns=events=>{
   const evs=events.map(ev=>({
     ...ev,
@@ -708,7 +716,7 @@ function Confetti({data,onDone}){
 }
 
 // ─── Family Tasks ─────────────────────────────────────────────────────
-function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHomework}){
+function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHomework,vacationMode}){
   const t=useT();
   const[subTab,setSubTab]=useState("tasks");
   const[val,setVal]=useState("");
@@ -748,8 +756,7 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
         setConfettiData({name:m?.name||it.text||"",stars:it.stars||0});
       }
     } else {
-      const yesterday=dkey(addD(new Date(),-1));const prevWkS=dkey(wkSt(addD(new Date(),-7)));
-      const newStreak=it.repeat==="daily"?(it.lastCompleted===yesterday?(it.streak||0)+1:1):(it.lastCompleted&&it.lastCompleted>=prevWkS&&it.lastCompleted<wkStart?(it.streak||0)+1:1);
+      const newStreak=calcStreak(it,today,vacationMode);
       setItems(items.map(i=>i.id===it.id?{...i,lastCompleted:today,streak:newStreak}:i));
       playDing();
       const m=members.find(m=>m.id===it.assignedTo);
@@ -1623,7 +1630,7 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,o
 }
 
 // ═════════════════ KID VIEW ══════════════════════════════════════════
-function KidView({member,todos,setTodos,rewards,setRewards,onClose}){
+function KidView({member,todos,setTodos,rewards,setRewards,vacationMode,onClose}){
   const t=useT();
   const today=dkey(new Date());
   const wkStart=dkey(wkSt(new Date()));
@@ -1644,11 +1651,10 @@ function KidView({member,todos,setTodos,rewards,setRewards,onClose}){
   const[confetti,setConfetti]=useState(null);
   const tap=it=>{
     if(isDoneK(it))return;
-    const prev1=dkey(addD(new Date(),-1));const prevWkS=dkey(wkSt(addD(new Date(),-7)));
     if(!it.repeat||it.repeat==="none"){
       setTodos(prev=>prev.map(x=>x.id===it.id?{...x,done:true}:x));
     }else{
-      const ns=it.repeat==="daily"?(it.lastCompleted===prev1?(it.streak||0)+1:1):(it.lastCompleted&&it.lastCompleted>=prevWkS&&it.lastCompleted<wkStart?(it.streak||0)+1:1);
+      const ns=calcStreak(it,today,vacationMode);
       setTodos(prev=>prev.map(x=>x.id===it.id?{...x,lastCompleted:today,streak:ns}:x));
     }
     playDing();
@@ -1664,7 +1670,7 @@ function KidView({member,todos,setTodos,rewards,setRewards,onClose}){
         <div style={{width:52,height:52,borderRadius:"50%",background:"rgba(255,255,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:900,color:"#fff",border:"3px solid rgba(255,255,255,0.4)"}}>{member.name[0].toUpperCase()}</div>
         <div>
           <div style={{fontSize:22,fontWeight:900,color:"#fff",lineHeight:1.1}}>{member.name}'s Chores</div>
-          <div style={{fontSize:13,color:"rgba(255,255,255,0.8)",marginTop:2}}>⭐ {stars} stars · {doneCount}/{myTasks.length} done</div>
+          <div style={{fontSize:13,color:"rgba(255,255,255,0.8)",marginTop:2}}>⭐ {stars} stars · {doneCount}/{myTasks.length} done{vacationMode&&<span style={{marginLeft:8,background:"rgba(255,255,255,0.2)",borderRadius:8,padding:"1px 7px",fontSize:11,fontWeight:700}}>🏖️ Streaks safe!</span>}</div>
         </div>
       </div>
       <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"2px solid rgba(255,255,255,0.4)",color:"#fff",fontSize:13,fontWeight:700,borderRadius:14,padding:"9px 20px",cursor:"pointer",fontFamily:FF}}>✕ Exit</button>
@@ -1725,6 +1731,7 @@ function Homelight(){
   const[members,setMembers]=useP("members",[]);
   const[memberFilter,setMemberFilter]=useState(null);
   const[kidView,setKidView]=useState(null);
+  const[vacationMode,setVacationMode]=useP("vacationMode",false);
   const[announcement,setAnnouncement]=useP("announcement","");
   const[editingAnnouncement,setEditingAnnouncement]=useState(false);
   const[announcementDraft,setAnnouncementDraft]=useState("");
@@ -1781,7 +1788,7 @@ function Homelight(){
   const deleteEvent=useCallback(id=>setEvents(prev=>prev.filter(e=>e.id!==id)),[setEvents]);
   const onAddTodo=useCallback(text=>setTodos(prev=>[...prev,{id:mkId(),text,done:false}]),[setTodos]);
   const onAddGrocery=useCallback(text=>setGrocery(prev=>[...prev,{id:mkId(),text,done:false}]),[setGrocery]);
-  const onEv=useCallback(ev=>{if(ev._taskId){setTodos(prev=>prev.map(t=>{if(t.id!==ev._taskId)return t;if(t.repeat==="daily"){const wasDone=t.lastCompleted===ev.date;if(wasDone)return{...t,lastCompleted:null};const prev1=dkey(addD(new Date(ev.date+"T12:00:00"),-1));const ns=t.lastCompleted===prev1?(t.streak||0)+1:1;return{...t,lastCompleted:ev.date,streak:ns};}if(t.repeat==="weekly"){const wkS=dkey(wkSt(new Date(ev.date+"T12:00:00")));const wasDone=t.lastCompleted&&t.lastCompleted>=wkS;if(wasDone)return{...t,lastCompleted:null};const pwkS=dkey(wkSt(addD(new Date(ev.date+"T12:00:00"),-7)));const ns=t.lastCompleted&&t.lastCompleted>=pwkS&&t.lastCompleted<wkS?(t.streak||0)+1:1;return{...t,lastCompleted:ev.date,streak:ns};}return t;}));playDing();return;}if(ev._masterId){setRecurChoice(ev);return;}setSel(new Date(ev.date+"T12:00:00"));setModal(ev);},[setSel,setTodos]);
+  const onEv=useCallback(ev=>{if(ev._taskId){setTodos(prev=>prev.map(t=>{if(t.id!==ev._taskId)return t;if(t.repeat==="daily"){const wasDone=t.lastCompleted===ev.date;if(wasDone)return{...t,lastCompleted:null};return{...t,lastCompleted:ev.date,streak:calcStreak(t,ev.date,vacationMode)};}if(t.repeat==="weekly"){const wkS=dkey(wkSt(new Date(ev.date+"T12:00:00")));const wasDone=t.lastCompleted&&t.lastCompleted>=wkS;if(wasDone)return{...t,lastCompleted:null};return{...t,lastCompleted:ev.date,streak:calcStreak(t,ev.date,vacationMode)};}return t;}));playDing();return;}if(ev._masterId){setRecurChoice(ev);return;}setSel(new Date(ev.date+"T12:00:00"));setModal(ev);},[setSel,setTodos,vacationMode]);
   const onAddEvent=useCallback((date,hour)=>{setSel(new Date(date+"T12:00:00"));setAddHour(hour);setModal("add");},[setSel]);
   const upcoming=useMemo(()=>events.filter(e=>e.date>=dkey(new Date())).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date)).slice(0,3),[events]);
   const visibleEvents=useMemo(()=>{const dis=new Set(feeds.filter(f=>!f.enabled).map(f=>f.id));const filtered=events.filter(e=>!e.feedId||!dis.has(e.feedId));return expandManualRecurrences(filtered);},[events,feeds]);
@@ -1813,7 +1820,7 @@ function Homelight(){
 
   return<MembersCtx.Provider value={members}><ThemeCtx.Provider value={t}>
     <div style={{fontFamily:FF,height:"100vh",width:"100vw",background:t.grad,color:t.text,display:"flex",flexDirection:"column",overflow:"hidden",userSelect:"none"}}>
-      {kidView&&members.find(m=>m.id===kidView)&&<KidView member={members.find(m=>m.id===kidView)} todos={todos} setTodos={setTodos} rewards={rewards} setRewards={setRewards} onClose={()=>setKidView(null)}/>}
+      {kidView&&members.find(m=>m.id===kidView)&&<KidView member={members.find(m=>m.id===kidView)} todos={todos} setTodos={setTodos} rewards={rewards} setRewards={setRewards} vacationMode={vacationMode} onClose={()=>setKidView(null)}/>}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 20px",borderBottom:`1px solid ${t.bdr}`,background:t.headerBg,backdropFilter:"blur(24px)",flexShrink:0,zIndex:10}}>
         <div style={{display:"flex",alignItems:"center",gap:16}}>
           <span style={{fontSize:16,fontWeight:700,letterSpacing:3,color:t.accent,textTransform:"uppercase",fontFamily:FM}}>☀ Homelight</span>
@@ -1837,6 +1844,7 @@ function Homelight(){
       </div>
       {members.length>0&&<div style={{display:"flex",alignItems:"center",gap:6,padding:"5px 20px",borderBottom:`1px solid ${t.bdr}`,background:t.headerBg,flexShrink:0,flexWrap:"wrap"}}>
         <button onClick={()=>setMemberFilter(null)} style={{padding:"3px 12px",borderRadius:16,border:`1px solid ${memberFilter===null?t.accent:t.bdr}`,background:memberFilter===null?t.accent:"transparent",color:memberFilter===null?t.acText:t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF,transition:"all 0.15s"}}>All</button>
+        <button onClick={()=>setVacationMode(v=>!v)} title={vacationMode?"Vacation mode ON — streaks are frozen":"Turn on vacation mode to freeze streaks"} style={{padding:"3px 10px",borderRadius:16,border:`1.5px solid ${vacationMode?"#F97316":t.bdr}`,background:vacationMode?"#F9731622":"transparent",color:vacationMode?"#F97316":t.dim,fontSize:11,fontWeight:vacationMode?700:500,cursor:"pointer",fontFamily:FF,transition:"all 0.2s",whiteSpace:"nowrap"}}>{vacationMode?"🏖️ Vacation ON":"🏖️ Vacation"}</button>
         {members.map(m=><React.Fragment key={m.id}><button onClick={()=>setMemberFilter(memberFilter===m.id?null:m.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"3px 10px 3px 6px",borderRadius:16,border:`1px solid ${m.color}`,background:memberFilter===m.id?m.color:"transparent",color:memberFilter===m.id?"#fff":t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF,transition:"all 0.15s"}}><div style={{width:16,height:16,borderRadius:"50%",background:m.color,color:"#fff",fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{m.name[0]}</div>{m.name}</button><button onClick={e=>{e.stopPropagation();setKidView(m.id);}} title={`${m.name}'s chore view`} style={{padding:"3px 8px",borderRadius:14,border:`1px solid ${m.color}55`,background:m.color+"22",color:m.color,fontSize:14,cursor:"pointer",lineHeight:1,transition:"all 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background=m.color+"44"} onMouseLeave={e=>e.currentTarget.style.background=m.color+"22"}>🎮</button></React.Fragment>)}
       </div>}
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
@@ -1883,7 +1891,7 @@ function Homelight(){
             })()}
             <div style={{flex:1,overflow:"auto",padding:"8px 10px"}}>
               {sideTab==="today"&&<TodayPanel events={visibleEvents} todos={todos} setTodos={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework} onAddToday={()=>{setSel(new Date());setModal("add");setPanel("main");}}/>}
-              {sideTab==="tasks"&&<FamilyTasks items={todos} setItems={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework} setHomework={setHomework}/>}
+              {sideTab==="tasks"&&<FamilyTasks items={todos} setItems={setTodos} members={members} rewards={rewards} setRewards={setRewards} homework={homework} setHomework={setHomework} vacationMode={vacationMode}/>}
               {sideTab==="grocery"&&<GroceryList items={grocery} setItems={setGrocery}/>}
               {sideTab==="meals"&&<Meals meals={meals} setMeals={setMeals} recipes={recipes} setRecipes={setRecipes} grocery={grocery} setGrocery={setGrocery} geminiKey={geminiKey} geminiModel={geminiModel}/>}
               {sideTab==="rewards"&&<RewardsPanel members={members} rewards={rewards} setRewards={setRewards}/>}
