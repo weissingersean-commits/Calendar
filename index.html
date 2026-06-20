@@ -319,7 +319,7 @@ function MonthView({sel,setSel,events,setView,onEv,weekStart=0}){
   const weekData=weeks.map(week=>{
     const wStart=week[0].d,wEnd=week[6].d,wStartKey=dkey(wStart),wEndKey=dkey(wEnd);
     const spanning=events.filter(ev=>{
-      if(!isAllDay(ev))return false;
+      if(!isAllDay(ev)||ev._isTask)return false;
       const ddays=Math.max(1,Math.round(ev.duration/24));const p=ev.date.split('-');
       const evEnd=dkey(addD(new Date(+p[0],+p[1]-1,+p[2]),ddays-1));
       return ev.date<=wEndKey&&evEnd>=wStartKey;
@@ -351,11 +351,12 @@ function MonthView({sel,setSel,events,setView,onEv,weekStart=0}){
         const spanH=laneCount*20;
         return<div key={wi} style={{flex:1,display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,position:"relative",minHeight:80}}>
           {laned.map(({ev,sc,ec,lane,continuesLeft,continuesRight})=>{const lm=continuesLeft?0:2,rm=continuesRight?0:2;return<div key={ev.id} onClick={e=>{e.stopPropagation();onEv(ev);}} style={{position:"absolute",left:`calc(${sc*(100/7)}% + ${lm}px)`,width:`calc(${(ec-sc)*(100/7)}% - ${lm+rm}px)`,top:28+lane*20,height:18,background:evColor(ev,members),color:"#fff",borderRadius:`${continuesLeft?0:4}px ${continuesRight?0:4}px ${continuesRight?0:4}px ${continuesLeft?0:4}px`,fontSize:10,fontWeight:600,padding:`2px ${rm?6:3}px 2px ${lm?6:4}px`,cursor:"pointer",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",zIndex:2,boxSizing:"border-box"}}>{continuesLeft?"‹ ":""}{ev.title}{continuesRight?" ›":""}</div>;})}
-          {week.map((c,ci)=>{const key=dkey(c.d),isT=sameD(c.d,today),evs=events.filter(e=>e.date===key&&!isAllDay(e)),isPending=pendingSel===key;
+          {week.map((c,ci)=>{const key=dkey(c.d),isT=sameD(c.d,today),evs=events.filter(e=>e.date===key&&!isAllDay(e)&&!e._isTask),taskEvs=events.filter(e=>e.date===key&&e._isTask),isPending=pendingSel===key;
             return<div key={ci} data-pending={isPending?"1":""} onClick={()=>{if(isPending){setSel(c.d);setView("day");setPendingSel(null);}else{setSel(c.d);setPendingSel(key);}}} style={{padding:3,paddingTop:26+spanH+2,borderRadius:10,cursor:"pointer",background:isPending?"rgba(56,189,248,0.30)":isT?t.acDim:c.c?t.card:"rgba(128,128,128,0.05)",border:isPending?`2px solid ${t.accent}`:isT?`1px solid ${t.acGlow}`:"1px solid transparent",boxShadow:isPending?`0 0 0 4px ${t.accent}55,0 6px 24px rgba(56,189,248,0.28)`:"none",transform:isPending?"scale(1.05)":"scale(1)",zIndex:isPending?3:undefined,transition:"all 0.18s ease",overflow:"hidden",position:"relative",display:"flex",flexDirection:"column",justifyContent:"space-between"}} onMouseEnter={e=>{if(!isT&&!e.currentTarget.dataset.pending)e.currentTarget.style.background=t.cardH;}} onMouseLeave={e=>{if(!isT&&!e.currentTarget.dataset.pending)e.currentTarget.style.background=c.c?t.card:"rgba(128,128,128,0.05)";}}>
               <div style={{position:"absolute",top:6,left:8,display:"flex",alignItems:"center",gap:3}}><span style={{fontSize:13,fontWeight:isT||isPending?800:400,color:isPending?t.accent:isT?t.accent:c.c?t.sub:t.dim}}>{c.d.getDate()}</span>{isPending&&<span style={{fontSize:10,color:t.accent,fontWeight:800,lineHeight:1}}>↵</span>}</div>
               <div>{evs.slice(0,2).map(ev=><div key={ev.id} onClick={e=>{e.stopPropagation();onEv(ev);}} style={{background:evColor(ev,members),color:"#fff",padding:"1px 6px",borderRadius:4,fontSize:10,fontWeight:500,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer",outline:isBday(ev)?"2px solid #F59E0B":undefined,outlineOffset:1}}>{evPrefix(ev)}{ev.title}</div>)}</div>
               {evs.length>2&&<div onClick={e=>{e.stopPropagation();setDayPopup({date:key,d:c.d,evs});}} style={{fontSize:9,color:t.accent,fontWeight:700,cursor:"pointer",marginTop:1}}>+{evs.length-2} more</div>}
+              {taskEvs.length>0&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:2,marginTop:evs.length>0?2:0}}>{taskEvs.map(ev=><div key={ev.id} onClick={e=>{e.stopPropagation();onEv(ev);}} style={{background:evColor(ev,members),color:"#fff",padding:"1px 4px",borderRadius:4,fontSize:9,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"pointer",opacity:ev._done?0.5:1}}>{evPrefix(ev)}{ev.title}</div>)}</div>}
             </div>;})}
         </div>;
       })}
