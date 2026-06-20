@@ -241,7 +241,7 @@ function expandManualRecurrences(events){
 function evColor(ev,members=[]){if(ev._isTask&&ev._done)return"#6B7280";if(ev.assignedTo){const m=(members||[]).find(m=>m.id===ev.assignedTo);if(m)return m.color;}if(ev._isTask&&(members||[]).length===1)return members[0].color;return ev.color||ev.feedColor||CATS[ev.category]?.bg||"#38BDF8";}
 function evLt(ev,members=[]){if(ev.assignedTo){const m=(members||[]).find(m=>m.id===ev.assignedTo);if(m)return m.color+"22";}const c=ev.color||ev.feedColor;if(c)return c+"22";return CATS[ev.category]?.lt?.(0.1)||"rgba(56,189,248,0.1)";}
 const isBday=ev=>/birthday/i.test(ev.title);
-const evPrefix=ev=>ev._isTask?(ev._done?"✓ ":(ev._emoji?ev._emoji+" ":"○ ")):ev.reaction?ev.reaction+" ":isBday(ev)?"🎂 ":"";
+const evPrefix=ev=>ev._isTask?(ev._done?"✓ ":(ev._optional?"⭐ ":(ev._emoji?ev._emoji+" ":"○ "))):ev.reaction?ev.reaction+" ":isBday(ev)?"🎂 ":"";
 const isAllDay=ev=>ev.hour===0&&(ev.minute||0)===0&&(ev.duration||0)>=24;
 function relTime(dateStr,hour,minute){const now=new Date();const ev=new Date(dateStr+"T"+String(hour??0).padStart(2,"0")+":"+String(minute||0).padStart(2,"0")+":00");const diff=ev-now;if(diff<=0)return null;const h=diff/3600000;const d=Math.floor(diff/86400000);if(h<1)return"< 1 hr";if(h<2)return"1 hr";if(h<24)return`${Math.floor(h)} hrs`;if(d===1)return"Tomorrow";if(d<7)return`${d} days`;return null;}
 function playDing(){try{const a=new(window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;o.type="sine";g.gain.setValueAtTime(0.25,a.currentTime);g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.55);o.start();o.stop(a.currentTime+0.55);}catch(e){}}
@@ -728,7 +728,7 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
   const[taskRepeat,setTaskRepeat]=useState("none");
   const[taskDue,setTaskDue]=useState("");
   const[taskDayOfWeek,setTaskDayOfWeek]=useState(0);
-  const[taskEmoji,setTaskEmoji]=useState("");
+  const[taskEmoji,setTaskEmoji]=useState("");const[taskOptional,setTaskOptional]=useState(false);
   const[confettiData,setConfettiData]=useState(null);
   const today=dkey(new Date());
   const wkStart=dkey(wkSt(new Date()));
@@ -759,7 +759,7 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
         setConfettiData({name:m?.name||it.text||"",stars:it.stars||0});
       }
     } else {
-      const newStreak=calcStreak(it,today,vacationMode);
+      const newStreak=it.optional?0:calcStreak(it,today,vacationMode);
       setItems(items.map(i=>i.id===it.id?{...i,lastCompleted:today,streak:newStreak}:i));
       playDing();
       const m=members.find(m=>m.id===it.assignedTo);
@@ -772,12 +772,13 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
 
   const addTask=()=>{
     if(!val.trim())return;
-    setItems([...items,{id:mkId(),text:val.trim(),done:false,assignedTo:assignTo||null,stars:taskStars,repeat:taskRepeat==="none"?null:taskRepeat,lastCompleted:null,dueDate:taskRepeat==="none"&&taskDue?taskDue:null,dayOfWeek:taskRepeat==="weekly"?taskDayOfWeek:null,emoji:taskEmoji||null,streak:0}]);
-    setVal("");setTaskDue("");setTaskEmoji("");
+    setItems([...items,{id:mkId(),text:val.trim(),done:false,assignedTo:assignTo||null,stars:taskStars,repeat:taskRepeat==="none"?null:taskRepeat,lastCompleted:null,dueDate:taskRepeat==="none"&&taskDue?taskDue:null,dayOfWeek:taskRepeat==="weekly"?taskDayOfWeek:null,emoji:taskEmoji||null,streak:0,optional:taskOptional}]);
+    setVal("");setTaskDue("");setTaskEmoji("");setTaskOptional(false);
   };
 
   const oneTime=items.filter(it=>!it.repeat||it.repeat==="none");
-  const recurring=items.filter(it=>it.repeat&&it.repeat!=="none");
+  const recurringReq=items.filter(it=>it.repeat&&it.repeat!=="none"&&!it.optional);
+  const recurringBonus=items.filter(it=>it.repeat&&it.repeat!=="none"&&it.optional);
   const doneCount=items.filter(it=>isDone(it)).length;
 
   const TaskRow=({it})=>{
@@ -810,7 +811,8 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
     {subTab==="homework"&&<HomeworkPanel items={homework||[]} setItems={setHomework} members={members}/>}
     {subTab==="tasks"&&<>
       {items.length>0&&<div style={{fontSize:10,color:t.dim,marginBottom:8}}>{doneCount}/{items.length} completed</div>}
-      {recurring.length>0&&<div style={{marginBottom:4}}><div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.dim,marginBottom:4}}>Recurring</div>{recurring.map(it=><TaskRow key={it.id} it={it}/>)}</div>}
+      {recurringReq.length>0&&<div style={{marginBottom:4}}><div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.dim,marginBottom:4}}>Recurring</div>{recurringReq.map(it=><TaskRow key={it.id} it={it}/>)}</div>}
+      {recurringBonus.length>0&&<div style={{marginBottom:4}}><div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:"#F59E0B",marginBottom:4}}>⭐ Bonus</div>{recurringBonus.map(it=><TaskRow key={it.id} it={it}/>)}</div>}
       {oneTime.length>0&&<div>{recurring.length>0&&<div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.dim,marginBottom:4,marginTop:8}}>One-time</div>}{oneTime.map(it=><TaskRow key={it.id} it={it}/>)}</div>}
       <div style={{borderTop:`1px solid ${t.bdr}`,marginTop:8,paddingTop:8}}>
         <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
@@ -822,6 +824,7 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
         </div>
         {members.length>0&&<div style={{display:"flex",gap:4,marginBottom:6,flexWrap:"wrap"}}>{members.map(m=><button key={m.id} onClick={()=>setAssignTo(assignTo===m.id?"":m.id)} style={{padding:"3px 8px",borderRadius:10,border:`1px solid ${assignTo===m.id?m.color:t.bdr}`,background:assignTo===m.id?m.color+"22":"transparent",color:assignTo===m.id?m.color:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:assignTo===m.id?700:400,display:"flex",alignItems:"center",gap:3}}><div style={{width:7,height:7,borderRadius:"50%",background:m.color}}/>{m.name}</button>)}</div>}
         <div style={{display:"flex",gap:4,marginBottom:6}}>{["none","daily","weekly"].map(r=><button key={r} onClick={()=>setTaskRepeat(r)} style={{flex:1,padding:"4px 0",borderRadius:8,border:`1px solid ${taskRepeat===r?t.accent:t.bdr}`,background:taskRepeat===r?t.acDim:"transparent",color:taskRepeat===r?t.accent:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:taskRepeat===r?700:400}}>{r==="none"?"Once":r==="daily"?"↻ Daily":"↻ Weekly"}</button>)}</div>
+        <div style={{display:"flex",gap:4,marginBottom:6}}><button onClick={()=>setTaskOptional(false)} style={{flex:1,padding:"4px 0",borderRadius:8,border:`1px solid ${!taskOptional?t.accent:t.bdr}`,background:!taskOptional?t.acDim:"transparent",color:!taskOptional?t.accent:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:!taskOptional?700:400}}>○ Required</button><button onClick={()=>setTaskOptional(true)} style={{flex:1,padding:"4px 0",borderRadius:8,border:`1px solid ${taskOptional?"#F59E0B":t.bdr}`,background:taskOptional?"rgba(245,158,11,0.15)":"transparent",color:taskOptional?"#F59E0B":t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:taskOptional?700:400}}>⭐ Bonus</button></div>
         {taskRepeat==="weekly"&&<div style={{display:"flex",gap:3,marginBottom:6}}><span style={{fontSize:9,color:t.dim,alignSelf:"center",marginRight:2}}>Due:</span>{["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d,i)=><button key={i} onClick={()=>setTaskDayOfWeek(i)} style={{flex:1,padding:"3px 0",borderRadius:6,border:`1px solid ${taskDayOfWeek===i?t.accent:t.bdr}`,background:taskDayOfWeek===i?t.accent:"transparent",color:taskDayOfWeek===i?t.acText:t.sub,fontSize:9,cursor:"pointer",fontFamily:FF,fontWeight:taskDayOfWeek===i?700:400}}>{d}</button>)}</div>}
         {taskRepeat==="none"&&<input type="date" style={{width:"100%",padding:"6px 10px",borderRadius:8,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:11,fontFamily:FF,outline:"none",marginBottom:6,boxSizing:"border-box"}} value={taskDue} onChange={e=>setTaskDue(e.target.value)} min={today}/>}
         <div style={{display:"flex",gap:6,alignItems:"center"}}><div style={{display:"flex",gap:1}}>{[1,2,3,4,5].map(n=><button key={n} onClick={()=>setTaskStars(n)} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,opacity:taskStars>=n?1:0.22,padding:"0 1px",lineHeight:1}}>⭐</button>)}</div><button onClick={addTask} style={{flex:1,padding:"7px 0",borderRadius:10,border:`1px solid ${val.trim()?t.accent:t.bdr}`,background:val.trim()?t.accent:"transparent",color:val.trim()?t.acText:t.dim,fontSize:12,fontWeight:700,cursor:val.trim()?"pointer":"default",fontFamily:FF}}>+ Add</button></div>
@@ -1541,8 +1544,12 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,o
     if(it.stars&&it.assignedTo)setRewards(r=>{const st={...r.stars};st[it.assignedTo]=(st[it.assignedTo]||0)+it.stars;return{...r,stars:st};});
   }
   const effOwner=c=>c.assignedTo||(members.length===1?members[0].id:null);
-  const assignedChores=members.map(m=>({m,chores:dueChores.filter(c=>effOwner(c)===m.id)})).filter(({chores})=>chores.length>0);
-  const unassigned=dueChores.filter(c=>!effOwner(c));
+  const dueRequired=dueChores.filter(c=>!c.optional);
+  const dueBonus=dueChores.filter(c=>c.optional);
+  const assignedChores=members.map(m=>({m,chores:dueRequired.filter(c=>effOwner(c)===m.id)})).filter(({chores})=>chores.length>0);
+  const unassigned=dueRequired.filter(c=>!effOwner(c));
+  const assignedBonus=members.map(m=>({m,chores:dueBonus.filter(c=>effOwner(c)===m.id)})).filter(({chores})=>chores.length>0);
+  const unassignedBonus=dueBonus.filter(c=>!effOwner(c));
   return<div>
     {countdowns.length>0&&<div style={{marginBottom:14}}>
       <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.accent,marginBottom:8}}>⏳ Coming Up</div>
@@ -1615,6 +1622,27 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,o
         </div>)}
       </div>}
     </>}
+    {(assignedBonus.length>0||unassignedBonus.length>0)&&<>
+      <div style={{fontSize:11,fontWeight:700,color:"#F59E0B",textTransform:"uppercase",letterSpacing:1.5,marginTop:14,marginBottom:8}}>⭐ Bonus (optional)</div>
+      {assignedBonus.map(({m,chores})=><div key={m.id} style={{marginBottom:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:5}}>
+          <div style={{width:18,height:18,borderRadius:"50%",background:m.color,color:"#fff",fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{m.name[0]}</div>
+          <span style={{fontSize:11,fontWeight:700,color:m.color,flex:1}}>{m.name}</span>
+        </div>
+        {chores.map(c=><div key={c.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,paddingLeft:4}}>
+          <button onClick={()=>checkChore(c)} style={{width:16,height:16,borderRadius:"50%",border:`2px solid #F59E0B`,background:"transparent",cursor:"pointer",padding:0,flexShrink:0}}/>
+          <span style={{fontSize:12,color:t.text,flex:1}}>{c.text}</span>
+          {(c.stars||0)>0&&<span style={{fontSize:10,color:"#F59E0B"}}>⭐{c.stars}</span>}
+        </div>)}
+      </div>)}
+      {unassignedBonus.length>0&&<div style={{marginBottom:10}}>
+        {unassignedBonus.map(c=><div key={c.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+          <button onClick={()=>checkChore(c)} style={{width:16,height:16,borderRadius:"50%",border:`2px solid #F59E0B`,background:"transparent",cursor:"pointer",padding:0,flexShrink:0}}/>
+          <span style={{fontSize:12,color:t.text,flex:1}}>{c.text}</span>
+          {(c.stars||0)>0&&<span style={{fontSize:10,color:"#F59E0B"}}>⭐{c.stars}</span>}
+        </div>)}
+      </div>}
+    </>}
     {todayEvs.length===0&&dueChores.length===0&&dueTasks.length===0&&<div style={{fontSize:12,color:t.dim,fontStyle:"italic",textAlign:"center",marginTop:16,marginBottom:16}}>A peaceful day 🌟</div>}
     {weekAhead.length>0&&<div style={{marginTop:16,borderTop:`1px solid ${t.bdr}`,paddingTop:12}}>
       <div style={{fontSize:11,fontWeight:700,color:t.accent,textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>Coming Up This Week</div>
@@ -1650,6 +1678,8 @@ function KidView({member,members,todos,setTodos,rewards,setRewards,vacationMode,
     if(it.repeat==="weekly")return!!(it.lastCompleted&&it.lastCompleted>=wkStart);
     return false;
   };
+  const requiredTasks=myTasks.filter(t=>!t.optional);
+  const bonusTasks=myTasks.filter(t=>t.optional);
   const stars=(rewards.stars||{})[member.id]||0;
   const doneCount=myTasks.filter(isDoneK).length;
   const allDone=myTasks.length>0&&doneCount===myTasks.length;
@@ -1690,7 +1720,7 @@ function KidView({member,members,todos,setTodos,rewards,setRewards,vacationMode,
     <div style={{flex:1,overflowY:"auto",padding:"18px 14px 40px"}}>
       {myTasks.length===0&&<div style={{textAlign:"center",padding:60,color:"#7c8fa8",fontSize:22,fontWeight:700}}>No chores today! 🎉<div style={{fontSize:15,marginTop:8,color:"#9ab3c8"}}>Enjoy your free time!</div></div>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14,maxWidth:680,margin:"0 auto",width:"100%"}}>
-        {myTasks.map(it=>{
+        {requiredTasks.map(it=>{
           const done=isDoneK(it);
           return<div key={it.id} onClick={()=>tap(it)} style={{background:done?"#edfbf1":"#fff",borderRadius:24,padding:"22px 14px 16px",display:"flex",flexDirection:"column",alignItems:"center",gap:8,boxShadow:done?"0 2px 8px rgba(0,0,0,0.06)":"0 6px 24px rgba(0,0,0,0.10)",border:`2px solid ${done?"#86efac":member.color+"55"}`,cursor:done?"default":"pointer",transition:"all 0.2s",transform:done?"scale(0.97)":"scale(1)"}}>
             <div style={{fontSize:72,lineHeight:1,textAlign:"center",filter:done?"grayscale(0.4) opacity(0.7)":undefined}}>{it.emoji||"📋"}</div>
@@ -1704,6 +1734,25 @@ function KidView({member,members,todos,setTodos,rewards,setRewards,vacationMode,
           </div>;
         })}
       </div>
+      {bonusTasks.length>0&&<><div style={{display:"flex",alignItems:"center",gap:8,margin:"18px 0 10px",maxWidth:680,width:"100%",marginLeft:"auto",marginRight:"auto"}}>
+        <div style={{flex:1,height:1,background:"#dde4ef"}}/>
+        <span style={{fontSize:13,fontWeight:800,color:"#F59E0B",whiteSpace:"nowrap",letterSpacing:0.2}}>⭐ Bonus Chores</span>
+        <div style={{flex:1,height:1,background:"#dde4ef"}}/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14,maxWidth:680,margin:"0 auto",width:"100%"}}>
+        {bonusTasks.map(it=>{
+          const done=isDoneK(it);
+          return<div key={it.id} onClick={()=>tap(it)} style={{background:done?"#fffbeb":"#fff",borderRadius:24,padding:"22px 14px 16px",display:"flex",flexDirection:"column",alignItems:"center",gap:8,boxShadow:done?"0 2px 8px rgba(0,0,0,0.06)":"0 6px 24px rgba(0,0,0,0.10)",border:`2px solid ${done?"#FCD34D":"#F59E0B55"}`,cursor:done?"default":"pointer",transition:"all 0.2s",transform:done?"scale(0.97)":"scale(1)"}}>
+            <div style={{fontSize:72,lineHeight:1,textAlign:"center",filter:done?"grayscale(0.3) opacity(0.7)":undefined}}>{it.emoji||"⭐"}</div>
+            <div style={{fontSize:19,fontWeight:800,color:done?"#6b7280":"#1a1a1a",textAlign:"center",textDecoration:done?"line-through":"none",lineHeight:1.2}}>{it.text}</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center",alignItems:"center"}}>
+              {(it.stars||0)>0&&<span style={{fontSize:14,opacity:done?0.4:1}}>{"⭐".repeat(Math.min(it.stars,5))}</span>}
+              {it.repeat&&it.repeat!=="none"&&<span style={{fontSize:11,color:"#94a3b8",fontWeight:600}}>↻ {it.repeat==="daily"?"Daily":"Weekly"}</span>}
+            </div>
+            <div style={{marginTop:4,width:"100%",padding:"13px 8px",borderRadius:14,background:done?"#22c55e":"#F59E0B",color:"#fff",fontSize:15,fontWeight:800,textAlign:"center",transition:"all 0.2s",pointerEvents:done?"none":undefined}}>{done?"✓ Earned!":"⭐ Earn bonus stars!"}</div>
+          </div>;
+        })}
+      </div></>}
       {allDone&&<div style={{textAlign:"center",padding:"28px 16px 8px"}}>
         <div style={{fontSize:64,marginBottom:10}}>🏆</div>
         <div style={{fontSize:26,fontWeight:900,color:member.color,marginBottom:6}}>All done, {member.name}!</div>
@@ -1801,7 +1850,7 @@ function Homelight(){
   const upcoming=useMemo(()=>events.filter(e=>e.date>=dkey(new Date())).sort((a,b)=>a.date===b.date?a.hour-b.hour:a.date.localeCompare(b.date)).slice(0,3),[events]);
   const visibleEvents=useMemo(()=>{const dis=new Set(feeds.filter(f=>!f.enabled).map(f=>f.id));const filtered=events.filter(e=>!e.feedId||!dis.has(e.feedId));return expandManualRecurrences(filtered);},[events,feeds]);
   const displayEvents=useMemo(()=>memberFilter?visibleEvents.filter(ev=>ev.assignedTo===memberFilter):visibleEvents,[visibleEvents,memberFilter]);
-  const taskEvents=useMemo(()=>{const result=[];const now=new Date();for(let offset=-14;offset<=90;offset++){const d=new Date(now);d.setDate(d.getDate()+offset);const dateKey=dkey(d);const dow=d.getDay();const wkS=dkey(wkSt(d));todos.forEach(todo=>{if(!todo.repeat||todo.repeat==="none")return;let show=false;if(todo.repeat==="daily")show=true;else if(todo.repeat==="weekly"){const td=todo.dayOfWeek!=null?todo.dayOfWeek:0;show=dow===td;}if(!show)return;const done=todo.repeat==="daily"?todo.lastCompleted===dateKey:!!(todo.lastCompleted&&todo.lastCompleted>=wkS);result.push({id:"task~"+todo.id+"~"+dateKey,title:todo.text,date:dateKey,hour:0,minute:0,duration:24,category:"task",assignedTo:todo.assignedTo||null,feedColor:"#10B981",_taskId:todo.id,_isTask:true,_done:done,_emoji:todo.emoji||null,_streak:todo.streak||0});});}return result;},[todos]);
+  const taskEvents=useMemo(()=>{const result=[];const now=new Date();for(let offset=-14;offset<=90;offset++){const d=new Date(now);d.setDate(d.getDate()+offset);const dateKey=dkey(d);const dow=d.getDay();const wkS=dkey(wkSt(d));todos.forEach(todo=>{if(!todo.repeat||todo.repeat==="none")return;let show=false;if(todo.repeat==="daily")show=true;else if(todo.repeat==="weekly"){const td=todo.dayOfWeek!=null?todo.dayOfWeek:0;show=dow===td;}if(!show)return;const done=todo.repeat==="daily"?todo.lastCompleted===dateKey:!!(todo.lastCompleted&&todo.lastCompleted>=wkS);result.push({id:"task~"+todo.id+"~"+dateKey,title:todo.text,date:dateKey,hour:0,minute:0,duration:24,category:"task",assignedTo:todo.assignedTo||null,feedColor:"#10B981",_taskId:todo.id,_isTask:true,_done:done,_emoji:todo.emoji||null,_streak:todo.streak||0,_optional:todo.optional||false});});}return result;},[todos]);
   const displayEventsWithTasks=useMemo(()=>[...displayEvents,...taskEvents],[displayEvents,taskEvents]);
 
   useEffect(()=>{
