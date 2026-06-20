@@ -1687,7 +1687,7 @@ function KidView({member,members,todos,setTodos,rewards,setRewards,vacationMode,
     </div>
     <div style={{flex:1,overflowY:"auto",padding:"18px 14px 40px"}}>
       {myTasks.length===0&&<div style={{textAlign:"center",padding:60,color:"#7c8fa8",fontSize:22,fontWeight:700}}>No chores today! 🎉<div style={{fontSize:15,marginTop:8,color:"#9ab3c8"}}>Enjoy your free time!</div></div>}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14,maxWidth:680,margin:"0 auto",width:"100%"}}>
         {myTasks.map(it=>{
           const done=isDoneK(it);
           return<div key={it.id} onClick={()=>tap(it)} style={{background:done?"#edfbf1":"#fff",borderRadius:24,padding:"22px 14px 16px",display:"flex",flexDirection:"column",alignItems:"center",gap:8,boxShadow:done?"0 2px 8px rgba(0,0,0,0.06)":"0 6px 24px rgba(0,0,0,0.10)",border:`2px solid ${done?"#86efac":member.color+"55"}`,cursor:done?"default":"pointer",transition:"all 0.2s",transform:done?"scale(0.97)":"scale(1)"}}>
