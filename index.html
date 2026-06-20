@@ -1666,43 +1666,46 @@ function KidView({member,members,todos,setTodos,rewards,setRewards,vacationMode,
     }
     setConfetti({name:member.name,stars:it.stars||0});
   };
-  return<div style={{position:"fixed",inset:0,zIndex:200,background:member.color,display:"flex",flexDirection:"column",overflow:"hidden",fontFamily:FF}}>
+  const hr=new Date().getHours();
+  const greeting=hr<12?"Good morning":hr<17?"Good afternoon":"Good evening";
+  const greetEmoji=hr<12?"☀️":hr<17?"🌤️":"🌙";
+  return<div style={{position:"fixed",inset:0,zIndex:200,background:"#f0f4fc",display:"flex",flexDirection:"column",overflow:"hidden",fontFamily:FF}}>
     {confetti&&<Confetti data={confetti} onDone={()=>setConfetti(null)}/>}
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 20px",background:"rgba(0,0,0,0.18)",flexShrink:0}}>
-      <div style={{display:"flex",alignItems:"center",gap:14}}>
-        <div style={{width:52,height:52,borderRadius:"50%",background:"rgba(255,255,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:900,color:"#fff",border:"3px solid rgba(255,255,255,0.4)"}}>{member.name[0].toUpperCase()}</div>
-        <div>
-          <div style={{fontSize:22,fontWeight:900,color:"#fff",lineHeight:1.1}}>{member.name}'s Chores</div>
-          <div style={{fontSize:13,color:"rgba(255,255,255,0.8)",marginTop:2}}>⭐ {stars} stars · {doneCount}/{myTasks.length} done{vacationMode&&<span style={{marginLeft:8,background:"rgba(255,255,255,0.2)",borderRadius:8,padding:"1px 7px",fontSize:11,fontWeight:700}}>🏖️ Streaks safe!</span>}</div>
-        </div>
-      </div>
-      <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"2px solid rgba(255,255,255,0.4)",color:"#fff",fontSize:13,fontWeight:700,borderRadius:14,padding:"9px 20px",cursor:"pointer",fontFamily:FF}}>✕ Exit</button>
-    </div>
-    {myTasks.length>0&&<div style={{height:6,background:"rgba(0,0,0,0.2)",flexShrink:0}}>
-      <div style={{height:"100%",width:`${myTasks.length?(doneCount/myTasks.length)*100:0}%`,background:"rgba(255,255,255,0.6)",transition:"width 0.5s ease",borderRadius:"0 4px 4px 0"}}/>
-    </div>}
-    <div style={{flex:1,overflowY:"auto",padding:"16px 14px 40px"}}>
-      {myTasks.length===0&&<div style={{textAlign:"center",padding:60,color:"rgba(255,255,255,0.85)",fontSize:24,fontWeight:700}}>No chores today! 🎉<div style={{fontSize:16,marginTop:8,opacity:0.7}}>Enjoy your free time!</div></div>}
-      {myTasks.map(it=>{
-        const done=isDoneK(it);
-        return<div key={it.id} onClick={()=>tap(it)} style={{background:done?"rgba(0,0,0,0.18)":"rgba(255,255,255,0.93)",borderRadius:22,padding:"16px 20px",marginBottom:14,display:"flex",alignItems:"center",gap:18,cursor:done?"default":"pointer",opacity:done?0.7:1,transform:done?"scale(0.97)":"scale(1)",transition:"all 0.2s",boxShadow:done?"none":"0 8px 28px rgba(0,0,0,0.22)"}}>
-          <div style={{fontSize:56,lineHeight:1,flexShrink:0}}>{it.emoji||"📋"}</div>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:21,fontWeight:800,color:done?"rgba(255,255,255,0.65)":"#1a1a1a",textDecoration:done?"line-through":"none",lineHeight:1.2}}>{it.text}</div>
-            <div style={{display:"flex",gap:8,marginTop:5,flexWrap:"wrap",alignItems:"center"}}>
-              {(it.stars||0)>0&&<span style={{fontSize:15,opacity:done?0.5:1}}>{"⭐".repeat(Math.min(it.stars,5))}</span>}
-              {(it.streak||0)>1&&!done&&<span style={{fontSize:12,color:"#F97316",fontWeight:800,background:"rgba(249,115,22,0.15)",borderRadius:8,padding:"2px 7px"}}>🔥 {it.streak} day streak!</span>}
-              {it.repeat==="daily"&&<span style={{fontSize:11,color:done?"rgba(255,255,255,0.5)":"rgba(0,0,0,0.4)",fontWeight:600}}>↻ Daily</span>}
-              {it.repeat==="weekly"&&<span style={{fontSize:11,color:done?"rgba(255,255,255,0.5)":"rgba(0,0,0,0.4)",fontWeight:600}}>↻ Weekly</span>}
-            </div>
+    <div style={{background:`linear-gradient(135deg,${member.color},${member.color}cc)`,padding:"18px 20px 16px",flexShrink:0,boxShadow:"0 4px 24px rgba(0,0,0,0.18)"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:myTasks.length>0?12:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <div style={{width:58,height:58,borderRadius:"50%",background:"rgba(255,255,255,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,fontWeight:900,color:"#fff",border:"3px solid rgba(255,255,255,0.5)"}}>{member.name[0].toUpperCase()}</div>
+          <div>
+            <div style={{fontSize:11,color:"rgba(255,255,255,0.72)",fontWeight:600,textTransform:"uppercase",letterSpacing:1.2}}>{greeting} {greetEmoji}</div>
+            <div style={{fontSize:24,fontWeight:900,color:"#fff",lineHeight:1.1,letterSpacing:-.5}}>{member.name}'s Chores</div>
+            <div style={{fontSize:13,color:"rgba(255,255,255,0.85)",marginTop:2}}>⭐ {stars} star{stars!==1?"s":""}{vacationMode&&<span style={{marginLeft:8,background:"rgba(255,255,255,0.22)",borderRadius:8,padding:"1px 7px",fontSize:11,fontWeight:700}}>🏖️ Vacation</span>}</div>
           </div>
-          <div style={{width:56,height:56,borderRadius:"50%",background:done?"rgba(255,255,255,0.3)":"transparent",border:`3px solid ${done?"transparent":"rgba(255,255,255,0.5)"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30,color:"#fff",flexShrink:0,transition:"all 0.2s",fontWeight:900}}>{done?"✓":""}</div>
-        </div>;
-      })}
-      {allDone&&<div style={{textAlign:"center",padding:"20px 16px 8px",color:"#fff"}}>
-        <div style={{fontSize:56,marginBottom:10}}>🎉</div>
-        <div style={{fontSize:26,fontWeight:900,marginBottom:6}}>All done, {member.name}!</div>
-        <div style={{fontSize:17,opacity:0.85}}>Amazing work! You earned ⭐ {stars} total stars!</div>
+        </div>
+        <button onClick={onClose} style={{background:"rgba(255,255,255,0.22)",border:"2px solid rgba(255,255,255,0.45)",color:"#fff",fontSize:13,fontWeight:700,borderRadius:14,padding:"10px 20px",cursor:"pointer",fontFamily:FF}}>✕ Exit</button>
+      </div>
+      {myTasks.length>0&&<><div style={{background:"rgba(0,0,0,0.2)",borderRadius:999,height:8,overflow:"hidden"}}><div style={{height:"100%",width:`${(doneCount/myTasks.length)*100}%`,background:"rgba(255,255,255,0.8)",borderRadius:999,transition:"width 0.5s ease"}}/></div><div style={{textAlign:"center",fontSize:11,color:"rgba(255,255,255,0.72)",fontWeight:600,marginTop:4}}>{doneCount} of {myTasks.length} done</div></>}
+    </div>
+    <div style={{flex:1,overflowY:"auto",padding:"18px 14px 40px"}}>
+      {myTasks.length===0&&<div style={{textAlign:"center",padding:60,color:"#7c8fa8",fontSize:22,fontWeight:700}}>No chores today! 🎉<div style={{fontSize:15,marginTop:8,color:"#9ab3c8"}}>Enjoy your free time!</div></div>}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14}}>
+        {myTasks.map(it=>{
+          const done=isDoneK(it);
+          return<div key={it.id} onClick={()=>tap(it)} style={{background:done?"#edfbf1":"#fff",borderRadius:24,padding:"22px 14px 16px",display:"flex",flexDirection:"column",alignItems:"center",gap:8,boxShadow:done?"0 2px 8px rgba(0,0,0,0.06)":"0 6px 24px rgba(0,0,0,0.10)",border:`2px solid ${done?"#86efac":member.color+"55"}`,cursor:done?"default":"pointer",transition:"all 0.2s",transform:done?"scale(0.97)":"scale(1)"}}>
+            <div style={{fontSize:72,lineHeight:1,textAlign:"center",filter:done?"grayscale(0.4) opacity(0.7)":undefined}}>{it.emoji||"📋"}</div>
+            <div style={{fontSize:19,fontWeight:800,color:done?"#6b7280":"#1a1a1a",textAlign:"center",textDecoration:done?"line-through":"none",lineHeight:1.2}}>{it.text}</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center",alignItems:"center"}}>
+              {(it.stars||0)>0&&<span style={{fontSize:14,opacity:done?0.4:1}}>{"⭐".repeat(Math.min(it.stars,5))}</span>}
+              {(it.streak||0)>1&&!done&&<span style={{fontSize:11,color:"#F97316",fontWeight:800,background:"#FEF3C7",borderRadius:8,padding:"2px 7px"}}>🔥 {it.streak} day streak!</span>}
+              {it.repeat&&it.repeat!=="none"&&<span style={{fontSize:11,color:"#94a3b8",fontWeight:600}}>↻ {it.repeat==="daily"?"Daily":"Weekly"}</span>}
+            </div>
+            <div style={{marginTop:4,width:"100%",padding:"13px 8px",borderRadius:14,background:done?"#22c55e":member.color,color:"#fff",fontSize:15,fontWeight:800,textAlign:"center",transition:"all 0.2s",pointerEvents:done?"none":undefined}}>{done?"✓  Done!":"Tap to complete!"}</div>
+          </div>;
+        })}
+      </div>
+      {allDone&&<div style={{textAlign:"center",padding:"28px 16px 8px"}}>
+        <div style={{fontSize:64,marginBottom:10}}>🏆</div>
+        <div style={{fontSize:26,fontWeight:900,color:member.color,marginBottom:6}}>All done, {member.name}!</div>
+        <div style={{fontSize:16,color:"#7c8fa8"}}>Amazing work! You earned ⭐ {stars} total stars!</div>
       </div>}
     </div>
   </div>;
@@ -1848,7 +1851,7 @@ function Homelight(){
       {members.length>0&&<div style={{display:"flex",alignItems:"center",gap:6,padding:"5px 20px",borderBottom:`1px solid ${t.bdr}`,background:t.headerBg,flexShrink:0,flexWrap:"wrap"}}>
         <button onClick={()=>setMemberFilter(null)} style={{padding:"3px 12px",borderRadius:16,border:`1px solid ${memberFilter===null?t.accent:t.bdr}`,background:memberFilter===null?t.accent:"transparent",color:memberFilter===null?t.acText:t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF,transition:"all 0.15s"}}>All</button>
         <button onClick={()=>setVacationMode(v=>!v)} title={vacationMode?"Vacation mode ON — streaks are frozen":"Turn on vacation mode to freeze streaks"} style={{padding:"3px 10px",borderRadius:16,border:`1.5px solid ${vacationMode?"#F97316":t.bdr}`,background:vacationMode?"#F9731622":"transparent",color:vacationMode?"#F97316":t.dim,fontSize:11,fontWeight:vacationMode?700:500,cursor:"pointer",fontFamily:FF,transition:"all 0.2s",whiteSpace:"nowrap"}}>{vacationMode?"🏖️ Vacation ON":"🏖️ Vacation"}</button>
-        {members.map(m=><React.Fragment key={m.id}><button onClick={()=>setMemberFilter(memberFilter===m.id?null:m.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"3px 10px 3px 6px",borderRadius:16,border:`1px solid ${m.color}`,background:memberFilter===m.id?m.color:"transparent",color:memberFilter===m.id?"#fff":t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF,transition:"all 0.15s"}}><div style={{width:16,height:16,borderRadius:"50%",background:m.color,color:"#fff",fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{m.name[0]}</div>{m.name}</button><button onClick={e=>{e.stopPropagation();setKidView(m.id);}} title={`${m.name}'s chore view`} style={{padding:"3px 8px",borderRadius:14,border:`1px solid ${m.color}55`,background:m.color+"22",color:m.color,fontSize:14,cursor:"pointer",lineHeight:1,transition:"all 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background=m.color+"44"} onMouseLeave={e=>e.currentTarget.style.background=m.color+"22"}>🎮</button></React.Fragment>)}
+        {members.map(m=><React.Fragment key={m.id}><button onClick={()=>setMemberFilter(memberFilter===m.id?null:m.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"3px 10px 3px 6px",borderRadius:16,border:`1px solid ${m.color}`,background:memberFilter===m.id?m.color:"transparent",color:memberFilter===m.id?"#fff":t.sub,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF,transition:"all 0.15s"}}><div style={{width:16,height:16,borderRadius:"50%",background:m.color,color:"#fff",fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{m.name[0]}</div>{m.name}</button><button onClick={e=>{e.stopPropagation();setKidView(m.id);}} title={`${m.name}'s chore view`} style={{padding:"6px 14px",borderRadius:16,border:`1.5px solid ${m.color}`,background:m.color+"22",color:m.color,fontSize:20,cursor:"pointer",lineHeight:1,transition:"all 0.15s",fontWeight:600}} onMouseEnter={e=>e.currentTarget.style.background=m.color+"44"} onMouseLeave={e=>e.currentTarget.style.background=m.color+"22"}>🎮</button></React.Fragment>)}
       </div>}
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
         <div style={{flex:1,overflow:"auto",padding:"6px 4px"}} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
