@@ -1532,7 +1532,7 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,o
   const dueChores=useMemo(()=>todos.filter(it=>{if(!it.repeat||it.repeat==="none")return false;if(it.repeat==="daily")return it.lastCompleted!==today;if(it.repeat==="weekly")return!it.lastCompleted||it.lastCompleted<wkStart;return false;}),[todos,today,wkStart]);
   const dueTasks=useMemo(()=>todos.filter(it=>(!it.repeat||it.repeat==="none")&&!it.done&&it.dueDate&&it.dueDate<=today),[todos,today]);
   const hwDue=useMemo(()=>(homework||[]).filter(h=>!h.done&&h.dueDate<=today).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)),[homework,today]);
-  const countdowns=useMemo(()=>{const now=new Date();now.setHours(0,0,0,0);return events.filter(ev=>{const d=new Date(ev.date+"T00:00:00");const diff=Math.round((d-now)/86400000);return diff>=1&&diff<=90;}).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,5);},[events,today]);
+  const countdowns=useMemo(()=>{const now=new Date();now.setHours(0,0,0,0);return events.filter(ev=>{const d=new Date(ev.date+"T00:00:00");const diff=Math.round((d-now)/86400000);return diff>=1&&diff<=30;}).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);},[events,today]);
   const weekAhead=useMemo(()=>{const days=[];for(let i=1;i<=6;i++){const d=new Date();d.setDate(d.getDate()+i);const dk=dkey(d);const evs=events.filter(ev=>ev.date===dk).sort((a,b)=>(a.hour*60+(a.minute||0))-(b.hour*60+(b.minute||0)));if(evs.length>0)days.push({date:dk,d,evs});}return days;},[events,today]);
   function checkChore(it){
     setTodos(ts=>ts.map(x=>x.id!==it.id?x:{...x,lastCompleted:today}));
@@ -1573,8 +1573,8 @@ function TodayPanel({events,todos,setTodos,members,rewards,setRewards,homework,o
         <span style={{fontSize:9,color:od?"#EF4444":"#F59E0B",fontWeight:700,flexShrink:0}}>{od?"Overdue":"Today"}</span>
       </div>;})}
     </div>}
-    <div style={{fontSize:11,fontWeight:700,color:t.accent,textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>Today's Schedule</div>
-    {todayEvs.length===0?<div style={{fontSize:12,color:t.dim,marginBottom:16,fontStyle:"italic"}}>Nothing scheduled today</div>:todayEvs.map(ev=>{
+    {todayEvs.length>0&&<div style={{fontSize:11,fontWeight:700,color:t.accent,textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>Today's Schedule</div>}
+    {todayEvs.length>0&&todayEvs.map(ev=>{
       const pm=members.find(m=>m.id===ev.assignedTo);
       const nowM=new Date().getHours()*60+new Date().getMinutes();
       const evM=ev.hour*60+(ev.minute||0);const minsUntil=evM-nowM;
