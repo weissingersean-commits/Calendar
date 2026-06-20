@@ -1874,15 +1874,6 @@ function Homelight(){
                 <span style={{fontSize:10,color:t.dim}}>✎</span>
               </div>}
             </div>
-            <div style={{padding:"8px 10px",borderBottom:`1px solid ${t.bdr}`,flexShrink:0}}>
-              <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:2,color:t.accent,marginBottom:10}}>Coming Up</div>
-              {upcoming.length===0&&<div style={{fontSize:12,color:t.dim}}>Nothing scheduled</div>}
-              <div style={{maxHeight:110,overflowY:"auto"}}>
-              {upcoming.map(ev=>{const pm=members.find(m=>m.id===ev.assignedTo);const rel=relTime(ev.date,ev.hour,ev.minute);return<div key={ev.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,cursor:"pointer"}} onClick={()=>{setSel(new Date(ev.date+"T12:00:00"));setView("day");}}>
-                <div style={{width:3,borderRadius:2,background:evColor(ev,members),flexShrink:0,alignSelf:"stretch"}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{evPrefix(ev)}{ev.title}</div>{pm&&<div style={{fontSize:9,fontWeight:700,color:pm.color,marginTop:1}}>{pm.name}</div>}<div style={{fontSize:10,color:t.dim,fontFamily:FM,marginTop:1}}>{fmtT(ev.hour,ev.minute)}{rel&&<span style={{marginLeft:6,color:t.accent,fontWeight:700}}>{rel}</span>}</div>{ev.location&&<div style={{fontSize:9,color:t.dim,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📍 {ev.location}</div>}{ev.notes&&<div style={{fontSize:9,color:t.dim,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📝 {ev.notes}</div>}</div></div>;})}
-
-              </div>
-            </div>
             {(()=>{
               const todayKey2=dkey(new Date()),wkS=dkey(wkSt(new Date()));
               const taskBadge=todos.filter(it=>{if(it.repeat&&it.repeat!=="none")return(it.repeat==="daily"?it.lastCompleted!==todayKey2:!it.lastCompleted||it.lastCompleted<wkS);return!it.done&&it.dueDate&&it.dueDate<=todayKey2;}).length;
