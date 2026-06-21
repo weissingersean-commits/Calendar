@@ -983,24 +983,28 @@ function RewardsPanel({members,rewards,setRewards}){
 
 // ═════════════════ CAL SYNC PANEL ════════════════════════════════════
 function CalSyncPanel({feeds,setFeeds,syncAll,syncStatus}){
-  const t=useT(),s=useS();const[name,setName]=useState(""),[url,setUrl]=useState(""),[showAdd,setShowAdd]=useState(false),[validateMessage,setValidateMessage]=useState("");
+  const t=useT(),s=useS();const[name,setName]=useState(""),[url,setUrl]=useState(""),[showAdd,setShowAdd]=useState(false),[validateMessage,setValidateMessage]=useState(""),[editingFeedId,setEditingFeedId]=useState(null);
   const addFeed=()=>{const normalizedUrl=normalizeFeedUrl(url);if(!name.trim()||!normalizedUrl){setValidateMessage("Enter a valid calendar name and URL.");return;}const color=FEED_COLORS[feeds.length%FEED_COLORS.length];setFeeds([...feeds,{id:mkId(),name:name.trim(),url:normalizedUrl,color,enabled:true,lastSync:null,count:0,error:null}]);setName("");setUrl("");setShowAdd(false);setValidateMessage("");};
   const removeFeed=id=>setFeeds(feeds.filter(f=>f.id!==id));
   const toggleFeed=id=>setFeeds(feeds.map(f=>f.id===id?{...f,enabled:!f.enabled}:f));
+  const updateFeedColor=(id,color)=>setFeeds(feeds.map(f=>f.id===id?{...f,color}:f));
   const refreshFeed=id=>{const feed=feeds.find(f=>f.id===id);if(feed)syncAll(feed);};
   const validateUrl=async feedUrl=>{const normalizedUrl=normalizeFeedUrl(feedUrl);if(!normalizedUrl){setValidateMessage("Enter a calendar URL first.");return;}setValidateMessage("Validating URL...");try{const text=await fetchWithCorsFallback(normalizedUrl);const parsed=parseICS(text,"validate","#000");if(parsed.length===0)setValidateMessage("Valid iCal feed, but no events found.");else setValidateMessage(`Valid iCal feed with ${parsed.length} event${parsed.length===1?"":"s"}.`);}catch(err){setValidateMessage(`Validation failed: ${err?.message||"Unable to load or parse the feed."}`);} };
-  const retryFeed=id=>{const feed=feeds.find(f=>f.id===id);if(feed)syncAll(feed);}  
+  const retryFeed=id=>{const feed=feeds.find(f=>f.id===id);if(feed)syncAll(feed);}
   return<div style={{padding:16,overflow:"auto",flex:1}}>
     <div style={s.secT}>Calendar Feeds</div>
     <div style={{fontSize:12,color:t.sub,lineHeight:1.6,marginBottom:14}}>Connect calendars from Google, iCloud, Outlook, or any iCal URL. Each person gets their own color.</div>
     <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:14}}><button onClick={()=>syncAll()} style={s.btnP}>Refresh All</button><div style={{fontSize:12,color:t.dim}}>{syncStatus==="loading"?"Refreshing feeds…":syncStatus==="success"?"Last sync succeeded":"Last sync incomplete or failed"}</div></div>
-    {feeds.map(f=><div key={f.id} style={{...s.crd,display:"flex",alignItems:"center",gap:10}}>
-      <div style={{width:12,height:12,borderRadius:"50%",background:f.color,flexShrink:0,cursor:"pointer",opacity:f.enabled?1:0.3}} onClick={()=>toggleFeed(f.id)}/>
-      <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:f.enabled?t.text:t.dim}}>{f.name}</div><div style={{fontSize:10,color:t.dim,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{f.count} events{f.lastSync?` · ${f.error?"failed":"synced"} ${new Date(f.lastSync).toLocaleTimeString()}`:""}</div>{f.error&&<div style={{fontSize:10,color:t.danger,marginTop:4,whiteSpace:"normal"}}>⚠ {f.error}</div>}</div>
-      <button onClick={()=>refreshFeed(f.id)} style={{background:"none",border:"none",color:t.accent,cursor:"pointer",fontSize:12,padding:"4px 8px"}}>Refresh</button>
-      <button onClick={()=>toggleFeed(f.id)} style={{background:"none",border:"none",color:f.enabled?t.accent:t.dim,cursor:"pointer",fontSize:14}}>{f.enabled?"On":"Off"}</button>
-      {f.error&&<button onClick={()=>retryFeed(f.id)} style={{background:t.accent,color:t.acText,border:"none",borderRadius:8,padding:"6px 10px",fontSize:10,cursor:"pointer"}}>Retry</button>}
-      <button onClick={()=>removeFeed(f.id)} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:16}}>×</button>
+    {feeds.map(f=><div key={f.id} style={s.crd}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <div style={{width:16,height:16,borderRadius:"50%",background:f.color,flexShrink:0,cursor:"pointer",opacity:f.enabled?1:0.4,border:editingFeedId===f.id?`2px solid ${t.text}`:"2px solid transparent",boxSizing:"border-box"}} onClick={()=>setEditingFeedId(editingFeedId===f.id?null:f.id)} title="Tap to change color"/>
+        <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:f.enabled?t.text:t.dim}}>{f.name}</div><div style={{fontSize:10,color:t.dim,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{f.count} events{f.lastSync?` · ${f.error?"failed":"synced"} ${new Date(f.lastSync).toLocaleTimeString()}`:""}</div>{f.error&&<div style={{fontSize:10,color:t.danger,marginTop:4,whiteSpace:"normal"}}>⚠ {f.error}</div>}</div>
+        <button onClick={()=>refreshFeed(f.id)} style={{background:"none",border:"none",color:t.accent,cursor:"pointer",fontSize:12,padding:"4px 8px"}}>Refresh</button>
+        <button onClick={()=>toggleFeed(f.id)} style={{background:"none",border:"none",color:f.enabled?t.accent:t.dim,cursor:"pointer",fontSize:14}}>{f.enabled?"On":"Off"}</button>
+        {f.error&&<button onClick={()=>retryFeed(f.id)} style={{background:t.accent,color:t.acText,border:"none",borderRadius:8,padding:"6px 10px",fontSize:10,cursor:"pointer"}}>Retry</button>}
+        <button onClick={()=>removeFeed(f.id)} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:16}}>×</button>
+      </div>
+      {editingFeedId===f.id&&<div style={{display:"flex",gap:5,flexWrap:"wrap",paddingTop:10}}>{PALETTE.map(c=><div key={c} onClick={()=>updateFeedColor(f.id,c)} style={{width:22,height:22,borderRadius:"50%",background:c,cursor:"pointer",border:f.color===c?`3px solid ${t.text}`:"3px solid transparent",boxSizing:"border-box",transform:f.color===c?"scale(1.2)":"scale(1)",transition:"transform 0.1s"}}/>)}</div>}
     </div>)}
     {showAdd?<div style={s.crd}><input style={s.inp} placeholder='Label (e.g. "Sarah - iPhone")' value={name} onChange={e=>setName(e.target.value)}/><input style={s.inp} placeholder="Paste iCal URL here..." value={url} onChange={e=>setUrl(e.target.value)}/><div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button style={s.btnS} onClick={()=>setShowAdd(false)}>Cancel</button><button style={s.btnS} onClick={()=>validateUrl(url)}>Validate URL</button><button style={s.btnP} onClick={addFeed}>Add Calendar</button></div>{validateMessage&&<div style={{fontSize:12,color:validateMessage.startsWith("Valid")?t.accent:t.danger,marginTop:8}}>{validateMessage}</div>}</div>
     :<button onClick={()=>setShowAdd(true)} style={{width:"100%",padding:"10px 0",borderRadius:10,border:`1px dashed ${t.bdr}`,background:"transparent",color:t.accent,fontSize:12,fontWeight:600,cursor:"pointer",marginBottom:12}}>+ Add Calendar Feed</button>}
