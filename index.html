@@ -1292,6 +1292,7 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart
   const[memberName,setMemberName]=useState("");
   const[memberColor,setMemberColor]=useState(PALETTE[3]);
   const[showMemberAdd,setShowMemberAdd]=useState(false);
+  const[editingMemberId,setEditingMemberId]=useState(null);
   const[cName,setCName]=useState("");const[cPhone,setCPhone]=useState("");const[cLabel,setCLabel]=useState("other");const[showCAdd,setShowCAdd]=useState(false);
   const[notifPerm,setNotifPerm]=useState(typeof Notification!=="undefined"?Notification.permission:"unsupported");
   const requestNotif=async()=>{if(typeof Notification==="undefined")return;const p=await Notification.requestPermission();setNotifPerm(p);};
@@ -1308,10 +1309,14 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart
     <div style={s.secT}>Settings</div>
     <label style={s.lbl}>Family Members</label>
     <div style={{fontSize:11,color:t.sub,marginBottom:10,lineHeight:1.6}}>Add each person in your home to assign chores and track star rewards. Up to 8 members.</div>
-    {members.map(m=><div key={m.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-      <div style={{width:28,height:28,borderRadius:"50%",background:m.color,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,fontWeight:800,flexShrink:0}}>{m.name[0].toUpperCase()}</div>
-      <span style={{flex:1,fontSize:13,color:t.text,fontWeight:500}}>{m.name}</span>
-      <button onClick={()=>setMembers(prev=>prev.filter(x=>x.id!==m.id))} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:18,padding:"4px",lineHeight:1}}>×</button>
+    {members.map(m=><div key={m.id} style={{marginBottom:8}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <div onClick={()=>setEditingMemberId(editingMemberId===m.id?null:m.id)} style={{width:28,height:28,borderRadius:"50%",background:m.color,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,fontWeight:800,flexShrink:0,cursor:"pointer",border:editingMemberId===m.id?`3px solid ${t.text}`:"3px solid transparent",boxSizing:"border-box"}} title="Tap to change color">{m.name[0].toUpperCase()}</div>
+        <span style={{flex:1,fontSize:13,color:t.text,fontWeight:500}}>{m.name}</span>
+        {editingMemberId===m.id&&<button onClick={()=>setEditingMemberId(null)} style={{background:"none",border:"none",color:t.accent,cursor:"pointer",fontSize:11,padding:"2px 6px",fontFamily:FF}}>done</button>}
+        <button onClick={()=>setMembers(prev=>prev.filter(x=>x.id!==m.id))} style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:18,padding:"4px",lineHeight:1}}>×</button>
+      </div>
+      {editingMemberId===m.id&&<div style={{display:"flex",gap:5,flexWrap:"wrap",padding:"10px 0 4px 38px"}}>{PALETTE.map(c=><div key={c} onClick={()=>{setMembers(prev=>prev.map(x=>x.id===m.id?{...x,color:c}:x));}} style={{width:22,height:22,borderRadius:"50%",background:c,cursor:"pointer",border:m.color===c?`3px solid ${t.text}`:"3px solid transparent",boxSizing:"border-box",transform:m.color===c?"scale(1.2)":"scale(1)",transition:"transform 0.1s"}}/> )}</div>}
     </div>)}
     {members.length<8&&(!showMemberAdd
       ?<button onClick={()=>setShowMemberAdd(true)} style={{width:"100%",padding:"9px 0",borderRadius:10,border:`1px dashed ${t.bdr}`,background:"transparent",color:t.accent,fontSize:12,fontWeight:600,cursor:"pointer",marginBottom:16}}>+ Add Family Member</button>
