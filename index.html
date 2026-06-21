@@ -1801,6 +1801,8 @@ function Homelight(){
   const[announcement,setAnnouncement]=useP("announcement","");
   const[editingAnnouncement,setEditingAnnouncement]=useState(false);
   const[announcementDraft,setAnnouncementDraft]=useState("");
+  const quickPhotoRef=useRef(null);
+  const handleQuickPhoto=e=>{Array.from(e.target.files||[]).forEach(file=>{if(!file.type.startsWith("image/"))return;const reader=new FileReader();reader.onload=ev=>{setPhotos(prev=>[...prev,ev.target.result]);};reader.readAsDataURL(file);});e.target.value="";};
   const[rewards,setRewards]=useP("rewards",{stars:{},prizes:[]});
   const[recipes,setRecipes]=useP("recipes",[]);
   const[contacts,setContacts]=useP("contacts",[]);
@@ -1899,6 +1901,8 @@ function Homelight(){
           <span style={{fontSize:12,color:t.dim}}>{DAYS_F[time.getDay()]}, {MO[time.getMonth()]} {time.getDate()}</span>
           <div style={{width:1,height:20,background:t.bdr}}/>
           {[["📅","ical","Calendars"],["⚙","settings","Settings"],["🖼","ss","Photos"]].map(([ic,key,tip])=><button key={key} onClick={()=>key==="ss"?setShowSS(true):setPanel(panel===key?"main":key)} title={tip} style={{background:"none",border:"none",color:panel===key?t.accent:t.dim,cursor:"pointer",fontSize:18,padding:"8px 10px",minHeight:44,minWidth:44}}>{ic}</button>)}
+          <input ref={quickPhotoRef} type="file" accept="image/*" multiple onChange={handleQuickPhoto} style={{display:"none"}}/>
+          <button onClick={()=>quickPhotoRef.current?.click()} title="Add photo to screensaver" style={{background:"none",border:"none",color:t.dim,cursor:"pointer",fontSize:18,padding:"8px 10px",minHeight:44,minWidth:44}}>📷</button>
           {deferredPrompt && <button onClick={async()=>{deferredPrompt.prompt();const choice=await deferredPrompt.userChoice;setInstallStatus(choice.outcome);setDeferredPrompt(null);}} style={{padding:"6px 14px",borderRadius:22,border:"none",background:t.success,color:t.acText,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>Install</button>}
           {installStatus && <span style={{fontSize:12,color:t.success,whiteSpace:"nowrap"}}>{installStatus==="installed"?"App installed!":"Install prompt shown"}</span>}
           <button onClick={()=>window.print()} title="Print calendar" style={{padding:"6px 10px",borderRadius:22,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>🖨</button>
