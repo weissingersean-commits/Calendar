@@ -479,7 +479,7 @@ function EventModal({event,sel,defaultHour=9,onClose,onSave,onDelete}){
       <div style={{fontSize:13,color:t.sub,marginBottom:4}}>{event.duration===24&&event.hour===0?"All day":`${fmtT(event.hour,event.minute)} – ${fmtT(Math.floor(event.hour+event.duration),0)}`}</div>
       {event.location&&<div style={{fontSize:13,color:t.sub,marginBottom:4}}>📍 {event.location}</div>}
       <div style={{fontSize:11,color:t.dim,marginTop:8,fontStyle:"italic"}}>Synced from external calendar — edit in the source app.</div>
-      <div style={{display:"flex",gap:8,marginTop:16}}><button style={s.btnS} onClick={onClose}>Close</button><button style={s.btnP} onClick={exportICS}>Download .ics</button></div>
+      <div style={{display:"flex",gap:8,marginTop:16}}><button style={s.btnD} onClick={()=>{onDelete(event.id);onClose();}}>Remove</button><button style={s.btnS} onClick={onClose}>Close</button><button style={s.btnP} onClick={exportICS}>Download .ics</button></div>
     </div>:<div>
       <input style={s.inp} placeholder="What's happening?" value={title} onChange={e=>setTitle(e.target.value)} autoFocus/>
       <input style={s.inp} placeholder="Location (optional)" value={location} onChange={e=>setLoc(e.target.value)}/>
