@@ -1088,7 +1088,7 @@ function Screensaver({onTap,wx,loc,forecast,customPhotos,ssCollections,ssSleepEn
         {chores.length>3&&<div style={{fontSize:11,color:"rgba(255,255,255,0.4)",paddingLeft:28}}>+{chores.length-3} more</div>}
       </div>)}
     </div>}
-    <div style={{position:"absolute",top:52,right:52,zIndex:1,textAlign:"center"}}>
+    <div style={{position:"absolute",top:52,right:52,zIndex:1,textAlign:"center",display:"flex",flexDirection:"column",gap:10,alignItems:"stretch"}}>
       <div style={{background:"rgba(0,0,0,0.32)",borderRadius:16,padding:"14px 18px",backdropFilter:"blur(8px)",border:"1px solid rgba(255,255,255,0.07)"}}>
         <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.3)",textTransform:"uppercase",letterSpacing:2,marginBottom:10}}>{MO[time.getMonth()]} {time.getFullYear()}</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,26px)",gap:"2px 0"}}>
@@ -1103,6 +1103,10 @@ function Screensaver({onTap,wx,loc,forecast,customPhotos,ssCollections,ssSleepEn
           })}
         </div>
       </div>
+      {announcement&&<div style={{background:"rgba(251,191,36,0.13)",border:"1px solid rgba(251,191,36,0.35)",borderRadius:12,padding:"10px 14px",backdropFilter:"blur(6px)",textAlign:"left"}}>
+        <div style={{fontSize:10,fontWeight:700,color:"rgba(251,191,36,0.6)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:4}}>📌 Family Message</div>
+        <div style={{fontSize:13,color:"rgba(255,255,255,0.85)",fontWeight:500,lineHeight:1.4}}>{announcement}</div>
+      </div>}
     </div>
     <div style={{position:"absolute",bottom:48,left:52,zIndex:1}}>
       <div style={{fontSize:120,fontWeight:200,color:"#fff",lineHeight:1,fontFamily:FM,letterSpacing:-6}}>{String(time.getHours()%12||12).padStart(2,"0")}:{String(time.getMinutes()).padStart(2,"0")}<span style={{fontSize:40,fontWeight:300,marginLeft:16,opacity:.45}}>{time.getHours()>=12?"PM":"AM"}</span></div>
@@ -1125,11 +1129,6 @@ function Screensaver({onTap,wx,loc,forecast,customPhotos,ssCollections,ssSleepEn
         </div>;})}
       </div>}
     </div>
-    {announcement&&<div style={{position:"absolute",bottom:agenda.length>0?320:52,right:52,zIndex:1,maxWidth:360,textAlign:"right"}}>
-      <div style={{display:"inline-block",background:"rgba(251,191,36,0.15)",border:"1px solid rgba(251,191,36,0.35)",borderRadius:12,padding:"8px 16px",backdropFilter:"blur(6px)"}}>
-        <span style={{fontSize:13,color:"rgba(255,255,255,0.85)",fontWeight:500}}>📌 {announcement}</span>
-      </div>
-    </div>}
     {agenda.length>0&&<div onClick={e=>e.stopPropagation()} onTouchStart={e=>e.stopPropagation()} style={{position:"absolute",bottom:52,right:52,zIndex:1,textAlign:"right",maxWidth:360,maxHeight:"65vh",overflowY:"auto",scrollbarWidth:"none",msOverflowStyle:"none"}}>
       {agenda.map(({dk,d,evs})=><div key={dk} style={{marginBottom:14}}>
         <div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:2,color:"rgba(255,255,255,0.28)",marginBottom:8}}>{DAYS_F[d.getDay()]}, {MO[d.getMonth()]} {d.getDate()}</div>
