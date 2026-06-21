@@ -982,12 +982,12 @@ function RewardsPanel({members,rewards,setRewards}){
 }
 
 // ═════════════════ CAL SYNC PANEL ════════════════════════════════════
-function CalSyncPanel({feeds,setFeeds,syncAll,syncStatus}){
+function CalSyncPanel({feeds,setFeeds,syncAll,syncStatus,setEvents}){
   const t=useT(),s=useS();const[name,setName]=useState(""),[url,setUrl]=useState(""),[showAdd,setShowAdd]=useState(false),[validateMessage,setValidateMessage]=useState(""),[editingFeedId,setEditingFeedId]=useState(null);
   const addFeed=()=>{const normalizedUrl=normalizeFeedUrl(url);if(!name.trim()||!normalizedUrl){setValidateMessage("Enter a valid calendar name and URL.");return;}const color=FEED_COLORS[feeds.length%FEED_COLORS.length];setFeeds([...feeds,{id:mkId(),name:name.trim(),url:normalizedUrl,color,enabled:true,lastSync:null,count:0,error:null}]);setName("");setUrl("");setShowAdd(false);setValidateMessage("");};
   const removeFeed=id=>setFeeds(feeds.filter(f=>f.id!==id));
   const toggleFeed=id=>setFeeds(feeds.map(f=>f.id===id?{...f,enabled:!f.enabled}:f));
-  const updateFeedColor=(id,color)=>setFeeds(feeds.map(f=>f.id===id?{...f,color}:f));
+  const updateFeedColor=(id,color)=>{setFeeds(feeds.map(f=>f.id===id?{...f,color}:f));setEvents(evs=>evs.map(e=>e.feedId===id?{...e,feedColor:color}:e));};
   const refreshFeed=id=>{const feed=feeds.find(f=>f.id===id);if(feed)syncAll(feed);};
   const validateUrl=async feedUrl=>{const normalizedUrl=normalizeFeedUrl(feedUrl);if(!normalizedUrl){setValidateMessage("Enter a calendar URL first.");return;}setValidateMessage("Validating URL...");try{const text=await fetchWithCorsFallback(normalizedUrl);const parsed=parseICS(text,"validate","#000");if(parsed.length===0)setValidateMessage("Valid iCal feed, but no events found.");else setValidateMessage(`Valid iCal feed with ${parsed.length} event${parsed.length===1?"":"s"}.`);}catch(err){setValidateMessage(`Validation failed: ${err?.message||"Unable to load or parse the feed."}`);} };
   const retryFeed=id=>{const feed=feeds.find(f=>f.id===id);if(feed)syncAll(feed);}
@@ -1920,7 +1920,7 @@ function Homelight(){
           {view==="day"&&<DayView sel={sel} setSel={setSel} events={displayEventsWithTasks} onEv={onEv} onAdd={h=>onAddEvent(dkey(sel),h)}/>}
         </div>
         <div data-no-print="" style={{width:sidebarOpen?"clamp(300px, 27vw, 400px)":0,borderLeft:sidebarOpen?`1px solid ${t.bdr}`:"none",background:t.sidebarBg,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0,transition:"width 0.25s ease"}}>
-          {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus}/>
+          {panel==="ical"?<CalSyncPanel feeds={feeds} setFeeds={setFeeds} syncAll={syncAll} syncStatus={syncStatus} setEvents={setEvents}/>
           :panel==="settings"?<SettingsPanel ssDelay={ssDelay} setSsDelay={setSsDelay} theme={theme} setTheme={setTheme} weekStart={weekStart} setWeekStart={setWeekStart} photos={photos} setPhotos={setPhotos} ssCollections={ssCollections} setSsCollections={setSsCollections} ssSleepEnabled={ssSleepEnabled} setSsSleepEnabled={setSsSleepEnabled} ssSleepTime={ssSleepTime} setSsSleepTime={setSsSleepTime} ssWakeTime={ssWakeTime} setSsWakeTime={setSsWakeTime} reminderMins={reminderMins} setReminderMins={setReminderMins} onClearEvents={()=>{if(confirm("Clear all local events?"))setEvents(prev=>prev.filter(e=>e.synced));}} onClearLists={()=>{if(confirm("Clear tasks and grocery list?")){setTodos([]);setGrocery([]);}}} onClearMeals={()=>{if(confirm("Clear meal plans?"))setMeals({});}} deferredPrompt={deferredPrompt} installStatus={installStatus} onInstallPrompt={handleInstallPrompt} geminiKey={geminiKey} setGeminiKey={setGeminiKey} geminiModel={geminiModel} setGeminiModel={setGeminiModel} members={members} setMembers={setMembers} contacts={contacts} setContacts={setContacts} wallMode={wallMode} setWallMode={setWallMode} wallReturnMins={wallReturnMins} setWallReturnMins={setWallReturnMins} onClose={()=>setPanel("main")}/>
           :<>
             <div style={{padding:"10px 10px",borderBottom:`1px solid ${t.bdr}`}}><Weather loc={loc} setLoc={setLoc} onWx={setWx} onFc={setForecast}/></div>
