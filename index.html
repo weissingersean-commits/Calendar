@@ -94,6 +94,7 @@ const wkSt=(d,s=0)=>{const r=new Date(d);const day=r.getDay();r.setDate(r.getDat
 const dInM=(y,m)=>new Date(y,m+1,0).getDate();
 const fmtT=(h,m)=>`${h%12||12}:${String(m||0).padStart(2,"0")} ${h>=12?"PM":"AM"}`;
 const mkId=()=>`${Date.now()}-${Math.random().toString(36).slice(2,9)}`;
+const applyMoney=(r,memberId,newLifetime)=>{const prevConv=(r.moneyStarsConverted||{})[memberId]||0;const newConv=Math.floor(newLifetime/15)*15;if(newConv<=prevConv)return{};const starsConverted=newConv-prevConv;const earned=(starsConverted/15)*5;const txn={id:mkId(),memberId,desc:`${starsConverted} stars → $${earned.toFixed(2)} earned`,amount:earned,type:"earned"};return{moneyStarsConverted:{...(r.moneyStarsConverted||{}),[memberId]:newConv},moneyBalance:{...(r.moneyBalance||{}),[memberId]:((r.moneyBalance||{})[memberId]||0)+earned},moneyTransactions:[...(r.moneyTransactions||[]),txn]};};
 const getEventMinutes=ev=>{const minutes=(ev.minute||0);return ev.hour*60+minutes;};
 // Streak calc: vacationMode=true prevents resets; graceDays=1 means 1 missed day is forgiven automatically
 const calcStreak=(it,completionDate,vacationMode,graceDays=1)=>{
@@ -775,7 +776,7 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
           notifs.push({id:mkId(),memberId,memberName:mn,prizeId:p.id,prizeName:p.name});
         }
       });
-      return{...r,stars:{...(r.stars||{}),[memberId]:((r.stars||{})[memberId]||0)+amount},lifetimeStars:{...(r.lifetimeStars||{}),[memberId]:newLife},prizeNotifs:notifs};
+      const moneyUpd=applyMoney(r,memberId,newLife);return{...r,...moneyUpd,stars:{...(r.stars||{}),[memberId]:((r.stars||{})[memberId]||0)+amount},lifetimeStars:{...(r.lifetimeStars||{}),[memberId]:newLife},prizeNotifs:notifs};
     });
   };
 
@@ -853,11 +854,11 @@ function FamilyTasks({items,setItems,members,rewards,setRewards,homework,setHome
       {oneTime.length>0&&<div>{(recurringReq.length>0||recurringBonus.length>0)&&<div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:t.dim,marginBottom:4,marginTop:8}}>One-time</div>}{oneTime.map(it=><TaskRow key={it.id} it={it}/>)}</div>}
       <div style={{borderTop:`1px solid ${t.bdr}`,marginTop:8,paddingTop:8}}>
         <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
-          {["Clean room","Make bed","Unload dishes","Load dishes","Take out trash","Vacuum","Laundry","Feed pet","Homework","Set table","Wipe counters"].map(s=><button key={s} onClick={()=>setVal(s)} style={{padding:"4px 11px",borderRadius:12,border:`1px solid ${val===s?t.accent:t.bdr}`,background:val===s?t.acDim:"transparent",color:val===s?t.accent:t.sub,fontSize:12,cursor:"pointer",fontFamily:FF,fontWeight:val===s?700:500,whiteSpace:"nowrap"}}>{s}</button>)}
+          {["Clean room","Make bed","Unload dishes","Load dishwasher","Take out trash","Vacuum","Laundry","Feed pet","Homework","Set table","Wipe counters","Mow the lawn"].map(s=><button key={s} onClick={()=>setVal(s)} style={{padding:"4px 11px",borderRadius:12,border:`1px solid ${val===s?t.accent:t.bdr}`,background:val===s?t.acDim:"transparent",color:val===s?t.accent:t.sub,fontSize:12,cursor:"pointer",fontFamily:FF,fontWeight:val===s?700:500,whiteSpace:"nowrap"}}>{s}</button>)}
         </div>
         <input style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:12,fontFamily:FF,outline:"none",marginBottom:6,boxSizing:"border-box"}} placeholder="Add chore or task..." value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask();}}/>
         <div style={{display:"flex",gap:3,flexWrap:"wrap",marginBottom:6}}>
-          {["🍽️","🛏️","🧹","🌀","🗑️","🧺","🧽","🪣","🫧","✨","🐶","🐱","🌿","📚","🎒","👕","🪥","🍳","🚿","💊","🚗","🛒","🪴"].map(e=><button key={e} onClick={()=>setTaskEmoji(taskEmoji===e?"":e)} style={{fontSize:17,padding:"2px 4px",borderRadius:7,border:`1px solid ${taskEmoji===e?t.accent:t.bdr}`,background:taskEmoji===e?t.acDim:"transparent",cursor:"pointer",lineHeight:1,transition:"all 0.1s"}}>{e}</button>)}
+          {["🍽️","🛏️","🧹","🌀","🗑️","🧺","🧽","🪣","🫧","✨","🐶","🐱","🌿","🌱","📚","🎒","👕","🪥","🍳","🚿","💊","🚗","🛒","🪴"].map(e=><button key={e} onClick={()=>setTaskEmoji(taskEmoji===e?"":e)} style={{fontSize:17,padding:"2px 4px",borderRadius:7,border:`1px solid ${taskEmoji===e?t.accent:t.bdr}`,background:taskEmoji===e?t.acDim:"transparent",cursor:"pointer",lineHeight:1,transition:"all 0.1s"}}>{e}</button>)}
         </div>
         {members.length>0&&<div style={{marginBottom:6}}><div style={{fontSize:10,fontWeight:700,color:t.sub,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Assign to</div><div style={{display:"flex",gap:5,flexWrap:"wrap"}}><button onClick={()=>setAssignTo("")} style={{padding:"5px 12px",borderRadius:12,border:`1px solid ${!assignTo?t.accent:t.bdr}`,background:!assignTo?t.acDim:"transparent",color:!assignTo?t.accent:t.sub,fontSize:11,cursor:"pointer",fontFamily:FF,fontWeight:!assignTo?700:400}}>Everyone</button>{members.map(m=><button key={m.id} onClick={()=>setAssignTo(assignTo===m.id?"":m.id)} style={{padding:"5px 12px",borderRadius:12,border:`2px solid ${assignTo===m.id?m.color:t.bdr}`,background:assignTo===m.id?m.color+"33":"transparent",color:assignTo===m.id?m.color:t.sub,fontSize:11,cursor:"pointer",fontFamily:FF,fontWeight:assignTo===m.id?700:400,display:"flex",alignItems:"center",gap:5}}><div style={{width:9,height:9,borderRadius:"50%",background:m.color}}/>{m.name}</button>)}</div></div>}
         <div style={{display:"flex",gap:4,marginBottom:6}}>{["none","daily","weekly"].map(r=><button key={r} onClick={()=>setTaskRepeat(r)} style={{flex:1,padding:"4px 0",borderRadius:8,border:`1px solid ${taskRepeat===r?t.accent:t.bdr}`,background:taskRepeat===r?t.acDim:"transparent",color:taskRepeat===r?t.accent:t.sub,fontSize:10,cursor:"pointer",fontFamily:FF,fontWeight:taskRepeat===r?700:400}}>{r==="none"?"Once":r==="daily"?"↻ Daily":"↻ Weekly"}</button>)}</div>
@@ -929,6 +930,12 @@ function RewardsPanel({members,rewards,setRewards}){
   const[prizeCost,setPrizeCost]=useState(10);
   const[prizeFor,setPrizeFor]=useState(null);
   const[showAdd,setShowAdd]=useState(false);
+  const[spendTarget,setSpendTarget]=useState(null);
+  const[spendDesc,setSpendDesc]=useState("");
+  const[spendAmt,setSpendAmt]=useState("");
+  const[showAddPreset,setShowAddPreset]=useState(false);
+  const[presetLabel,setPresetLabel]=useState("");
+  const[presetAmt,setPresetAmt]=useState("");
 
   const addPrize=()=>{
     if(!prizeName.trim())return;
@@ -982,8 +989,29 @@ function RewardsPanel({members,rewards,setRewards}){
             <span style={{fontSize:26,fontWeight:900,fontFamily:FM,color:"#FCD34D"}}>{stars}</span>
           </div>
         </div>
+        <div style={{display:"flex",alignItems:"center",gap:6,borderTop:`1px solid ${t.bdr}`,paddingTop:6,marginTop:4,marginBottom:spendTarget===m.id?6:0}}>
+          <span style={{fontSize:13}}>💵</span>
+          <span style={{fontSize:18,fontWeight:800,fontFamily:FM,color:"#22C55E"}}>${((rewards.moneyBalance||{})[m.id]||0).toFixed(2)}</span>
+          <span style={{fontSize:9,color:t.dim,flex:1}}>15⭐ = $5.00</span>
+          <button onClick={()=>{setSpendTarget(spendTarget===m.id?null:m.id);setSpendDesc("");setSpendAmt("");}} style={{background:spendTarget===m.id?t.acDim:"transparent",border:`1px solid ${spendTarget===m.id?t.accent:t.bdr}`,borderRadius:8,color:spendTarget===m.id?t.accent:t.dim,fontSize:10,fontWeight:700,cursor:"pointer",padding:"4px 8px",fontFamily:FF}}>Spend $</button>
+        </div>
+        {spendTarget===m.id&&<div style={{display:"flex",gap:4,marginBottom:6,flexWrap:"wrap",alignItems:"center"}}>
+          {(rewards.spendPresets||[]).length>0&&<div style={{width:"100%",display:"flex",gap:4,flexWrap:"wrap",marginBottom:4}}>
+            {(rewards.spendPresets||[]).map(p=><button key={p.id} onClick={()=>{setSpendDesc(p.label);setSpendAmt(String(p.amount));}} style={{padding:"4px 9px",borderRadius:10,border:`1px solid ${spendDesc===p.label&&spendAmt===String(p.amount)?t.accent:t.bdr}`,background:spendDesc===p.label&&spendAmt===String(p.amount)?t.acDim:"transparent",color:spendDesc===p.label&&spendAmt===String(p.amount)?t.accent:t.sub,fontSize:11,cursor:"pointer",fontFamily:FF,fontWeight:spendDesc===p.label&&spendAmt===String(p.amount)?700:400}}>{p.label} ${parseFloat(p.amount).toFixed(2)}</button>)}
+          </div>}
+          <input style={{flex:2,padding:"6px 10px",borderRadius:8,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:11,fontFamily:FF,outline:"none",minWidth:0}} placeholder="What for? (e.g. Snack, Toy)" value={spendDesc} onChange={e=>setSpendDesc(e.target.value)}/>
+          <input type="number" min="0.01" step="0.01" style={{width:68,padding:"6px 8px",borderRadius:8,border:`1px solid ${t.bdr}`,background:t.inputBg,color:t.text,fontSize:11,fontFamily:FF,outline:"none"}} placeholder="$" value={spendAmt} onChange={e=>setSpendAmt(e.target.value)}/>
+          <button onClick={()=>{const amt=parseFloat(spendAmt);if(!amt||amt<=0)return;const newBal=Math.max(0,((rewards.moneyBalance||{})[m.id]||0)-amt);const txn={id:mkId(),memberId:m.id,desc:spendDesc.trim()||"Spent",amount:amt,type:"spent"};setRewards(r=>({...r,moneyBalance:{...(r.moneyBalance||{}),[m.id]:newBal},moneyTransactions:[...(r.moneyTransactions||[]),txn]}));setSpendTarget(null);setSpendDesc("");setSpendAmt("");}} style={{padding:"6px 12px",borderRadius:8,border:"none",background:"#22C55E",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FF}}>✓</button>
+          <button onClick={()=>setSpendTarget(null)} style={{padding:"6px 8px",borderRadius:8,border:`1px solid ${t.bdr}`,background:"transparent",color:t.dim,fontSize:11,cursor:"pointer",fontFamily:FF}}>✕</button>
+        </div>}
+        {(rewards.moneyTransactions||[]).filter(tx=>tx.memberId===m.id).length>0&&<div style={{marginBottom:6}}>
+          {(rewards.moneyTransactions||[]).filter(tx=>tx.memberId===m.id).slice(-4).reverse().map(tx=><div key={tx.id} style={{display:"flex",alignItems:"center",gap:6,fontSize:10,padding:"2px 0"}}>
+            <span style={{color:tx.type==="earned"?"#22C55E":"#EF4444",fontWeight:700,fontFamily:FM,minWidth:48,flexShrink:0}}>{tx.type==="earned"?"+":"-"}${tx.amount.toFixed(2)}</span>
+            <span style={{flex:1,color:t.dim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.desc}</span>
+          </div>)}
+        </div>}
         {isAward&&<div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
-          {[1,2,3,5,10].map(n=><button key={n} onClick={e=>{e.currentTarget.disabled=true;setRewards(r=>{const curL=(r.lifetimeStars||{})[m.id]||0;const newL=curL+n;const notifs=[...(r.prizeNotifs||[])];(r.prizes||[]).forEach(p=>{if(p.memberId&&p.memberId!==m.id)return;const prev=curL-(p.claimedAt?.[m.id]||0);const next=newL-(p.claimedAt?.[m.id]||0);if(prev<p.cost&&next>=p.cost)notifs.push({id:mkId(),memberId:m.id,memberName:m.name,prizeId:p.id,prizeName:p.name});});return{...r,stars:{...(r.stars||{}),[m.id]:((r.stars||{})[m.id]||0)+n},lifetimeStars:{...(r.lifetimeStars||{}),[m.id]:newL},prizeNotifs:notifs};});playDing();setAwardTarget(null);}} style={{flex:1,padding:"6px 0",borderRadius:8,border:`1px solid ${m.color}`,background:m.color+"22",color:m.color,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+{n}⭐</button>)}
+          {[1,2,3,5,10].map(n=><button key={n} onClick={e=>{e.currentTarget.disabled=true;setRewards(r=>{const curL=(r.lifetimeStars||{})[m.id]||0;const newL=curL+n;const notifs=[...(r.prizeNotifs||[])];(r.prizes||[]).forEach(p=>{if(p.memberId&&p.memberId!==m.id)return;const prev=curL-(p.claimedAt?.[m.id]||0);const next=newL-(p.claimedAt?.[m.id]||0);if(prev<p.cost&&next>=p.cost)notifs.push({id:mkId(),memberId:m.id,memberName:m.name,prizeId:p.id,prizeName:p.name});});const mUpd=applyMoney(r,m.id,newL);return{...r,...mUpd,stars:{...(r.stars||{}),[m.id]:((r.stars||{})[m.id]||0)+n},lifetimeStars:{...(r.lifetimeStars||{}),[m.id]:newL},prizeNotifs:notifs};});playDing();setAwardTarget(null);}} style={{flex:1,padding:"6px 0",borderRadius:8,border:`1px solid ${m.color}`,background:m.color+"22",color:m.color,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+{n}⭐</button>)}
         </div>}
         {prizes.map(prize=>{const prog=Math.min(lt-(prize.claimedAt?.[m.id]||0),prize.cost);const pct=(prog/prize.cost)*100;const unlocked=prog>=prize.cost;return<div key={prize.id} style={{marginTop:10,padding:"10px 12px",borderRadius:14,background:unlocked?m.color+"18":t.bg,border:`1.5px solid ${unlocked?m.color:t.bdr}`,transition:"all 0.3s"}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
@@ -1024,6 +1052,25 @@ function RewardsPanel({members,rewards,setRewards}){
           <div style={{display:"flex",gap:8}}>
             <button style={s.btnS} onClick={()=>setShowAdd(false)}>Cancel</button>
             <button style={s.btnP} onClick={addPrize}>Add Prize</button>
+          </div>
+        </div>}
+    </div>
+    <div style={{marginTop:6}}>
+      <div style={{...s.secT,marginBottom:8}}>Spend Presets</div>
+      {(rewards.spendPresets||[]).map(p=><div key={p.id} style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+        <div style={{flex:1,fontSize:13,color:t.text}}>{p.label}</div>
+        <div style={{fontSize:12,color:"#22C55E",fontWeight:600}}>${parseFloat(p.amount).toFixed(2)}</div>
+        <button onClick={()=>setRewards(r=>({...r,spendPresets:(r.spendPresets||[]).filter(x=>x.id!==p.id)}))} style={{background:"none",border:"none",color:t.sub,cursor:"pointer",fontSize:16,padding:"0 4px"}}>×</button>
+      </div>)}
+      {!showAddPreset
+        ?<button onClick={()=>setShowAddPreset(true)} style={{width:"100%",padding:"8px 0",borderRadius:10,border:`1px dashed ${t.bdr}`,background:"transparent",color:t.accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF}}>+ Add Preset</button>
+        :<div style={s.crd}>
+          <input style={s.inp} placeholder="e.g. Robux, V-Bucks, Game add-on" value={presetLabel} onChange={e=>setPresetLabel(e.target.value)} autoFocus/>
+          <label style={s.lbl}>Amount ($)</label>
+          <input type="number" min="0.01" step="0.01" style={s.inp} placeholder="0.00" value={presetAmt} onChange={e=>setPresetAmt(e.target.value)}/>
+          <div style={{display:"flex",gap:8}}>
+            <button style={s.btnS} onClick={()=>{setShowAddPreset(false);setPresetLabel("");setPresetAmt("");}}>Cancel</button>
+            <button style={s.btnP} onClick={()=>{const amt=parseFloat(presetAmt);if(!presetLabel.trim()||!amt||amt<=0)return;setRewards(r=>({...r,spendPresets:[...(r.spendPresets||[]),{id:mkId(),label:presetLabel.trim(),amount:amt}]}));setShowAddPreset(false);setPresetLabel("");setPresetAmt("");}}>Save Preset</button>
           </div>
         </div>}
     </div>
