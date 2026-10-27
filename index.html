@@ -193,6 +193,14 @@ function nextRecurrence(date,rule,original){const freq=rule.FREQ;const interval=
   return null;
 }
 function setWeekday(date,weekday){const next=new Date(date);const diff=weekday-next.getDay();next.setDate(next.getDate()+((diff>=0?diff:diff+7)));return next;}
+// Bump on each deploy — shown in Settings so we can tell which build a device is running
+const APP_VERSION="2026.10.27b";
+// Drops the service worker + its cached files (not localStorage data) and reloads fresh from the network
+async function forceUpdate(){
+  try{if(navigator.serviceWorker){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister()));}
+    if(window.caches){const keys=await caches.keys();await Promise.all(keys.map(k=>caches.delete(k)));}}catch(e){console.error(e);}
+  location.replace(location.pathname+"?v="+Date.now());
+}
 // Our own Cloudflare Worker (see workers/ical-proxy.js) — corsproxy.io now 403s production sites
 const ICAL_PROXY="https://homelight-ical.weissinger-sean.workers.dev";
 async function fetchWithCorsFallback(url){
@@ -274,7 +282,7 @@ function Weather({loc,setLoc,onWx,onFc}){
   },[useF]);
   const detectViaIP=useCallback(async()=>{try{const r=await fetch("https://ipapi.co/json/");const d=await r.json();if(d.latitude&&d.longitude){setLoc({name:`${d.city||"My Location"}${d.region?", "+d.region:""}${d.country_name?` · ${d.country_name}`:""}`,lat:d.latitude,lon:d.longitude});setGErr(null);return;}}catch(e){console.error(e);}setGErr("Unable to auto-detect location. Please search manually.");},[setLoc]);
   const detect=useCallback(()=>{if(!navigator.geolocation){setGErr("Geolocation unavailable — trying IP fallback...");detectViaIP();return;}setGErr(null);navigator.geolocation.getCurrentPosition(async p=>{const{latitude:la,longitude:lo}=p.coords;try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${la}&lon=${lo}&format=json&addressdetails=1`);const d=await r.json();const city=d?.address?.city||d?.address?.town||d?.address?.village||d?.address?.county||"My Location";const st=d?.address?.state||"";setLoc({name:`${city}${st?", "+st:""}`,lat:la,lon:lo});}catch{setLoc({name:"My Location",lat:la,lon:lo});}},async e=>{setGErr("Location denied — trying IP fallback...");await detectViaIP();},{timeout:10000});},[setLoc,detectViaIP]);
-  useEffect(()=>{if(loc?.lat)fetchWx(loc.lat,loc.lon);},[loc,fetchWx]);
+  useEffect(()=>{if(!loc?.lat)return;fetchWx(loc.lat,loc.lon);const id=setInterval(()=>fetchWx(loc.lat,loc.lon),30*60*1000);return()=>clearInterval(id);},[loc,fetchWx]);
   useEffect(()=>{if(!loc)detect();},[]);
   const search=async()=>{if(q.length<2)return;setSrch(true);try{const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=en`);const d=await r.json();setRes(d.results||[]);}catch{setRes([]);}finally{setSrch(false);}};
   const unit=useF?"°F":"°C",info=wx?wmo(wx.code):null;
@@ -1570,6 +1578,10 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart
       <button onClick={exportData} style={{flex:1,padding:"9px 0",borderRadius:8,border:`1px solid ${t.accent}`,background:t.acDim,color:t.accent,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FF}}>⬇ Export Backup</button>
       <button onClick={()=>fileRef.current?.click()} style={{flex:1,padding:"9px 0",borderRadius:8,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FF}}>⬆ Import Backup</button>
       <input ref={fileRef} type="file" accept=".json" style={{display:"none"}} onChange={e=>importData(e.target.files?.[0])}/>
+    </div>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:12}}>
+      <span style={{fontSize:10,color:t.dim,fontFamily:FM}}>Version {APP_VERSION}</span>
+      <button onClick={forceUpdate} style={{padding:"7px 12px",borderRadius:8,border:`1px solid ${t.bdr}`,background:"transparent",color:t.sub,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FF}}>⟳ Force Update</button>
     </div>
     <label style={{...s.lbl,marginTop:0}}>Clear Data</label>
     <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
