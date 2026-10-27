@@ -1,4 +1,4 @@
-const CACHE = 'homelight-v6';
+const CACHE = 'homelight-v7';
 
 // CDN assets that are safe to cache long-term (they never change at these URLs)
 const PRECACHE = [
@@ -8,13 +8,13 @@ const PRECACHE = [
   'https://unpkg.com/@babel/standalone/babel.min.js',
 ];
 
-// Live-data hosts — always go straight to the network, never cache
-const PASSTHROUGH_HOSTS = [
-  'api.open-meteo.com',
-  'geocoding-api.open-meteo.com',
-  'nominatim.openstreetmap.org',
-  'ipapi.co',
-  'corsproxy.io',
+// Only these cross-origin hosts serve immutable assets worth caching.
+// Everything else cross-origin (weather, calendar feeds, APIs) is live data
+// and goes straight to the network — never add a new API here.
+const CACHEABLE_HOSTS = [
+  'unpkg.com',
+  'fonts.googleapis.com',
+  'fonts.gstatic.com',
 ];
 
 self.addEventListener('install', e => {
@@ -41,7 +41,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
   // Live data — pass straight through to network
-  if (PASSTHROUGH_HOSTS.some(h => url.hostname.includes(h))) return;
+  if (url.origin !== self.location.origin && !CACHEABLE_HOSTS.includes(url.hostname)) return;
 
   // index.html — NETWORK FIRST so updates are always picked up immediately.
   // Falls back to cache only when truly offline.
