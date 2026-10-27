@@ -84,6 +84,6 @@ GitHub Pages from the `main` branch, root folder. Repo: `weissingersean-commits/
 - iCal sync auto-refreshes every 15 minutes
 - Photos stored as base64 in localStorage (size-limited)
 - Calendar feeds that block CORS (Google, iCloud) go through our own Cloudflare Worker `homelight-ical` (source: `workers/ical-proxy.js`, deployed manually via the Cloudflare dashboard). corsproxy.io no longer works for production sites (403).
-- No backend — everything is client-side
+- Data lives in localStorage; optional **Cloud Sync** (Settings) mirrors it to Cloudflare D1 via the `homelight-sync` worker (`workers/sync/`, deploy with `npx wrangler@4 deploy` from that folder — wrangler is logged in on this PC). Families are identified by a secret code `HL-XXXX-XXXX-XXXX-XXXX` (only its hash is stored). Only keys in `SYNC_KEYS` sync; feed-synced events and feed status fields stay per-device. Daily snapshots are kept 30 days. Any new family-data `useP` key should be added to `SYNC_KEYS`.
 - Bump `APP_VERSION` in index.html on each deploy (shown at the bottom of Settings next to the Force Update button) so we can tell which build a device is running
 - `sw.js` only caches unpkg + Google Fonts + same-origin files; every other API is network-only by default, so new APIs need no SW changes

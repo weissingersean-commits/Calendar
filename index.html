@@ -139,7 +139,9 @@ const buildEventColumns=events=>{
 
 function useP(key,def){
   const[s,setS]=useState(()=>{try{const v=localStorage.getItem(`hl4_${key}`);return v?JSON.parse(v):(typeof def==="function"?def():def);}catch{return typeof def==="function"?def():def;}});
-  useEffect(()=>{try{localStorage.setItem(`hl4_${key}`,JSON.stringify(s));}catch{}},[key,s]);
+  useEffect(()=>{try{localStorage.setItem(`hl4_${key}`,JSON.stringify(s));}catch{}if(SYNC_KEYS.includes(key))syncSoon();},[key,s]);
+  // Cloud sync pushes remote changes in via this event so open screens update live
+  useEffect(()=>{const h=e=>{if(e.detail.key===key)setS(e.detail.value);};window.addEventListener("hl4-remote",h);return()=>window.removeEventListener("hl4-remote",h);},[key]);
   return[s,setS];
 }
 
@@ -195,13 +197,69 @@ function nextRecurrence(date,rule,original){const freq=rule.FREQ;const interval=
 }
 function setWeekday(date,weekday){const next=new Date(date);const diff=weekday-next.getDay();next.setDate(next.getDate()+((diff>=0?diff:diff+7)));return next;}
 // Bump on each deploy — shown in Settings so we can tell which build a device is running
-const APP_VERSION="2026.10.27c";
+const APP_VERSION="2026.10.27d";
 // Drops the service worker + its cached files (not localStorage data) and reloads fresh from the network
 async function forceUpdate(){
   try{if(navigator.serviceWorker){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister()));}
     if(window.caches){const keys=await caches.keys();await Promise.all(keys.map(k=>caches.delete(k)));}}catch(e){console.error(e);}
   location.replace(location.pathname+"?v="+Date.now());
 }
+// ── Cloud sync (workers/sync) ────────────────────────────────────────────────
+// Family data is mirrored to Cloudflare D1 under a secret family code. Each key
+// is compared against the last-synced copy ("base") to find local edits; on sync
+// we pull, overlay our edited keys on the remote copy, apply the result, and push.
+const SYNC_URL="https://homelight-sync.weissinger-sean.workers.dev";
+const SYNC_KEYS=["events","todos","grocery","meals","feeds","members","vacationMode","announcement","rewards","recipes","contacts","homework","mealServings","weekStart","unit"];
+const SYNC_CFG="hl4__syncCfg",SYNC_BASE="hl4__syncBase";
+const syncState={status:"off",lastSync:null,error:null,running:false,again:false,timer:null};
+const syncListeners=new Set();
+const syncNotify=()=>syncListeners.forEach(f=>f({...syncState}));
+const readJSON=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}};
+const getSyncCfg=()=>readJSON(SYNC_CFG,null);
+function makeSyncCode(){const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",b=crypto.getRandomValues(new Uint8Array(16));return"HL-"+[0,1,2,3].map(g=>Array.from(b.slice(g*4,g*4+4),x=>A[x%32]).join("")).join("-");}
+// Synced calendar-feed events and feed status fields are per-device, so they're left out of what we compare/upload
+function syncNorm(key,raw){if(raw==null)return null;try{
+  if(key==="events")return JSON.stringify(JSON.parse(raw).filter(e=>!e.synced));
+  if(key==="feeds")return JSON.stringify(JSON.parse(raw).map(({lastSync,count,error,...f})=>f));
+}catch{}return raw;}
+function syncLocal(){const o={};SYNC_KEYS.forEach(k=>{const v=syncNorm(k,localStorage.getItem("hl4_"+k));if(v!=null)o[k]=v;});return o;}
+function syncApply(key,norm){let val=JSON.parse(norm);
+  if(key==="events"){const mine=readJSON("hl4_events",[]).filter(e=>e.synced);val=[...val,...mine];}
+  if(key==="feeds"){const mine=readJSON("hl4_feeds",[]);val=val.map(f=>{const m=mine.find(x=>x.id===f.id);return m?{...f,lastSync:m.lastSync,count:m.count,error:m.error}:f;});}
+  try{localStorage.setItem("hl4_"+key,JSON.stringify(val));}catch{}
+  window.dispatchEvent(new CustomEvent("hl4-remote",{detail:{key,value:val}}));}
+async function syncApi(path,opts={}){const cfg=getSyncCfg();const r=await fetch(SYNC_URL+path,{...opts,headers:{Authorization:"Bearer "+cfg.code,"Content-Type":"application/json"}});const body=await r.json().catch(()=>({}));if(!r.ok&&r.status!==409)throw new Error(body.error||`Sync ${r.status}`);return{status:r.status,body};}
+async function syncNow(){
+  const cfg=getSyncCfg();if(!cfg?.code){syncState.status="off";syncNotify();return;}
+  if(syncState.running){syncState.again=true;return;}
+  syncState.running=true;syncState.status="syncing";syncNotify();
+  try{
+    let{body:remote}=await syncApi("/v1/state");
+    for(let attempt=0;attempt<4;attempt++){
+      const base=readJSON(SYNC_BASE,{}),local=syncLocal();
+      const dirty=Object.keys(local).filter(k=>local[k]!==base[k]);
+      const merged={...(remote.data||{})};dirty.forEach(k=>{merged[k]=local[k];});
+      Object.keys(merged).forEach(k=>{if(SYNC_KEYS.includes(k)&&merged[k]!==local[k])syncApply(k,merged[k]);});
+      const changed=!remote.data||Object.keys(merged).some(k=>merged[k]!==remote.data[k]);
+      if(!changed){localStorage.setItem(SYNC_BASE,JSON.stringify(merged));break;}
+      const put=await syncApi("/v1/state",{method:"PUT",body:JSON.stringify({baseRev:remote.rev,data:merged})});
+      if(put.status===409){remote=put.body;continue;}// someone else wrote first — merge again on top of theirs
+      localStorage.setItem(SYNC_BASE,JSON.stringify(merged));break;
+    }
+    syncState.status="ok";syncState.error=null;syncState.lastSync=Date.now();
+  }catch(e){syncState.status="error";syncState.error=e.message||"Sync failed";}
+  finally{syncState.running=false;syncNotify();if(syncState.again){syncState.again=false;syncSoon();}}
+}
+function syncSoon(ms=4000){if(!getSyncCfg()?.code)return;clearTimeout(syncState.timer);syncState.timer=setTimeout(syncNow,ms);}
+// Start a new family (this device's data becomes the cloud copy) or join one (cloud copy replaces this device's family data)
+async function syncStart(code,join){localStorage.setItem(SYNC_CFG,JSON.stringify({code}));localStorage.setItem(SYNC_BASE,JSON.stringify(join?syncLocal():{}));
+  if(join){const{body}=await syncApi("/v1/state");if(!body.data){localStorage.removeItem(SYNC_CFG);throw new Error("No family found for that code");}}
+  await syncNow();if(syncState.status==="error"){const err=syncState.error;if(join)localStorage.removeItem(SYNC_CFG);throw new Error(err);}syncBoot();}
+function syncStop(){localStorage.removeItem(SYNC_CFG);localStorage.removeItem(SYNC_BASE);syncState.status="off";syncState.lastSync=null;syncNotify();}
+async function syncRestore(day){const{body}=await syncApi(`/v1/snapshots/${day}`);Object.entries(body.data).forEach(([k,v])=>{if(SYNC_KEYS.includes(k))syncApply(k,v);});localStorage.setItem(SYNC_BASE,"{}");await syncNow();}
+let syncBooted=false;
+function syncBoot(){if(syncBooted)return;syncBooted=true;setInterval(syncNow,60*1000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)syncNow();});window.addEventListener("online",()=>syncNow());}
+if(getSyncCfg()?.code){syncState.status="idle";setTimeout(syncNow,1500);syncBoot();}
 // Our own Cloudflare Worker (see workers/ical-proxy.js) — corsproxy.io now 403s production sites
 const ICAL_PROXY="https://homelight-ical.weissinger-sean.workers.dev";
 async function fetchWithCorsFallback(url){
@@ -1381,6 +1439,51 @@ function ContactsWidget({contacts}){
 }
 
 // ═════════════════ SETTINGS ═════════════════════════════════════════
+function CloudSyncSection(){
+  const t=useT(),s=useS();
+  const[st,setSt]=useState({...syncState}),[cfg,setCfg]=useState(getSyncCfg());
+  const[joinCode,setJoinCode]=useState(""),[busy,setBusy]=useState(false),[msg,setMsg]=useState(null),[showCode,setShowCode]=useState(false),[snaps,setSnaps]=useState(null);
+  useEffect(()=>{syncListeners.add(setSt);return()=>syncListeners.delete(setSt);},[]);
+  const run=async(fn,ok)=>{setBusy(true);setMsg(null);try{await fn();setCfg(getSyncCfg());if(ok)setMsg({ok:true,text:ok});}catch(e){setCfg(getSyncCfg());setMsg({ok:false,text:e.message});}finally{setBusy(false);}};
+  const create=()=>run(()=>syncStart(makeSyncCode(),false),"Family sync created — this device's data is now backed up.");
+  const join=()=>{const code=joinCode.trim().toUpperCase().replace(/\s+/g,"");if(!/^HL(-[A-Z2-9]{4}){4}$/.test(code)){setMsg({ok:false,text:"Code should look like HL-XXXX-XXXX-XXXX-XXXX"});return;}
+    if(!confirm("Join this family? This device's chores, events, lists and members will be replaced with the family's cloud copy."))return;
+    run(()=>syncStart(code,true),"Joined — this device now matches the family copy.");};
+  const stop=()=>{if(confirm("Turn off sync on this device? Your data stays here and in the cloud; this device just stops syncing.")){syncStop();setCfg(null);setSnaps(null);}};
+  const loadSnaps=()=>run(async()=>{const{body}=await syncApi("/v1/snapshots");setSnaps(body);});
+  const restore=day=>{if(confirm(`Restore everything to how it was at the end of ${day}? This replaces the current family data on all devices.`))run(()=>syncRestore(day),`Restored ${day}.`);};
+  const ago=ms=>{if(!ms)return"never";const m=Math.round((Date.now()-ms)/60000);return m<1?"just now":m<60?`${m} min ago`:`${Math.round(m/60)} hr ago`;};
+  const btn=(primary)=>({padding:"8px 12px",borderRadius:8,border:`1px solid ${primary?t.accent:t.bdr}`,background:primary?t.accent:"transparent",color:primary?t.acText:t.sub,fontSize:11,fontWeight:700,cursor:busy?"wait":"pointer",fontFamily:FF,opacity:busy?0.6:1});
+  const dot=st.status==="ok"?"#10B981":st.status==="error"?"#EF4444":st.status==="syncing"?t.accent:t.dim;
+  return<div style={{marginBottom:12}}>
+    <label style={{...s.lbl,marginTop:8}}>Cloud Sync &amp; Backup</label>
+    {!cfg?<div>
+      <div style={{fontSize:11,color:t.sub,marginBottom:10,lineHeight:1.5}}>Back up your family's data to the cloud and keep the tablet, phones and computers in sync. Start it on the device with the most up-to-date data, then join from the others with the family code.</div>
+      <button disabled={busy} onClick={create} style={{...btn(true),width:"100%",marginBottom:10}}>☁ Start family sync on this device</button>
+      <div style={{display:"flex",gap:6}}>
+        <input style={{...s.inp,marginBottom:0,flex:1,fontSize:12,padding:"8px 10px",fontFamily:FM}} placeholder="HL-XXXX-XXXX-XXXX-XXXX" value={joinCode} onChange={e=>setJoinCode(e.target.value)}/>
+        <button disabled={busy} onClick={join} style={btn(false)}>Join</button>
+      </div>
+    </div>:<div>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+        <span style={{width:8,height:8,borderRadius:"50%",background:dot,flexShrink:0}}/>
+        <span style={{fontSize:12,color:t.text,flex:1}}>{st.status==="error"?`Sync problem: ${st.error}`:st.status==="syncing"?"Syncing…":`Synced ${ago(st.lastSync)}`}</span>
+        <button disabled={busy} onClick={()=>run(syncNow)} style={btn(false)}>⟳ Sync now</button>
+      </div>
+      <div style={{fontSize:11,color:t.sub,marginBottom:4}}>Family code — enter this on other devices to join:</div>
+      <div onClick={()=>setShowCode(v=>!v)} style={{fontFamily:FM,fontSize:13,letterSpacing:1,padding:"8px 10px",borderRadius:8,background:t.acDim,color:t.accent,cursor:"pointer",marginBottom:8,userSelect:"all"}}>{showCode?cfg.code:"HL-••••-••••-••••-•••• (tap to show)"}</div>
+      <div style={{display:"flex",gap:6,marginBottom:8}}>
+        <button disabled={busy} onClick={loadSnaps} style={{...btn(false),flex:1}}>🕓 Restore an earlier day</button>
+        <button disabled={busy} onClick={stop} style={btn(false)}>Turn off</button>
+      </div>
+      {snaps&&<div style={{maxHeight:160,overflow:"auto",border:`1px solid ${t.bdr}`,borderRadius:8,padding:4}}>
+        {snaps.length===0&&<div style={{fontSize:11,color:t.dim,padding:6}}>No snapshots yet — one is saved each day.</div>}
+        {snaps.map(sn=><div key={sn.day} onClick={()=>restore(sn.day)} style={{display:"flex",justifyContent:"space-between",padding:"6px 8px",borderRadius:6,cursor:"pointer",fontSize:12,color:t.text}} onMouseEnter={e=>e.currentTarget.style.background=t.cardH} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><span>{new Date(sn.day+"T12:00:00").toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})}</span><span style={{color:t.dim}}>{Math.max(1,Math.round(sn.size/1024))} KB</span></div>)}
+      </div>}
+    </div>}
+    {msg&&<div style={{fontSize:11,marginTop:8,color:msg.ok?"#10B981":"#EF4444"}}>{msg.text}</div>}
+  </div>;
+}
 function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart,photos,setPhotos,ssCollections,setSsCollections,ssSleepEnabled,setSsSleepEnabled,ssSleepTime,setSsSleepTime,ssWakeTime,setSsWakeTime,reminderMins,setReminderMins,onClearEvents,onClearLists,onClearMeals,deferredPrompt,onInstallPrompt,installStatus,geminiKey,setGeminiKey,geminiModel,setGeminiModel,members,setMembers,contacts,setContacts,wallMode,setWallMode,wallReturnMins,setWallReturnMins,onClose}){
   const t=useT(),s=useS(),fileRef=useRef(null);
   const[memberName,setMemberName]=useState("");
@@ -1560,6 +1663,7 @@ function SettingsPanel({ssDelay,setSsDelay,theme,setTheme,weekStart,setWeekStart
         <button onClick={()=>window.open("https://www.fully-kiosk.com/","_blank")} style={{...s.btnS,width:"100%",marginTop:10,fontSize:11}}>Open Fully Kiosk website ↗</button>
       </div>}
     </div>
+    <CloudSyncSection/>
     <label style={{...s.lbl,marginTop:8}}>Backup &amp; Restore</label>
     <div style={{display:"flex",gap:6,marginBottom:12}}>
       <button onClick={exportData} style={{flex:1,padding:"9px 0",borderRadius:8,border:`1px solid ${t.accent}`,background:t.acDim,color:t.accent,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FF}}>⬇ Export Backup</button>

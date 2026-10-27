@@ -1,2 +1,5 @@
 # Temporary scripts
 tmp_*.py
+
+# Wrangler local state
+.wrangler/
