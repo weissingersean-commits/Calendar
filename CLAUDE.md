@@ -84,3 +84,5 @@ GitHub Pages from the `main` branch, root folder. Repo: `weissingersean-commits/
 - Photos stored as base64 in localStorage (size-limited)
 - Calendar feeds that block CORS (Google, iCloud) go through our own Cloudflare Worker `homelight-ical` (source: `workers/ical-proxy.js`, deployed manually via the Cloudflare dashboard). corsproxy.io no longer works for production sites (403).
 - No backend — everything is client-side
+- Bump `APP_VERSION` in index.html on each deploy (shown at the bottom of Settings next to the Force Update button) so we can tell which build a device is running
+- `sw.js` only caches unpkg + Google Fonts + same-origin files; every other API is network-only by default, so new APIs need no SW changes
