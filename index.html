@@ -193,11 +193,11 @@ function nextRecurrence(date,rule,original){const freq=rule.FREQ;const interval=
   return null;
 }
 function setWeekday(date,weekday){const next=new Date(date);const diff=weekday-next.getDay();next.setDate(next.getDate()+((diff>=0?diff:diff+7)));return next;}
+// Our own Cloudflare Worker (see workers/ical-proxy.js) — corsproxy.io now 403s production sites
+const ICAL_PROXY="https://homelight-ical.weissinger-sean.workers.dev";
 async function fetchWithCorsFallback(url){
   try{const r=await fetch(url);if(r.ok)return await r.text();throw new Error(`HTTP ${r.status}`);}catch(err){
-    if(url.includes("corsproxy.io/?"))throw err;
-    const proxy=`https://corsproxy.io/?${encodeURIComponent(url)}`;
-    const r2=await fetch(proxy);if(r2.ok)return await r2.text();throw new Error(`Proxy ${r2.status}`);
+    const r2=await fetch(`${ICAL_PROXY}/?url=${encodeURIComponent(url)}`);if(r2.ok)return await r2.text();throw new Error(`Proxy ${r2.status}`);
   }
 }
 function eventToICS(ev){

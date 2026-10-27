@@ -82,5 +82,5 @@ GitHub Pages from the `main` branch, root folder. Repo: `weissingersean-commits/
 - Synced events are read-only in the UI
 - iCal sync auto-refreshes every 15 minutes
 - Photos stored as base64 in localStorage (size-limited)
-- CORS proxy may be needed for some calendar feeds (corsproxy.io)
+- Calendar feeds that block CORS (Google, iCloud) go through our own Cloudflare Worker `homelight-ical` (source: `workers/ical-proxy.js`, deployed manually via the Cloudflare dashboard). corsproxy.io no longer works for production sites (403).
 - No backend — everything is client-side
