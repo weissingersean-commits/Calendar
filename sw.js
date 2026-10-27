@@ -1,11 +1,11 @@
-const CACHE = 'homelight-v7';
+const CACHE = 'homelight-v8';
 
-// CDN assets that are safe to cache long-term (they never change at these URLs)
+// Core files needed to start the app offline
 const PRECACHE = [
   './manifest.json',
-  'https://unpkg.com/react@18/umd/react.production.min.js',
-  'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
-  'https://unpkg.com/@babel/standalone/babel.min.js',
+  './vendor/react.production.min.js',
+  './vendor/react-dom.production.min.js',
+  './vendor/babel.min.js',
 ];
 
 // Only these cross-origin hosts serve immutable assets worth caching.

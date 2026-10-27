@@ -1,0 +1,929 @@
+{
+ "nature": [
+  {
+   "file": "photos/nature/01.jpg",
+   "source": "picsum/unsplash",
+   "id": 10,
+   "author": "Paul Jarvis",
+   "url": "https://unsplash.com/photos/6J--NXulQCs"
+  },
+  {
+   "file": "photos/nature/02.jpg",
+   "source": "picsum/unsplash",
+   "id": 11,
+   "author": "Paul Jarvis",
+   "url": "https://unsplash.com/photos/Cm7oKel-X2Q"
+  },
+  {
+   "file": "photos/nature/03.jpg",
+   "source": "picsum/unsplash",
+   "id": 12,
+   "author": "Paul Jarvis",
+   "url": "https://unsplash.com/photos/I_9ILwtsl_k"
+  },
+  {
+   "file": "photos/nature/04.jpg",
+   "source": "picsum/unsplash",
+   "id": 13,
+   "author": "Paul Jarvis",
+   "url": "https://unsplash.com/photos/3MtiSMdnoCo"
+  },
+  {
+   "file": "photos/nature/05.jpg",
+   "source": "picsum/unsplash",
+   "id": 14,
+   "author": "Paul Jarvis",
+   "url": "https://unsplash.com/photos/IQ1kOQTJrOQ"
+  },
+  {
+   "file": "photos/nature/06.jpg",
+   "source": "picsum/unsplash",
+   "id": 15,
+   "author": "Paul Jarvis",
+   "url": "https://unsplash.com/photos/NYDo21ssGao"
+  },
+  {
+   "file": "photos/nature/07.jpg",
+   "source": "picsum/unsplash",
+   "id": 16,
+   "author": "Paul Jarvis",
+   "url": "https://unsplash.com/photos/gkT4FfgHO5o"
+  },
+  {
+   "file": "photos/nature/08.jpg",
+   "source": "picsum/unsplash",
+   "id": 17,
+   "author": "Paul Jarvis",
+   "url": "https://unsplash.com/photos/Ven2CV8IJ5A"
+  },
+  {
+   "file": "photos/nature/09.jpg",
+   "source": "picsum/unsplash",
+   "id": 18,
+   "author": "Paul Jarvis",
+   "url": "https://unsplash.com/photos/Ps2n0rShqaM"
+  },
+  {
+   "file": "photos/nature/10.jpg",
+   "source": "picsum/unsplash",
+   "id": 28,
+   "author": "Jerry Adney",
+   "url": "https://unsplash.com/photos/_WiFMBRT7Aw"
+  },
+  {
+   "file": "photos/nature/11.jpg",
+   "source": "picsum/unsplash",
+   "id": 29,
+   "author": "Go Wild",
+   "url": "https://unsplash.com/photos/V0yAek6BgGk"
+  },
+  {
+   "file": "photos/nature/12.jpg",
+   "source": "picsum/unsplash",
+   "id": 37,
+   "author": "Austin Neill",
+   "url": "https://unsplash.com/photos/erTjj730fMk"
+  },
+  {
+   "file": "photos/nature/13.jpg",
+   "source": "picsum/unsplash",
+   "id": 46,
+   "author": "Jeffrey Kam",
+   "url": "https://unsplash.com/photos/Nzw3HHsNHYU"
+  },
+  {
+   "file": "photos/nature/14.jpg",
+   "source": "picsum/unsplash",
+   "id": 54,
+   "author": "Nicholas Swanson",
+   "url": "https://unsplash.com/photos/d19by2PLaPc"
+  },
+  {
+   "file": "photos/nature/15.jpg",
+   "source": "picsum/unsplash",
+   "id": 58,
+   "author": "Tony Naccarato",
+   "url": "https://unsplash.com/photos/-kEr-QltARg"
+  },
+  {
+   "file": "photos/nature/16.jpg",
+   "source": "picsum/unsplash",
+   "id": 66,
+   "author": "Nicholas Swanson",
+   "url": "https://unsplash.com/photos/agnhLQWqr1Q"
+  },
+  {
+   "file": "photos/nature/17.jpg",
+   "source": "picsum/unsplash",
+   "id": 67,
+   "author": "Rula Sibai",
+   "url": "https://unsplash.com/photos/QbkGwv3xtmQ"
+  },
+  {
+   "file": "photos/nature/18.jpg",
+   "source": "picsum/unsplash",
+   "id": 70,
+   "author": "Dorothy Lin",
+   "url": "https://unsplash.com/photos/OokBLPrkCNk"
+  },
+  {
+   "file": "photos/nature/19.jpg",
+   "source": "picsum/unsplash",
+   "id": 74,
+   "author": "Isaak Dury",
+   "url": "https://unsplash.com/photos/YhZbnxqtooM"
+  },
+  {
+   "file": "photos/nature/20.jpg",
+   "source": "picsum/unsplash",
+   "id": 77,
+   "author": "May Pamintuan",
+   "url": "https://unsplash.com/photos/j9nfqTi5T5o"
+  },
+  {
+   "file": "photos/nature/21.jpg",
+   "source": "picsum/unsplash",
+   "id": 83,
+   "author": "Julie Geiger",
+   "url": "https://unsplash.com/photos/dYshDcTI1Js"
+  },
+  {
+   "file": "photos/nature/22.jpg",
+   "source": "picsum/unsplash",
+   "id": 85,
+   "author": "Gozha Net",
+   "url": "https://unsplash.com/photos/xDrxJCdedcI"
+  },
+  {
+   "file": "photos/nature/23.jpg",
+   "source": "picsum/unsplash",
+   "id": 93,
+   "author": "Caroline Sada",
+   "url": "https://unsplash.com/photos/r1XwWjI4PyE"
+  },
+  {
+   "file": "photos/nature/24.jpg",
+   "source": "picsum/unsplash",
+   "id": 95,
+   "author": "Kundan Ramisetti",
+   "url": "https://unsplash.com/photos/87TJNWkepvI"
+  },
+  {
+   "file": "photos/nature/25.jpg",
+   "source": "picsum/unsplash",
+   "id": 110,
+   "author": "Kenneth Thewissen",
+   "url": "https://unsplash.com/photos/D76DklsG-5U"
+  },
+  {
+   "file": "photos/nature/26.jpg",
+   "source": "picsum/unsplash",
+   "id": 112,
+   "author": "Zugr",
+   "url": "https://unsplash.com/photos/kmF_Aq8gkp0"
+  },
+  {
+   "file": "photos/nature/27.jpg",
+   "source": "picsum/unsplash",
+   "id": 116,
+   "author": "Anton Sulsky",
+   "url": "https://unsplash.com/photos/YcfCXxo7rpc"
+  },
+  {
+   "file": "photos/nature/28.jpg",
+   "source": "picsum/unsplash",
+   "id": 118,
+   "author": "Rick Waalders",
+   "url": "https://unsplash.com/photos/d-Cr8MEW5Uc"
+  },
+  {
+   "file": "photos/nature/29.jpg",
+   "source": "picsum/unsplash",
+   "id": 124,
+   "author": "Anton Sulsky",
+   "url": "https://unsplash.com/photos/fj0tFloTPGQ"
+  },
+  {
+   "file": "photos/nature/30.jpg",
+   "source": "picsum/unsplash",
+   "id": 125,
+   "author": "Rick Waalders",
+   "url": "https://unsplash.com/photos/3HlgJNdnD7I"
+  },
+  {
+   "file": "photos/nature/31.jpg",
+   "source": "picsum/unsplash",
+   "id": 127,
+   "author": "Marcin Czerwinski",
+   "url": "https://unsplash.com/photos/rf-0DQu5M6Y"
+  },
+  {
+   "file": "photos/nature/32.jpg",
+   "source": "picsum/unsplash",
+   "id": 128,
+   "author": "Matteo Minelli",
+   "url": "https://unsplash.com/photos/hlnucYOsL-c"
+  },
+  {
+   "file": "photos/nature/33.jpg",
+   "source": "picsum/unsplash",
+   "id": 136,
+   "author": "Marcin Czerwinski",
+   "url": "https://unsplash.com/photos/2wugfiddtXw"
+  },
+  {
+   "file": "photos/nature/34.jpg",
+   "source": "picsum/unsplash",
+   "id": 147,
+   "author": "Kundan Ramisetti",
+   "url": "https://unsplash.com/photos/OODWPtfXAF0"
+  },
+  {
+   "file": "photos/nature/35.jpg",
+   "source": "picsum/unsplash",
+   "id": 152,
+   "author": "Steven Spassov",
+   "url": "https://unsplash.com/photos/tVIqMgGlAG0"
+  },
+  {
+   "file": "photos/nature/36.jpg",
+   "source": "picsum/unsplash",
+   "id": 162,
+   "author": "Dillon McIntosh",
+   "url": "https://unsplash.com/photos/SlGVAKyP20U"
+  },
+  {
+   "file": "photos/nature/37.jpg",
+   "source": "picsum/unsplash",
+   "id": 165,
+   "author": "Linh Nguyen",
+   "url": "https://unsplash.com/photos/xjXz8GKXcTI"
+  },
+  {
+   "file": "photos/nature/38.jpg",
+   "source": "picsum/unsplash",
+   "id": 166,
+   "author": "Romain Briaux",
+   "url": "https://unsplash.com/photos/yD3PXDV7Sjc"
+  },
+  {
+   "file": "photos/nature/39.jpg",
+   "source": "picsum/unsplash",
+   "id": 168,
+   "author": "Joeri Römer",
+   "url": "https://unsplash.com/photos/Xne1N4yZuOY"
+  },
+  {
+   "file": "photos/nature/40.jpg",
+   "source": "picsum/unsplash",
+   "id": 170,
+   "author": "Noel Lopez",
+   "url": "https://unsplash.com/photos/LbS_k_c3BYA"
+  },
+  {
+   "file": "photos/nature/41.jpg",
+   "source": "picsum/unsplash",
+   "id": 176,
+   "author": "Good Free Photos",
+   "url": "https://unsplash.com/photos/WO4bxwzHRe8"
+  },
+  {
+   "file": "photos/nature/42.jpg",
+   "source": "picsum/unsplash",
+   "id": 179,
+   "author": "Angelina Odemchuk",
+   "url": "https://unsplash.com/photos/lp0IFw6YqZg"
+  },
+  {
+   "file": "photos/nature/43.jpg",
+   "source": "picsum/unsplash",
+   "id": 184,
+   "author": "Tim de Groot",
+   "url": "https://unsplash.com/photos/yNGQ830uFB4"
+  },
+  {
+   "file": "photos/nature/44.jpg",
+   "source": "picsum/unsplash",
+   "id": 186,
+   "author": "Simon Pape",
+   "url": "https://unsplash.com/photos/2kc8bigeqEI"
+  },
+  {
+   "file": "photos/nature/45.jpg",
+   "source": "picsum/unsplash",
+   "id": 189,
+   "author": "Buzo Jesús",
+   "url": "https://unsplash.com/photos/pHM4a_RZSLE"
+  },
+  {
+   "file": "photos/nature/46.jpg",
+   "source": "picsum/unsplash",
+   "id": 190,
+   "author": "James Forbes",
+   "url": "https://unsplash.com/photos/jrzvClypPq8"
+  },
+  {
+   "file": "photos/nature/47.jpg",
+   "source": "picsum/unsplash",
+   "id": 191,
+   "author": "Alex Talmon",
+   "url": "https://unsplash.com/photos/6iat9p85VnQ"
+  },
+  {
+   "file": "photos/nature/48.jpg",
+   "source": "picsum/unsplash",
+   "id": 196,
+   "author": "Dyaa Eldin Moustafa",
+   "url": "https://unsplash.com/photos/mR_HR8NZwg8"
+  },
+  {
+   "file": "photos/nature/49.jpg",
+   "source": "picsum/unsplash",
+   "id": 198,
+   "author": "Sylwia Bartyzel",
+   "url": "https://unsplash.com/photos/FC9mIjVT-Yw"
+  },
+  {
+   "file": "photos/nature/50.jpg",
+   "source": "picsum/unsplash",
+   "id": 199,
+   "author": "Beto Galetto",
+   "url": "https://unsplash.com/photos/RL0l7Zk5PxU"
+  },
+  {
+   "file": "photos/nature/51.jpg",
+   "source": "picsum/unsplash",
+   "id": 200,
+   "author": "Elias Carlsson",
+   "url": "https://unsplash.com/photos/wSb8d-ke5-4"
+  }
+ ],
+ "space": [
+  {
+   "file": "photos/space/01.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e001955",
+   "title": "Hubble reveals heart of Lagoon Nebula"
+  },
+  {
+   "file": "photos/space/02.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "PIA04216",
+   "title": "Ant Nebula"
+  },
+  {
+   "file": "photos/space/03.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e002076",
+   "title": "Hubble Captures Spectacular \"Landscape\" in the Carina Nebula"
+  },
+  {
+   "file": "photos/space/04.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "PIA04227",
+   "title": "Orion Nebula and Bow Shock"
+  },
+  {
+   "file": "photos/space/05.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "PIA04215",
+   "title": "Horsehead Nebula"
+  },
+  {
+   "file": "photos/space/06.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "PIA04249",
+   "title": "Close-up of M27, the Dumbbell Nebula"
+  },
+  {
+   "file": "photos/space/07.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "0302063",
+   "title": "History of Hubble Space Telescope (HST)"
+  },
+  {
+   "file": "photos/space/08.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "0203044",
+   "title": "Space Science"
+  },
+  {
+   "file": "photos/space/09.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e000607",
+   "title": "Hubble Zooms in on Shrapnel from an Exploded Star"
+  },
+  {
+   "file": "photos/space/10.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e000195",
+   "title": "Hubble Spins a Web Into a Giant Red Spider Nebula"
+  },
+  {
+   "file": "photos/space/11.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "0203048",
+   "title": "Space Science"
+  },
+  {
+   "file": "photos/space/12.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "PIA14415",
+   "title": "A New View of the Tarantula Nebula"
+  },
+  {
+   "file": "photos/space/13.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e001800",
+   "title": "Hubble Serves Up a Holiday Snow Angel"
+  },
+  {
+   "file": "photos/space/14.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e000001",
+   "title": "Hubble's Megamaser Galaxy"
+  },
+  {
+   "file": "photos/space/15.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e001569",
+   "title": "Hubble Views a Dwarf Galaxy"
+  },
+  {
+   "file": "photos/space/16.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e001151",
+   "title": "Hubble Sees Galaxies Spiraling around Leo"
+  },
+  {
+   "file": "photos/space/17.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e000506",
+   "title": "A Galaxy at the Center of the Hubble Tuning Fork"
+  },
+  {
+   "file": "photos/space/18.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e000278",
+   "title": "Hubble Reveals Stellar Fireworks in ‘Skyrocket’ Galaxy"
+  },
+  {
+   "file": "photos/space/19.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e000268",
+   "title": "Hubble Spots a Secluded Starburst Galaxy"
+  },
+  {
+   "file": "photos/space/20.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e000052",
+   "title": "Hubble Catches a Galaxy Duo by the \"Hare\""
+  },
+  {
+   "file": "photos/space/21.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e000798",
+   "title": "Hubble Spies a Loopy Galaxy"
+  },
+  {
+   "file": "photos/space/22.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e000839",
+   "title": "Hubble’s High-Definition Panoramic View of the Andromeda Galaxy"
+  },
+  {
+   "file": "photos/space/23.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e000833",
+   "title": "Hubble's High-Definition Panoramic View of the Andromeda Galaxy"
+  },
+  {
+   "file": "photos/space/24.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e000362",
+   "title": "Hubble Sees Galaxy Hiding in the Night Sky"
+  },
+  {
+   "file": "photos/space/25.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e000877",
+   "title": "Hubble Spies Charming Spiral Galaxy Bursting with Stars"
+  },
+  {
+   "file": "photos/space/26.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e001172",
+   "title": "Hubble Peers at the Heart of a Spiral Galaxy"
+  },
+  {
+   "file": "photos/space/27.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e001277",
+   "title": "Hubble Eyes Galaxy as Flat as a Pancake"
+  },
+  {
+   "file": "photos/space/28.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "GSFC_20171208_Archive_e000389",
+   "title": "Hubble Peers at a Distinctly Disorganized Dwarf Galaxy"
+  },
+  {
+   "file": "photos/space/29.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "bedin1",
+   "title": "Hubble Accidentally Discovers a New Galaxy in Cosmic Neighborhoo"
+  },
+  {
+   "file": "photos/space/30.jpg",
+   "source": "NASA Image Library (public domain)",
+   "id": "carina_nebula",
+   "title": "James Webb Space Telescope NIRCam Image of the “Cosmic Cliffs” in Carina Nebula"
+  }
+ ],
+ "art": [
+  {
+   "file": "photos/art/01.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 100489,
+   "title": "The Coast of Labrador",
+   "artist": "William Bradford",
+   "date": "1866"
+  },
+  {
+   "file": "photos/art/02.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 109228,
+   "title": "Near Newport",
+   "artist": "John Frederick Kensett",
+   "date": "1869"
+  },
+  {
+   "file": "photos/art/03.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 120163,
+   "title": "Capture of the Tripoli by the Enterprise",
+   "artist": "Thomas Birch",
+   "date": "1806–12"
+  },
+  {
+   "file": "photos/art/04.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 121377,
+   "title": "Boats at Rest",
+   "artist": "Arthur Wesley Dow",
+   "date": "c. 1895"
+  },
+  {
+   "file": "photos/art/05.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 138,
+   "title": "Flower Girl in Holland",
+   "artist": "George Hitchcock",
+   "date": "1887"
+  },
+  {
+   "file": "photos/art/06.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 14309,
+   "title": "Coast Scene, Bathers",
+   "artist": "James McNeill Whistler",
+   "date": "1884–85"
+  },
+  {
+   "file": "photos/art/07.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 152747,
+   "title": "York Harbor, Coast of Maine",
+   "artist": "Martin Johnson Heade",
+   "date": "1877"
+  },
+  {
+   "file": "photos/art/08.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 16779,
+   "title": "Breaking Storm, Coast of Maine",
+   "artist": "Winslow Homer",
+   "date": "1894"
+  },
+  {
+   "file": "photos/art/09.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 16800,
+   "title": "Boy in Boat, Gloucester",
+   "artist": "Winslow Homer",
+   "date": "1880/81"
+  },
+  {
+   "file": "photos/art/10.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 16815,
+   "title": "Prout's Neck, Breakers",
+   "artist": "Winslow Homer",
+   "date": "1883"
+  },
+  {
+   "file": "photos/art/11.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 16818,
+   "title": "Prout's Neck, Breaking Wave",
+   "artist": "Winslow Homer",
+   "date": "1887"
+  },
+  {
+   "file": "photos/art/12.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 16821,
+   "title": "Prout's Neck, Evening",
+   "artist": "Winslow Homer",
+   "date": "c. 1894"
+  },
+  {
+   "file": "photos/art/13.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 16831,
+   "title": "Stowing Sail",
+   "artist": "Winslow Homer",
+   "date": "1903"
+  },
+  {
+   "file": "photos/art/14.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 16834,
+   "title": "Sunshine and Shadow, Prout's Neck",
+   "artist": "Winslow Homer",
+   "date": "1894"
+  },
+  {
+   "file": "photos/art/15.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 180711,
+   "title": "The Gulf of Salerno",
+   "artist": "Joseph Wright of Derby",
+   "date": "1783–85"
+  },
+  {
+   "file": "photos/art/16.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 18298,
+   "title": "Okabe: Mount Utsu (Okabe, Utsunoyama)—No. 22, from the series \"Fifty-three Stations of the Tokaido (Tokaido gojusan tsugi),\" also known as the Reisho Tokaido",
+   "artist": "Utagawa Hiroshige",
+   "date": "1847–52"
+  },
+  {
+   "file": "photos/art/17.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 18307,
+   "title": "Shirasuka: Shiomi Slope,no. 33 from the series Fifty-Three Stations of the Tokaido (Tōkaidō gojūsan tsugi)",
+   "artist": "Utagawa Hiroshige",
+   "date": "1847-52"
+  },
+  {
+   "file": "photos/art/18.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 185185,
+   "title": "Coming Squall (Nahant Beach with a Summer Shower)",
+   "artist": "Thomas Doughty",
+   "date": "1835"
+  },
+  {
+   "file": "photos/art/19.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 20684,
+   "title": "Paris Street; Rainy Day",
+   "artist": "Gustave Caillebotte",
+   "date": "1877"
+  },
+  {
+   "file": "photos/art/20.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 238272,
+   "title": "River Landscape with a View of Naarden",
+   "artist": "Salomon van Ruysdael",
+   "date": "1642"
+  },
+  {
+   "file": "photos/art/21.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 250455,
+   "title": "Venice Seen from the Public Garden",
+   "artist": "Jean Jules Antoine Lecomte du Noüy",
+   "date": "1873"
+  },
+  {
+   "file": "photos/art/22.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 27163,
+   "title": "Niagara Falls in Winter",
+   "artist": "Jasper Francis Cropsey",
+   "date": "1868"
+  },
+  {
+   "file": "photos/art/23.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 27992,
+   "title": "A Sunday on La Grande Jatte — 1884",
+   "artist": "Georges Seurat",
+   "date": "1884–86, border added 1888–89"
+  },
+  {
+   "file": "photos/art/24.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 28560,
+   "title": "The Bedroom",
+   "artist": "Vincent van Gogh",
+   "date": "1889"
+  },
+  {
+   "file": "photos/art/25.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 30701,
+   "title": "The Old Mill",
+   "artist": "George Inness",
+   "date": "1849"
+  },
+  {
+   "file": "photos/art/26.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 38666,
+   "title": "The Water Fan",
+   "artist": "Winslow Homer",
+   "date": "1898/99"
+  },
+  {
+   "file": "photos/art/27.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 43145,
+   "title": "View of Delphi with a Procession",
+   "artist": "Claude Lorrain",
+   "date": "1673"
+  },
+  {
+   "file": "photos/art/28.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 59455,
+   "title": "Meetinghouse Hill, Roxbury, Massachusetts",
+   "artist": "John Ritto Penniman",
+   "date": "1799"
+  },
+  {
+   "file": "photos/art/29.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 64715,
+   "title": "After a Summer Shower",
+   "artist": "George Inness",
+   "date": "1894"
+  },
+  {
+   "file": "photos/art/30.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 65937,
+   "title": "Landscape No. 3, Cash Entry Mines, New Mexico",
+   "artist": "Marsden Hartley",
+   "date": "1920"
+  },
+  {
+   "file": "photos/art/31.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 68388,
+   "title": "Catskill Mountains",
+   "artist": "George Inness",
+   "date": "1870"
+  },
+  {
+   "file": "photos/art/32.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 68792,
+   "title": "A Marine",
+   "artist": "George Inness",
+   "date": "c. 1874–75"
+  },
+  {
+   "file": "photos/art/33.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 69538,
+   "title": "Point Breeze, the Estate of Joseph Napoleon Bonaparte at Bordentown, New Jersey",
+   "artist": "Charles B. Lawrence",
+   "date": "1817–20"
+  },
+  {
+   "file": "photos/art/34.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 71971,
+   "title": "Mist Rising at Sunset in the Catskills",
+   "artist": "Sanford Robinson Gifford",
+   "date": "c. 1861"
+  },
+  {
+   "file": "photos/art/35.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 81533,
+   "title": "The Races at Longchamp",
+   "artist": "Édouard Manet",
+   "date": "1866"
+  },
+  {
+   "file": "photos/art/36.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 81540,
+   "title": "The Departure of the Boats, Étretat",
+   "artist": "Claude Monet",
+   "date": "1885"
+  },
+  {
+   "file": "photos/art/37.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 81557,
+   "title": "Seascape",
+   "artist": "Pierre-Auguste Renoir",
+   "date": "1879"
+  },
+  {
+   "file": "photos/art/38.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 81564,
+   "title": "Husking Bee, Island of Nantucket",
+   "artist": "Eastman Johnson",
+   "date": "1876"
+  },
+  {
+   "file": "photos/art/39.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 84088,
+   "title": "Violet and Silver—The Deep Sea",
+   "artist": "James McNeill Whistler",
+   "date": "1893"
+  },
+  {
+   "file": "photos/art/40.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 87008,
+   "title": "Shower Below the Summit (Sanka hakuu), from the series \"Thirty-Six Views of Mount Fuji (Fugaku sanjurokkei)\"",
+   "artist": "Katsushika Hokusai",
+   "date": "c. 1830/33"
+  },
+  {
+   "file": "photos/art/41.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 874,
+   "title": "Landscape",
+   "artist": "Jean Charles Cazin",
+   "date": "c. 1895"
+  },
+  {
+   "file": "photos/art/42.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 877,
+   "title": "Landscape",
+   "artist": "Jean Baptiste Camille Corot",
+   "date": "1865/70"
+  },
+  {
+   "file": "photos/art/43.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 893,
+   "title": "Landscape",
+   "artist": "Théodore Rousseau",
+   "date": "c. 1850"
+  },
+  {
+   "file": "photos/art/44.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 89524,
+   "title": "Ariwara no Narihirafrom the series One Hundred Poems Explained by the Nurse (Hyakunin isshu uba ga etoki)",
+   "artist": "Katsushika Hokusai",
+   "date": "1835–36"
+  },
+  {
+   "file": "photos/art/45.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 8980,
+   "title": "Landscape with Two Poplars",
+   "artist": "Vasily Kandinsky",
+   "date": "1912"
+  },
+  {
+   "file": "photos/art/46.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 8983,
+   "title": "Painting with Troika",
+   "artist": "Vasily Kandinsky",
+   "date": "January 18, 1911"
+  },
+  {
+   "file": "photos/art/47.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 90048,
+   "title": "Distant View of Niagara Falls",
+   "artist": "Thomas Cole",
+   "date": "1830"
+  },
+  {
+   "file": "photos/art/48.jpg",
+   "source": "Art Institute of Chicago (public domain)",
+   "id": 97292,
+   "title": "Spring in France",
+   "artist": "Robert William Vonnoh",
+   "date": "1890"
+  }
+ ]
+}

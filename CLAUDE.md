@@ -4,7 +4,8 @@
 Homelight is a free, self-hosted Skylight Calendar alternative. It's a single-page React app that runs on GitHub Pages as a PWA. Users install it on Android/iOS tablets as a family command center.
 
 ## Architecture
-- **Single-file app**: Everything lives in `index.html` — React is loaded from CDN (unpkg), Babel compiles JSX in-browser
+- **Single-file app**: Everything lives in `index.html` — React 18.3.1 and @babel/standalone 8.0.9 are pinned copies in `vendor/` (not a CDN), Babel compiles JSX in-browser
+- **Screensaver photos**: self-hosted in `photos/{nature,art,space}/NN.jpg` with credits in `photos/index.json`; `PHOTO_SETS` in index.html must match the file counts
 - **No build step**: No webpack, no npm, no node_modules. Just static files served by GitHub Pages
 - **State management**: React useState + localStorage persistence (all keys prefixed `hl4_`)
 - **Styling**: Inline styles with a theme context system (dark/light themes)
