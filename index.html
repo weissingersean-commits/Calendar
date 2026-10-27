@@ -197,7 +197,7 @@ function nextRecurrence(date,rule,original){const freq=rule.FREQ;const interval=
 }
 function setWeekday(date,weekday){const next=new Date(date);const diff=weekday-next.getDay();next.setDate(next.getDate()+((diff>=0?diff:diff+7)));return next;}
 // Bump on each deploy — shown in Settings so we can tell which build a device is running
-const APP_VERSION="2026.10.27e";
+const APP_VERSION="2026.10.27f";
 // Drops the service worker + its cached files (not localStorage data) and reloads fresh from the network
 async function forceUpdate(){
   try{if(navigator.serviceWorker){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister()));}
@@ -2078,8 +2078,15 @@ function Homelight(){
   const displayEvents=useMemo(()=>memberFilter?visibleEvents.filter(ev=>ev.assignedTo===memberFilter):visibleEvents,[visibleEvents,memberFilter]);
   const taskEvents=useMemo(()=>{const result=[];const now=new Date();for(let offset=-14;offset<=90;offset++){const d=new Date(now);d.setDate(d.getDate()+offset);const dateKey=dkey(d);const dow=d.getDay();const wkS=dkey(wkSt(d));todos.forEach(todo=>{if(!todo.repeat||todo.repeat==="none")return;let show=false;if(todo.repeat==="daily")show=true;else if(todo.repeat==="weekly"){const td=todo.dayOfWeek!=null?todo.dayOfWeek:0;show=dow===td;}if(!show)return;const done=todo.repeat==="daily"?todo.lastCompleted===dateKey:!!(todo.lastCompleted&&todo.lastCompleted>=wkS);result.push({id:"task~"+todo.id+"~"+dateKey,title:todo.text,date:dateKey,hour:0,minute:0,duration:24,category:"task",assignedTo:todo.assignedTo||null,feedColor:"#10B981",_taskId:todo.id,_isTask:true,_done:done,_emoji:todo.emoji||null,_streak:todo.streak||0,_optional:todo.optional||false});});}return result;},[todos]);
   const displayEventsWithTasks=useMemo(()=>[...displayEvents,...taskEvents],[displayEvents,taskEvents]);
-  // Kiosk tablets run for weeks without a reload — refresh once a night (3 AM) to pick up new versions and clear memory
-  useEffect(()=>{const id=setInterval(()=>{const n=new Date(),k=dkey(n);if(n.getHours()===3&&localStorage.getItem("hl4_nightlyReload")!==k){localStorage.setItem("hl4_nightlyReload",k);location.reload();}},10*60*1000);return()=>clearInterval(id);},[]);
+  // Kiosk tablets run for weeks without a reload — refresh once a day after 3 AM to pick up new versions and clear memory.
+  // If the screen was off overnight (Android pauses the page), this fires as soon as it wakes instead.
+  useEffect(()=>{
+    const loadedAt=Date.now();
+    const check=()=>{const n=new Date(),t3=new Date(n);t3.setHours(3,0,0,0);if(n>=t3&&loadedAt<t3.getTime())location.reload();};
+    const onVis=()=>{if(!document.hidden)check();};
+    const id=setInterval(check,10*60*1000);document.addEventListener("visibilitychange",onVis);window.addEventListener("focus",check);
+    return()=>{clearInterval(id);document.removeEventListener("visibilitychange",onVis);window.removeEventListener("focus",check);};
+  },[]);
 
   useEffect(()=>{
     if(!reminderMins||typeof Notification==="undefined"||Notification.permission!=="granted")return;
