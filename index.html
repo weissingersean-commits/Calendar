@@ -197,7 +197,7 @@ function nextRecurrence(date,rule,original){const freq=rule.FREQ;const interval=
 }
 function setWeekday(date,weekday){const next=new Date(date);const diff=weekday-next.getDay();next.setDate(next.getDate()+((diff>=0?diff:diff+7)));return next;}
 // Bump on each deploy — shown in Settings so we can tell which build a device is running
-const APP_VERSION="2026.10.27d";
+const APP_VERSION="2026.10.27e";
 // Drops the service worker + its cached files (not localStorage data) and reloads fresh from the network
 async function forceUpdate(){
   try{if(navigator.serviceWorker){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister()));}
@@ -258,7 +258,7 @@ async function syncStart(code,join){localStorage.setItem(SYNC_CFG,JSON.stringify
 function syncStop(){localStorage.removeItem(SYNC_CFG);localStorage.removeItem(SYNC_BASE);syncState.status="off";syncState.lastSync=null;syncNotify();}
 async function syncRestore(day){const{body}=await syncApi(`/v1/snapshots/${day}`);Object.entries(body.data).forEach(([k,v])=>{if(SYNC_KEYS.includes(k))syncApply(k,v);});localStorage.setItem(SYNC_BASE,"{}");await syncNow();}
 let syncBooted=false;
-function syncBoot(){if(syncBooted)return;syncBooted=true;setInterval(syncNow,60*1000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)syncNow();});window.addEventListener("online",()=>syncNow());}
+function syncBoot(){if(syncBooted)return;syncBooted=true;setInterval(syncNow,5*60*1000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)syncNow();});window.addEventListener("online",()=>syncNow());}
 if(getSyncCfg()?.code){syncState.status="idle";setTimeout(syncNow,1500);syncBoot();}
 // Our own Cloudflare Worker (see workers/ical-proxy.js) — corsproxy.io now 403s production sites
 const ICAL_PROXY="https://homelight-ical.weissinger-sean.workers.dev";
